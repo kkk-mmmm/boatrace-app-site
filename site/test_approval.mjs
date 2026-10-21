@@ -1,0 +1,28 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {publicationApproved} from './check-approval.mjs';
+
+test('一般公開は初期状態で無効であり、確認したコード以外の変更後にも無効になる', t => {
+  assert.equal(typeof publicationApproved(), 'boolean');
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'boatrace-approval-'));
+  t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  git('init','-q');git('config','user.name','Test');git('config','user.email','test@example.invalid');
+  fs.mkdirSync(path.join(dir,'.github'));fs.mkdirSync(path.join(dir,'site'));
+  const file=path.join(dir,'.github/publication.json');
+  fs.writeFileSync(file,JSON.stringify({approved:false,reviewed_commit:null}));
+  fs.writeFileSync(path.join(dir,'site/index.html'),'reviewed site');
+  git('add','.');git('commit','-qm','review');
+  assert.equal(publicationApproved(dir),false);
+  const reviewed=git('rev-parse','HEAD');
+  fs.writeFileSync(file,JSON.stringify({approved:true,reviewed_commit:reviewed}));
+  git('add','.');git('commit','-qm','record approval');
+  assert.equal(publicationApproved(dir),true);
+  fs.writeFileSync(path.join(dir,'site/index.html'),'changed site');
+  git('add','.');git('commit','-qm','change code');
+  assert.equal(publicationApproved(dir),false);
+});

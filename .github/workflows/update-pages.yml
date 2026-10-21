@@ -1,0 +1,150 @@
+name: Refresh and publish approved site
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/publication.json]
+  schedule:
+    # UTC. Japan 08:00-21:59; GitHub schedules are best-effort.
+    - cron: '2-57/5 0-12,23 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: public-site-production
+  cancel-in-progress: false
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    outputs:
+      approved: ${{ steps.check.outputs.approved }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - id: check
+        run: node site/check-approval.mjs >> "$GITHUB_OUTPUT"
+  collect:
+    if: needs.approval.outputs.approved == 'true'
+    needs: approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        venue: ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24']
+    env:
+      VENUE_CODE: ${{ matrix.venue }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/cache/restore@v4
+        with:
+          path: tools/prediction/model-v2.json
+          key: active-model-v2-${{ github.run_id }}
+          restore-keys: active-model-v2-
+      - name: Compute isolated daily cache path
+        id: cache
+        run: |
+          day=$(TZ=Asia/Tokyo date +%F)
+          echo "day=$day" >> "$GITHUB_OUTPUT"
+          if [ "$VENUE_CODE" = 01 ]; then
+            echo "directory=site/cache/$day" >> "$GITHUB_OUTPUT"
+          else
+            echo "directory=site/cache/$day/venues/$VENUE_CODE" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.cache.outputs.directory }}
+          key: site-v2-${{ matrix.venue }}-${{ steps.cache.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: site-v2-${{ matrix.venue }}-${{ steps.cache.outputs.day }}-
+      - name: Collect one venue and preserve its predictions
+        id: collect
+        continue-on-error: true
+        run: |
+          python tools/site/collect_official.py --venue "$VENUE_CODE" --output "site/cache/incoming-$VENUE_CODE.json"
+          node site/update.mjs "site/cache/incoming-$VENUE_CODE.json"
+      - name: Project public fields and record collection failures
+        env:
+          OUTCOME: ${{ steps.collect.outcome }}
+        run: |
+          if [ "$OUTCOME" = success ]; then
+            node site/snapshot.mjs "$VENUE_CODE" "site/staging/$VENUE_CODE.json"
+          else
+            node site/snapshot.mjs "$VENUE_CODE" "site/staging/$VENUE_CODE.json" --failed
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: venue-${{ matrix.venue }}
+          path: site/staging/${{ matrix.venue }}.json
+          retention-days: 1
+  publish:
+    if: always() && !cancelled() && needs.approval.outputs.approved == 'true'
+    needs: [approval, collect]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: venue-*
+          path: site/staging
+          merge-multiple: true
+      - name: Validate forecast and freshness behavior
+        run: node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs
+      - name: Build current data or explicit failure state
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = schedule ]; then
+            node site/build.mjs --snapshots site/staging
+          else
+            node site/build.mjs --snapshots site/staging --require-current
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+          retention-days: 1
+      - name: Publish approved read-only site
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Verify the published HTML and data
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          python - <<'PY'
+          import json,os,time
+          from urllib.request import urlopen
+          from urllib.parse import urljoin
+          url=os.environ['SITE_URL']
+          for attempt in range(10):
+              try:
+                  with urlopen(url,timeout=15) as r: html=r.read().decode()
+                  with urlopen(urljoin(url,'data/current.json'),timeout=15) as r: data=json.load(r)
+                  assert 'BOATRACE NOTE' in html and data['schema_version']==1 and len(data['venues'])==24
+                  assert all(len(v['code'])==2 for v in data['venues'])
+                  with urlopen(urljoin(url,'style.css'),timeout=15) as r: assert 'text/css' in r.headers.get('Content-Type','')
+                  for code in ('03','24'):
+                      with urlopen(urljoin(url,f'data/venues/{code}.json'),timeout=15) as r: assert json.load(r)['venue_code']==code
+                  print('Published HTML and current data verified:',url,data['date'],data['update']['status'])
+                  break
+              except Exception:
+                  if attempt==9: raise
+                  time.sleep(5)
+          PY

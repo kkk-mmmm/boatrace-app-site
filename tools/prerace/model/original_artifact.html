@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>競艇予想 試作品（サンプルデータ）</title>
+<style>
+:root{--bg:#eef3f9;--card:#fff;--tx:#12203a;--mu:#5a6a82;--bd:#d8e1ed;--ac:#0b63c5;--ac2:#e8f1fc;--ok:#15803d;--ng:#c62828;--wn:#fff3cd;--wt:#6b4a00;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0a111d;--card:#131d2e;--tx:#e6edf7;--mu:#93a3bb;--bd:#26344b;--ac:#5aa9ff;--ac2:#172a45;--ok:#4ade80;--ng:#ff7b72;--wn:#3a2f10;--wt:#ffd479}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0a111d;--card:#131d2e;--tx:#e6edf7;--mu:#93a3bb;--bd:#26344b;--ac:#5aa9ff;--ac2:#172a45;--ok:#4ade80;--ng:#ff7b72;--wn:#3a2f10;--wt:#ffd479}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--card);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--card);border-bottom:1px solid var(--bd);z-index:9}
+.top{display:flex;align-items:center;gap:8px;padding:8px 12px 4px}
+.top h1{font-size:17px;margin:0;flex:1}
+.badge{background:var(--wn);color:var(--wt);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.warn{margin:0;padding:4px 12px 6px;font-size:11px;color:var(--wt);background:var(--wn)}
+nav{display:flex}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:10px 4px;font-size:14px;font-weight:700;border-bottom:3px solid transparent;cursor:pointer}
+nav button.on{color:var(--ac);border-color:var(--ac)}
+main{max-width:760px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 8px}
+.note{font-size:12px;color:var(--mu)}
+.v{padding:0;overflow:hidden}
+.vh{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;color:inherit;padding:12px;text-align:left;font:inherit;cursor:pointer}
+.vh b{font-size:16px;flex:1}
+.tag{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--ac2);color:var(--ac);font-weight:700}
+.off{opacity:.5}
+.rs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 12px 12px}
+.rs button{border:1px solid var(--bd);background:var(--ac2);color:var(--tx);border-radius:8px;padding:6px 0;font:inherit;font-size:13px;cursor:pointer}
+.rs button small{display:block;color:var(--mu);font-size:11px}
+.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--bd);white-space:nowrap}
+th{color:var(--mu);font-size:11px;font-weight:600}
+td.l,th.l{text-align:left}
+.lane{display:inline-block;width:24px;height:24px;line-height:24px;border-radius:5px;font-weight:800;border:1px solid #888;text-align:center}
+.pb{position:relative}
+.pb i{position:absolute;left:0;top:0;bottom:0;background:var(--ac2);z-index:0}
+.pb span{position:relative;z-index:1}
+.btn{border:1px solid var(--ac);background:var(--card);color:var(--ac);border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin:0 6px 6px 0}
+.big{font-size:22px;font-weight:800}
+.g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.g div{background:var(--ac2);border-radius:10px;padding:8px;text-align:center}
+.g small{display:block;color:var(--mu);font-size:11px}
+.pos{color:var(--ok)}.neg{color:var(--ng)}
+input[type=checkbox]{width:20px;height:20px}
+.star{color:#e0a100;letter-spacing:2px}.bx{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:13px}.bx.e{border-color:var(--ng)}.bx.s{border-color:var(--ok)}.bx.w{background:var(--wn);color:var(--wt);border-color:transparent}.fb{background:var(--ac2);color:var(--ac);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}pre{white-space:pre-wrap;word-break:break-all;font-size:11px;background:var(--ac2);padding:8px;border-radius:8px}button:disabled{opacity:.4}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>🚤 競艇予想（試作品）</h1><span class="badge" id="bd">サンプルデータ</span></div>
+  <p class="warn" id="wn">表示中の出走表・オッズ・確率・成績はすべて架空のサンプルです。実データではなく、的中や利益を保証するものでもありません。</p>
+  <nav id="nav"></nav>
+</header>
+<main id="app"></main>
+<script>
+const V=[["桐生","淡水"],["戸田","淡水"],["江戸川","汽水"],["平和島","海水"],["多摩川","淡水"],["浜名湖","汽水"],["蒲郡","海水"],["常滑","海水"],["津","海水"],["三国","淡水"],["びわこ","淡水"],["住之江","淡水"],["尼崎","淡水"],["鳴門","海水"],["丸亀","海水"],["児島","海水"],["宮島","海水"],["徳山","海水"],["下関","海水"],["若松","海水"],["芦屋","淡水"],["福岡","汽水"],["唐津","淡水"],["大村","海水"]];
+const SN=["青木","石川","上田","遠藤","大野","加藤","木村","小林","坂本","清水","高橋","田中","中村","野口","長谷川","藤井","松本","宮崎","山口","吉田"];
+const GN=["健","翔","大輔","拓也","誠","優","亮","直樹","浩二","達也","悠","剛"];
+const COL=[["#fff","#111"],["#222","#fff"],["#e53935","#fff"],["#1e66d0","#fff"],["#f2c200","#111"],["#22a559","#fff"]];
+const LANE=[1.4,.6,.3,.1,-.2,-.5];
+const R=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const held=v=>R(v*7+3)()<0.7;
+const rtime=r=>{const m=640+(r-1)*30;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0")};
+function race(v,r){
+  const q=R(v*100+r+1),b=[];
+  for(let i=0;i<6;i++){
+    const ci=Math.min(3,Math.floor(q()*q()*4.6));
+    const wr=[7.2,6.2,5.4,4.6][ci]+(q()-.5)*1.2,lo=wr+(q()-.5)*1.4,mo=25+q()*35,st=.12+q()*.09;
+    const s=wr*.6+lo*.25+mo/15*.3-(st-.15)*15+LANE[i];
+    b.push({n:i+1,name:SN[Math.floor(q()*SN.length)]+" "+GN[Math.floor(q()*GN.length)],cls:["A1","A2","B1","B2"][ci],wr,lo,mo,st,w:Math.exp(s*.5)});
+  }
+  const S=b.reduce((a,x)=>a+x.w,0),c=[];
+  for(const x of b)for(const y of b)for(const z of b){
+    if(x==y||y==z||x==z)continue;
+    const p=x.w/S*y.w/(S-x.w)*z.w/(S-x.w-y.w);
+    c.push({k:x.n+"-"+y.n+"-"+z.n,p,o:Math.max(1.5,+(0.75/p*(0.6+q()*0.8)).toFixed(1))});
+  }
+  c.sort((a,b)=>b.p-a.p);
+  const top=c.slice(0,10),sum=top.slice(0,5).reduce((a,x)=>a+x.p,0);
+  const conf=sum>=.3?5:sum>=.24?4:sum>=.18?3:sum>=.13?2:1;
+  return{b,top,conf,sum};
+}
+const st={tab:"list",open:null,v:null,r:null,sel:new Set(),src:"sample",fr:null,data:null,pend:null,msg:null};
+const nz=v=>v==null||String(v).trim()==="";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtT=s=>{if(!s)return"不明";const d=new Date(s);return isNaN(d)?esc(s):d.toLocaleString("ja-JP")};
+const T=(k,v)=>`<tr><td class="l">${k}</td><td class="l" style="white-space:normal">${v}</td></tr>`;
+const U=v=>v==null?"未取得":esc(v);
+const NM={national_win_rate:"全国勝率",local_win_rate:"当地勝率",motor_2rate:"モーター2連率",boat_2rate:"ボート2連率",avg_st:"平均ST"};
+const RG={national_win_rate:[0,10],local_win_rate:[0,10],motor_2rate:[0,100],boat_2rate:[0,100],avg_st:[0,1]};
+function parseCSV(t){const rows=[];let r=[],c="",q=false;
+ for(let i=0;i<t.length;i++){const ch=t[i];
+  if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
+  else if(ch=='"')q=true;else if(ch==","){r.push(c);c=""}
+  else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);c="";rows.push(r);r=[]}else c+=ch}
+ if(c!==""||r.length){r.push(c);rows.push(r)}return rows}
+function csvToJson(text,E){
+ const all=parseCSV(text).map((r,i)=>({r,ln:i+1})).filter(x=>x.r.some(c=>c.trim()!==""));
+ if(!all.length){E.push("CSVが空です。");return null}
+ const h=all[0].r.map(s=>s.trim());
+ const miss=["row_type","date","venue","race_no"].filter(k=>!h.includes(k));
+ if(miss.length){E.push("CSVの1行目に必要な列名がありません："+miss.join("、")+"（現在の列名："+h.join("、")+"）");return null}
+ const M={};
+ for(const {r,ln} of all.slice(1)){const o={};h.forEach((k,i)=>o[k]=(r[i]??"").trim());const t=o.row_type;
+  if(!["race","entry","odds","result"].includes(t)){E.push(`${ln}行目：row_type は race / entry / odds / result のどれかにしてください（現在：「${t}」）。`);continue}
+  if(nz(o.race_no)){E.push(`${ln}行目：race_no（レース番号）が空です。`);continue}
+  const R=M[o.date+"|"+o.venue+"|"+o.race_no]??={date:o.date,venue:o.venue,race_no:o.race_no,entries:[],odds:[],_ln:ln};
+  if(t=="race"){R.time=o.time;R.source=o.source;R.fetched_at=o.fetched_at}
+  else if(t=="entry")R.entries.push({lane:o.lane,name:o.name,class:o.class,national_win_rate:o.national_win_rate,local_win_rate:o.local_win_rate,motor_2rate:o.motor_2rate,boat_2rate:o.boat_2rate,avg_st:o.avg_st,_ln:ln});
+  else if(t=="odds")R.odds.push({first:o.first,second:o.second,third:o.third,odds:o.odds,fetched_at:o.odds_fetched_at,_ln:ln});
+  else R.result={first:o.first,second:o.second,third:o.third,payout:o.payout,_ln:ln}}
+ return {races:Object.values(M)}}
+function nm(v,lab,loc,E,lo,hi,int){
+ if(nz(v))return null;
+ const n=typeof v=="number"?v:Number(String(v).replace(/,/g,""));
+ if(typeof v=="boolean"||!isFinite(n)||(int&&!Number.isInteger(n))||(lo!=null&&(n<lo||n>hi))){E.push(`${loc}：${lab}「${v}」は${int?"整数":"数値"}として正しくありません${lo!=null?"（"+lo+"〜"+hi+"の範囲）":""}。`);return undefined}
+ return n}
+function build(o,E,W){
+ const out=[],seen={};
+ if(!o||!Array.isArray(o.races)||!o.races.length){E.push("レースのデータ（races）が見つかりません。");return out}
+ o.races.forEach((r,i)=>{
+  const L=r._ln?`${r._ln}行目付近`:`races[${i}]`,e0=E.length;
+  const ven=r.venue??o.venue,date=r.date??o.date,src=r.source??o.source,fa=r.fetched_at??o.fetched_at;
+  if(nz(ven))E.push(`${L}：競艇場名（venue）がありません。`);
+  else if(!String(ven).startsWith("桐生"))E.push(`${L}：競艇場が「${ven}」です。今回は桐生のデータだけ読み込めます。`);
+  if(nz(date)||!/^\d{4}-\d{2}-\d{2}$/.test(date))E.push(`${L}：開催日（date）は 2026-10-20 の形で必要です（現在：「${date??""}」）。`);
+  const no=nm(r.race_no,"race_no",L,E,1,12,true);
+  if(no===null)E.push(`${L}：レース番号（race_no）がありません。`);
+  else if(no){if(seen[date+no])E.push(`${L}：${no}Rが重複しています。`);seen[date+no]=1}
+  const en=r.entries,ents=[];
+  if(!Array.isArray(en)||en.length!=6)E.push(`${L}：出走表は6艇分が必要です（現在：${Array.isArray(en)?en.length:0}艇）。`);
+  else{en.forEach((x,j)=>{const P=x._ln?`${x._ln}行目`:`${L}.entries[${j}]`;
+    const lane=nm(x.lane,"枠番(lane)",P,E,1,6,true);if(lane===null)E.push(`${P}：枠番(lane)がありません。`);
+    const q={lane,name:nz(x.name)?null:String(x.name),cls:nz(x.class)?null:String(x.class)};
+    for(const [k,[lo,hi]] of Object.entries(RG))q[k]=nm(x[k],NM[k],P,E,lo,hi);
+    ents.push(q)});
+   if(new Set(ents.map(q=>q.lane)).size!=6)E.push(`${L}：枠番1〜6が1つずつそろっていません。`)}
+  const od={};
+  if(r.odds!=null&&!Array.isArray(r.odds))E.push(`${L}：odds は配列にしてください。`);
+  (Array.isArray(r.odds)?r.odds:[]).forEach((x,j)=>{const P=x._ln?`${x._ln}行目`:`${L}.odds[${j}]`;
+   const a=[x.first,x.second,x.third].map((v,t)=>nm(v,["1着艇番","2着艇番","3着艇番"][t],P,E,1,6,true));
+   if(a.some(v=>v==null)){if(a.some(v=>v===null))E.push(`${P}：1着・2着・3着の艇番がそろっていません。`);return}
+   if(new Set(a).size<3){E.push(`${P}：同じ艇が重複した3連単です（${a.join("-")}）。`);return}
+   const v=nm(x.odds,"オッズ",P,E);
+   if(v==null||v<=0){if(v!==undefined)W.push(`${P}：オッズが${v==null?"空欄":"0以下"}のため、この買い目のオッズは使いません。`);return}
+   od[a.join("-")]={o:v,at:nz(x.fetched_at)?null:x.fetched_at}});
+  let rs=null;
+  if(r.result!=null){const x=r.result,P=x._ln?`${x._ln}行目`:`${L}.result`;
+   const a=[x.first,x.second,x.third].map((v,t)=>nm(v,["1着艇番","2着艇番","3着艇番"][t],P,E,1,6,true));
+   if(a.some(v=>v===null))E.push(`${P}：確定結果の1着・2着・3着がそろっていません。`);
+   else if(!a.some(v=>v===undefined)){if(new Set(a).size<3)E.push(`${P}：確定結果に同じ艇が重複しています。`);else{const p=nm(x.payout,"3連単払戻金",P,E,0,1e8);rs={k:a.join("-"),pay:p===undefined?null:p}}}}
+  if(E.length>e0)return;
+  const ms=new Set();ents.forEach(q=>{if(q.name==null)ms.add("選手名");if(q.cls==null)ms.add("級別");Object.keys(RG).forEach(k=>{if(q[k]==null)ms.add(NM[k])})});
+  if(!Object.keys(od).length)ms.add("オッズ");if(!rs)ms.add("確定結果");if(nz(r.time))ms.add("発走予定時刻");if(nz(src))ms.add("データ出典");if(nz(fa))ms.add("データ取得日時");
+  out.push({date,no,time:nz(r.time)?null:String(r.time),source:nz(src)?null:String(src),fetched:nz(fa)?null:fa,entries:ents.sort((a,b)=>a.lane-b.lane),odds:od,result:rs,miss:[...ms]})});
+ const ds=[...new Set(out.map(r=>r.date))];
+ if(ds.length>1)E.push("複数の開催日（"+ds.join("、")+"）が含まれています。1日分ずつのファイルにしてください。");
+ const td=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
+ if(ds.some(d=>d<td))W.push("開催日が今日より前のデータです。古い情報の可能性があるため、検証用として扱ってください。");
+ if(out.some(r=>Object.values(r.odds).some(x=>!x.at)))W.push("オッズの取得日時が不明のレースがあります。いつ時点のオッズか判断できません。");
+ return out}
+function pickFile(el){st.pend=el.files[0]||null;render()}
+async function doLoad(){
+ const f=st.pend;if(!f)return;
+ const E=[],W=[],fmt=/\.csv$/i.test(f.name)?"CSV":/\.json$/i.test(f.name)?"JSON":null;let obj=null;
+ if(!fmt)E.push("ファイル名の末尾が .json か .csv ではありません。");
+ else try{const buf=await f.arrayBuffer();let t;
+  try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(_){t=new TextDecoder("shift_jis").decode(buf);W.push("文字コードをShift_JISとみなして読み込みました。文字化けがないか確認してください。")}
+  t=t.replace(/^\uFEFF/,"");
+  if(fmt=="JSON"){try{obj=JSON.parse(t)}catch(x){E.push("JSONの書き方に誤りがあります（"+x.message+"）。カンマや引用符の抜けを確認してください。")}}
+  else obj=csvToJson(t,E)}catch(x){E.push("ファイルを読み込めませんでした："+x.message)}
+ const races=obj?build(obj,E,W):[];
+ if(E.length||!races.length){if(!E.length)E.push("読み込めるレースがありませんでした。");
+  st.msg={e:E.length>30?[...E.slice(0,30),"ほか"+(E.length-30)+"件"]:E,w:W};return render()}
+ races.sort((a,b)=>a.no-b.no);
+ const uq=a=>[...new Set(a.filter(Boolean))].sort(),fe=uq(races.map(r=>r.fetched)),ne=races.length*6,no=races.reduce((a,r)=>a+Object.keys(r.odds).length,0),nr=races.filter(r=>r.result).length;
+ st.data={file:f.name,fmt,loadedAt:new Date().toLocaleString("ja-JP"),races,dates:uq(races.map(r=>r.date)),src:uq(races.map(r=>r.source)),fet:fe,miss:uq(races.flatMap(r=>r.miss)),W,ne,no,nr};
+ st.fr=null;st.msg={ok:true,text:`${fmt}を読み込みました（レース${races.length}件・出走${ne}件・オッズ${no}件・確定結果${nr}件）。「レース一覧」に桐生のレースが表示されます。`,w:W};render()}
+function resetData(){st.data=null;st.pend=null;st.msg=null;st.src="sample";st.fr=null;render()}
+function pickF(n){st.src="file";st.fr=n;st.sel=new Set(cur().top.slice(0,3).map(x=>x.k));go("detail")}
+function cur(){return st.src=="file"&&st.fr!=null?fcalc(st.data.races.find(r=>r.no==st.fr)):race(st.v,st.r)}
+function fcalc(r){
+ const miss=[];r.entries.forEach(e=>["national_win_rate","local_win_rate","motor_2rate","avg_st"].forEach(k=>{if(e[k]==null)miss.push(`${e.lane}号艇の${NM[k]}`)}));
+ if(miss.length)return{top:[],ok:false,miss,conf:0,sum:0};
+ const b=r.entries.map(e=>({n:e.lane,w:Math.exp((e.national_win_rate*.6+e.local_win_rate*.25+e.motor_2rate/15*.3-(e.avg_st-.15)*15+LANE[e.lane-1])*.5)}));
+ const S=b.reduce((a,x)=>a+x.w,0),c=[];
+ for(const x of b)for(const y of b)for(const z of b){if(x==y||y==z||x==z)continue;const k=x.n+"-"+y.n+"-"+z.n;c.push({k,p:x.w/S*y.w/(S-x.w)*z.w/(S-x.w-y.w),o:r.odds[k]?r.odds[k].o:null})}
+ c.sort((a,b)=>b.p-a.p);const top=c.slice(0,10),sum=top.slice(0,5).reduce((a,x)=>a+x.p,0);
+ return{top,ok:true,miss:[],sum,conf:sum>=.3?5:sum>=.24?4:sum>=.18?3:sum>=.13?2:1}}
+function hdr(){const f=st.src=="file"&&st.tab=="detail",m=st.data&&st.tab=="list";
+ $("bd").textContent=f?"ファイル読み込みデータ":m?"サンプル＋読み込み":"サンプルデータ";
+ $("wn").textContent=f?"このレースはファイルから読み込んだデータです。サンプルの数値は混ぜていません。正確性は保証されず、的中や利益も保証しません。":m?"「ファイル読み込みデータ」と「サンプルデータ」は別々に表示しています。サンプルは架空の数値で、的中や利益を保証しません。":"表示中の出走表・オッズ・確率・成績はすべて架空のサンプルです。実データではなく、的中や利益を保証するものでもありません。"}
+function fileCard(){const D=st.data;if(!D)return"";
+ return `<div class="card"><h2>📂 ファイル読み込みデータ（桐生）</h2><div class="note">${esc(D.file)}／開催日 ${D.dates.join("、")}／${D.races.length}レース。下のサンプルとは別のデータです。</div><div class="rs" style="padding:8px 0 0">${D.races.map(r=>`<button onclick="pickF(${r.no})">${r.no}R<small>${r.time||"時刻未取得"}</small></button>`).join("")}</div></div>`}
+function loadUI(){
+ const D=st.data,m=st.msg,f=st.pend;
+ const bx=(c,t,a)=>a&&a.length?`<div class="bx ${c}"><b>${t}</b><ul style="margin:4px 0 0;padding-left:18px">${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:"";
+ let h=`<div class="card"><h2>データ読み込み（桐生・個人検証用）</h2><ol class="note" style="padding-left:18px;margin:0 0 8px"><li>下の欄でJSONかCSVのファイルを選びます。</li><li>ファイル名を確認し「読み込む」を押します。</li><li>「レース一覧」の上に桐生のレースが出ます。</li></ol>
+<input type="file" accept=".json,.csv" onchange="pickFile(this)">
+<p class="note">選択中：${f?esc(f.name)+"（"+(/\.csv$/i.test(f.name)?"CSV":/\.json$/i.test(f.name)?"JSON":"形式不明")+"・"+Math.ceil(f.size/1024)+"KB）":"まだ選ばれていません"}</p>
+<button class="btn" ${f?"":"disabled"} onclick="doLoad()">読み込む</button><button class="btn" onclick="resetData()">サンプルに戻す</button>
+<div class="note">ファイルはこの端末のブラウザ内だけで読み取り、外部へは送信しません。ページを再読み込みすると消えます。</div>`;
+ if(m)h+=`<div class="bx ${m.ok?"s":"e"}"><b>${m.ok?"✅ 読み込み成功":"❌ 読み込み失敗（表示中のデータは変わっていません）"}</b>${m.text?"<br>"+esc(m.text):""}</div>`+bx("e","エラー",m.e)+bx("w","警告",m.w);
+ h+="</div>";
+ if(D)h+=`<div class="card"><h2>読み込み中のデータ <span class="fb">ファイル読み込みデータ</span></h2><div class="sc"><table>`+T("ファイル名（形式）",esc(D.file)+"（"+D.fmt+"）")+T("データ出典",D.src.length?D.src.map(esc).join("、"):"不明")+T("データ取得日時",D.fet.length?(D.fet.length>1?fmtT(D.fet[0])+"〜"+fmtT(D.fet[D.fet.length-1]):fmtT(D.fet[0])):"不明")+T("ファイル読み込み日時",D.loadedAt)+T("対象競艇場","桐生")+T("対象開催日",D.dates.join("、"))+T("データ件数",`レース${D.races.length}／出走${D.ne}／オッズ${D.no}／確定結果${D.nr}`)+T("不足項目",D.miss.length?D.miss.join("、"):"なし")+T("データの状態",D.W.length||D.miss.length?"⚠ 警告あり（内容を確認してください）":"問題なし")+`</table></div><div class="note">「ファイル読み込み日時」は取り込んだ時刻で、元データの取得日時ではありません。</div></div>`;
+ return h+`<div class="card"><h2>ファイルの形式</h2><details><summary>JSONの例（クリックで開く）</summary><pre>{"venue":"桐生","date":"2026-10-20","source":"出典名","fetched_at":"2026-10-20T10:00:00+09:00","races":[{"race_no":1,"time":"15:20","entries":[{"lane":1,"name":"選手名","class":"A1","national_win_rate":6.5,"local_win_rate":5.8,"motor_2rate":38.2,"boat_2rate":35.0,"avg_st":0.15}（6艇分）],"odds":[{"first":1,"second":2,"third":3,"odds":8.5,"fetched_at":"2026-10-20T10:30:00+09:00"}],"result":{"first":1,"second":2,"third":3,"payout":1230}}]}</pre><div class="note">必須：venue・date・race_no・entries（6艇でlaneは1〜6）。ほかは無くても動き、「未取得」と表示します。result は確定後だけ書きます。</div></details><details><summary>CSVの例（クリックで開く）</summary><pre>row_type,date,venue,race_no,time,source,fetched_at,lane,name,class,national_win_rate,local_win_rate,motor_2rate,boat_2rate,avg_st,first,second,third,odds,odds_fetched_at,payout
+race,2026-10-20,桐生,1,15:20,出典名,2026-10-20T10:00:00+09:00,,,,,,,,,,,,,,
+entry,2026-10-20,桐生,1,,,,1,選手名,A1,6.5,5.8,38.2,35.0,0.15,,,,,,
+odds,2026-10-20,桐生,1,,,,,,,,,,,,1,2,3,8.5,2026-10-20T10:30:00+09:00,
+result,2026-10-20,桐生,1,,,,,,,,,,,,1,2,3,,,1230</pre><div class="note">1行目は列名です。row_type は race（レース情報）・entry（出走表、6行）・odds・result のどれか。使わない欄は空欄にします。列名は英語のとおりに書いてください。</div></details></div>`}
+function detailF(){
+ const D=st.data,r=D.races.find(x=>x.no==st.fr),d=cur(),oat=[...new Set(Object.values(r.odds).map(x=>x.at).filter(Boolean))].sort();
+ let h=`<div class="card"><button class="btn" onclick="go('list')">← 一覧へ戻る</button><h2>桐生 ${r.no}R　発走 ${U(r.time)} <span class="fb">ファイル読み込みデータ</span></h2><div class="sc"><table>`+T("ファイル名",esc(D.file))+T("データ出典",U(r.source||"不明"))+T("データ取得日時",fmtT(r.fetched))+T("オッズ取得日時",oat.length?oat.map(fmtT).join("、"):"不明")+T("ファイル読み込み日時",D.loadedAt)+T("開催日",r.date)+T("不足項目",r.miss.length?r.miss.join("、"):"なし")+`</table></div></div>
+<div class="card"><h2>出走表（ファイルの値）</h2><div class="sc"><table><tr><th>枠</th><th class="l">選手</th><th>級</th><th>全国勝率</th><th>当地勝率</th><th>モーター2連率</th><th>ボート2連率</th><th>平均ST</th></tr>`+r.entries.map(x=>`<tr><td><span class="lane" style="background:${COL[x.lane-1][0]};color:${COL[x.lane-1][1]}">${x.lane}</span></td><td class="l">${U(x.name)}</td><td>${U(x.cls)}</td><td>${U(x.national_win_rate)}</td><td>${U(x.local_win_rate)}</td><td>${U(x.motor_2rate)}</td><td>${U(x.boat_2rate)}</td><td>${U(x.avg_st)}</td></tr>`).join("")+`</table></div></div>
+<div class="card"><h2>3連単 予想買い目</h2>`;
+ if(!d.ok)h+=`<div class="bx w"><b>予想を計算できません。</b>不足：${d.miss.join("、")}。サンプルの数値で補うことはしていません。</div>`;
+ else{const max=d.top[0].p;h+=`<div style="margin-bottom:8px">信頼度：<span class="star">${"★".repeat(d.conf)}${"☆".repeat(5-d.conf)}</span><div class="note">上位5点の推定確率合計 ${(d.sum*100).toFixed(1)}% からの目安です。</div></div><div class="sc"><table><tr><th>購入</th><th>買い目</th><th>推定確率</th><th>オッズ(ファイル)</th><th>期待値(推定)</th></tr>`+d.top.map(x=>`<tr><td><input type="checkbox" ${st.sel.has(x.k)?"checked":""} onchange="tog('${x.k}')"></td><td><b>${x.k}</b></td><td class="pb"><i style="width:${x.p/max*100}%"></i><span>${(x.p*100).toFixed(1)}%</span></td><td>${x.o==null?"未取得":x.o.toFixed(1)+"倍"}</td><td>${x.o==null?"—":(x.p*x.o).toFixed(2)}</td></tr>`).join("")+`</table></div><div class="note">推定確率は出走表の4項目（全国勝率・当地勝率・モーター2連率・平均ST）と枠番から出した簡易計算で、精度は検証されていません。期待値は推定値で、利益を保証しません。</div>`;
+  if(!oat.length)h+=`<div class="bx w">オッズの取得日時が不明です。古いオッズの可能性があります。</div>`}
+ h+=`</div><div class="card"><h2>確定結果</h2>${r.result?`<b>${r.result.k}</b>　3連単払戻金 ${r.result.pay==null?"未取得":yen(r.result.pay)}<div class="note">ファイルに書かれていた値です。</div>`:"未取得（未確定、またはファイルに含まれていません）"}</div>
+<div class="card"><h2>投資額の計算（1点100円）</h2>${d.ok?`<button class="btn" onclick="top3()">上位3点を選ぶ</button><button class="btn" onclick="top10()">全10点を選ぶ</button><button class="btn" onclick="clr()">全解除</button><div id="inv"></div>`:"<div class=\"note\">予想を計算できないため、買い目は選べません。</div>"}</div>`;
+ return h}
+const yen=n=>(n<0?"-":"")+"¥"+Math.abs(Math.round(n)).toLocaleString();
+const $=id=>document.getElementById(id);
+
+function nav(){
+  const t=[["list","レース一覧"],["detail","出走表・予想"],["ana","分析"],["load","データ読み込み"]];
+  $("nav").innerHTML=t.map(([k,l])=>`<button class="${st.tab==k?"on":""}" onclick="go('${k}')">${l}</button>`).join("");
+}
+function go(k){
+  if(k=="detail"&&(st.src=="file"?st.fr===null:st.v===null))k="list";
+  st.tab=k;nav();render();window.scrollTo(0,0);
+}
+function pick(v,r){
+  st.src="sample";st.fr=null;st.v=v;st.r=r;st.sel=new Set(race(v,r).top.slice(0,3).map(x=>x.k));
+  go("detail");
+}
+function render(){
+  const a=$("app");hdr();
+  if(st.tab=="list")a.innerHTML=list();
+  else if(st.tab=="detail")a.innerHTML=st.src=="file"?detailF():detail(),inv();
+  else if(st.tab=="load")a.innerHTML=loadUI();
+  else a.innerHTML=ana();
+}
+function list(){
+  return fileCard()+`<div class="card"><h2>本日のレース一覧（サンプルデータ）</h2><div class="note">全国24場。開催の有無・発走時刻は架空です。場名をタップして、レース番号を選んでください。</div></div>`+
+  V.map(([n,w],i)=>{
+    const h=held(i),o=st.open===i;
+    return `<div class="card v ${h?"":"off"}"><button class="vh" ${h?`onclick="st.open=${o?"null":i};render()"`:"disabled"}><b>${n}</b><span class="tag">${w}</span><span class="note">${h?"開催（サンプル）":"非開催（サンプル）"}</span><span>${h?(o?"▲":"▼"):""}</span></button>`+
+    (o?`<div class="rs">${Array.from({length:12},(_,k)=>`<button onclick="pick(${i},${k+1})">${k+1}R<small>${rtime(k+1)}</small></button>`).join("")}</div>`:"")+`</div>`;
+  }).join("");
+}
+function detail(){
+  const d=race(st.v,st.r),max=d.top[0].p;
+  return `<div class="card"><button class="btn" onclick="go('list')">← 一覧へ戻る</button><h2>${V[st.v][0]} ${st.r}R　発走 ${rtime(st.r)}（サンプル）</h2><div class="note">水面：${V[st.v][1]}　／　出走選手・成績は架空です</div></div>
+  <div class="card"><h2>出走表（サンプル）</h2><div class="sc"><table><tr><th>枠</th><th class="l">選手</th><th>級</th><th>全国勝率</th><th>当地勝率</th><th>モーター2連率</th><th>平均ST</th></tr>`+
+  d.b.map(x=>`<tr><td><span class="lane" style="background:${COL[x.n-1][0]};color:${COL[x.n-1][1]}">${x.n}</span></td><td class="l">${x.name}</td><td>${x.cls}</td><td>${x.wr.toFixed(2)}</td><td>${x.lo.toFixed(2)}</td><td>${x.mo.toFixed(1)}%</td><td>${x.st.toFixed(2)}</td></tr>`).join("")+
+  `</table></div></div>
+  <div class="card"><h2>3連単 予想買い目（サンプル）</h2>
+  <div style="margin-bottom:8px">信頼度：<span class="star">${"★".repeat(d.conf)}${"☆".repeat(5-d.conf)}</span> <b>${["","低","やや低","中","やや高","高"][d.conf]}</b><div class="note">上位5点の推定確率合計 ${(d.sum*100).toFixed(1)}% から算出した目安です。信頼度が高くても的中は保証されません。</div></div>
+  <div class="sc"><table><tr><th>購入</th><th>買い目</th><th>推定確率</th><th>オッズ(サンプル)</th><th>期待値(参考)</th></tr>`+
+  d.top.map(x=>`<tr><td><input type="checkbox" ${st.sel.has(x.k)?"checked":""} onchange="tog('${x.k}')"></td><td><b>${x.k}</b></td><td class="pb"><i style="width:${x.p/max*100}%"></i><span>${(x.p*100).toFixed(1)}%</span></td><td>${x.o.toFixed(1)}倍</td><td class="${x.p*x.o>=1?"pos":"neg"}">${(x.p*x.o).toFixed(2)}</td></tr>`).join("")+
+  `</table></div><div class="note">推定確率は出走表の架空数値から簡易計算したもの、オッズは乱数で作ったサンプルです。期待値が1.00以上でも利益を保証しません。</div></div>
+  <div class="card"><h2>投資額の計算（1点100円）</h2><button class="btn" onclick="top3()">上位3点を選ぶ</button><button class="btn" onclick="top10()">全10点を選ぶ</button><button class="btn" onclick="clr()">全解除</button><div id="inv"></div></div>`;
+}
+function tog(k){st.sel.has(k)?st.sel.delete(k):st.sel.add(k);inv()}
+function top3(){st.sel=new Set(cur().top.slice(0,3).map(x=>x.k));render()}
+function top10(){st.sel=new Set(cur().top.map(x=>x.k));render()}
+function clr(){st.sel=new Set();render()}
+function inv(){
+  const el=$("inv");if(!el)return;
+  const d=cur(),s=d.top.filter(x=>st.sel.has(x.k)),n=s.length,cost=n*100;
+  const hasO=s.every(x=>x.o!=null),pay=s.map(x=>x.o*100),mn=Math.min(...pay),mx=Math.max(...pay);
+  const hp=s.reduce((a,x)=>a+x.p,0);
+  el.innerHTML=n?`<div class="g"><div><small>購入点数</small><span class="big">${n}点</span></div><div><small>投資額</small><span class="big">${yen(cost)}</span></div><div><small>推定的中確率(合計)</small><span class="big">${(hp*100).toFixed(1)}%</span></div></div>
+  <p class="note">${hasO?`もし的中した場合（${st.src=="file"?"ファイルのオッズ":"サンプルオッズ"}での試算）：払戻 ${yen(mn)}〜${yen(mx)}　／　収支 <span class="${mn-cost>=0?"pos":"neg"}">${yen(mn-cost)}〜${yen(mx-cost)}</span>`:"オッズが未取得の買い目があるため、払戻は試算できません。"}<br>外れた場合の収支は <span class="neg">${yen(-cost)}</span> です。買い目は1点しか的中しません。</p>`:`<p class="note">買い目を選ぶと、投資額が表示されます。</p>`;
+}
+function ana(){
+  const q=R(2026),H=[];let cum=0;
+  for(let i=0;i<30;i++){
+    const v=Math.floor(q()*24),r=1+Math.floor(q()*12),pts=3+Math.floor(q()*6),cost=pts*100,hit=q()<0.16,pay=hit?Math.round(100*(8+q()*70)):0;
+    cum+=pay-cost;H.push({i:i+1,v,r,pts,cost,hit,pay,cum});
+  }
+  const C=H.reduce((a,x)=>a+x.cost,0),P=H.reduce((a,x)=>a+x.pay,0),hits=H.filter(x=>x.hit).length;
+  const W=320,Hh=140,mx=Math.max(...H.map(x=>Math.abs(x.cum)),1),pts=H.map((x,i)=>`${10+i*(W-20)/29},${Hh/2-x.cum/mx*(Hh/2-12)}`).join(" ");
+  return `<div class="card"><h2>分析（架空の30レース分）</h2><div class="note">この画面は読み込みデータを反映せず、常に乱数で作った見本で、あなたの実績でも本物の予想成績でもありません。将来、実際の記録を入れる場所のデザイン確認用です。</div></div>
+  <div class="card"><div class="g"><div><small>的中率</small><span class="big">${(hits/30*100).toFixed(1)}%</span><small>${hits}/30レース</small></div><div><small>回収率</small><span class="big ${P>=C?"pos":"neg"}">${(P/C*100).toFixed(1)}%</span></div><div><small>収支</small><span class="big ${P-C>=0?"pos":"neg"}">${yen(P-C)}</span></div></div>
+  <p class="note">総投資 ${yen(C)}　／　総払戻 ${yen(P)}</p></div>
+  <div class="card"><h2>収支の推移（累計・サンプル）</h2><div class="sc"><svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="累計収支の推移"><line x1="0" x2="${W}" y1="${Hh/2}" y2="${Hh/2}" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="4"/><polyline points="${pts}" fill="none" stroke="var(--ac)" stroke-width="2.5"/></svg></div><div class="note">点線が収支ゼロ。上が黒字、下が赤字です。</div></div>
+  <div class="card"><h2>直近の記録（サンプル）</h2><div class="sc"><table><tr><th>No</th><th class="l">レース</th><th>点数</th><th>投資</th><th>結果</th><th>払戻</th></tr>`+
+  H.slice(-10).reverse().map(x=>`<tr><td>${x.i}</td><td class="l">${V[x.v][0]} ${x.r}R</td><td>${x.pts}</td><td>${yen(x.cost)}</td><td class="${x.hit?"pos":"neg"}">${x.hit?"的中":"外れ"}</td><td>${yen(x.pay)}</td></tr>`).join("")+`</table></div></div>`;
+}
+nav();render();
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+name: Daily results and history profiles (approved site only)
+on:
+  workflow_dispatch:
+  schedule:
+    # Japan 02:10. Only previous calendar days enter history.
+    - cron: '10 17 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: daily-history-learning
+  cancel-in-progress: false
+jobs:
+  learning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Check publication approval
+        id: approval
+        run: node site/check-approval.mjs >> "$GITHUB_OUTPUT"
+      - name: Choose previous Japan day
+        if: steps.approval.outputs.approved == 'true'
+        id: day
+        run: echo "date=$(TZ=Asia/Tokyo date --date=yesterday +%F)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/model-history
+          key: history-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: history-v1-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: tools/prediction/model-v2.json
+          key: active-model-v2-${{ github.run_id }}
+          restore-keys: active-model-v2-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}
+          key: daily-evaluation-01-${{ github.run_id }}
+          restore-keys: site-v2-01-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/02
+          key: daily-evaluation-02-${{ github.run_id }}
+          restore-keys: site-v2-02-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/03
+          key: daily-evaluation-03-${{ github.run_id }}
+          restore-keys: site-v2-03-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/04
+          key: daily-evaluation-04-${{ github.run_id }}
+          restore-keys: site-v2-04-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/05
+          key: daily-evaluation-05-${{ github.run_id }}
+          restore-keys: site-v2-05-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/06
+          key: daily-evaluation-06-${{ github.run_id }}
+          restore-keys: site-v2-06-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/07
+          key: daily-evaluation-07-${{ github.run_id }}
+          restore-keys: site-v2-07-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/08
+          key: daily-evaluation-08-${{ github.run_id }}
+          restore-keys: site-v2-08-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/09
+          key: daily-evaluation-09-${{ github.run_id }}
+          restore-keys: site-v2-09-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/10
+          key: daily-evaluation-10-${{ github.run_id }}
+          restore-keys: site-v2-10-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/11
+          key: daily-evaluation-11-${{ github.run_id }}
+          restore-keys: site-v2-11-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/12
+          key: daily-evaluation-12-${{ github.run_id }}
+          restore-keys: site-v2-12-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/13
+          key: daily-evaluation-13-${{ github.run_id }}
+          restore-keys: site-v2-13-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/14
+          key: daily-evaluation-14-${{ github.run_id }}
+          restore-keys: site-v2-14-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/15
+          key: daily-evaluation-15-${{ github.run_id }}
+          restore-keys: site-v2-15-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/16
+          key: daily-evaluation-16-${{ github.run_id }}
+          restore-keys: site-v2-16-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/17
+          key: daily-evaluation-17-${{ github.run_id }}
+          restore-keys: site-v2-17-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/18
+          key: daily-evaluation-18-${{ github.run_id }}
+          restore-keys: site-v2-18-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/19
+          key: daily-evaluation-19-${{ github.run_id }}
+          restore-keys: site-v2-19-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/20
+          key: daily-evaluation-20-${{ github.run_id }}
+          restore-keys: site-v2-20-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/21
+          key: daily-evaluation-21-${{ github.run_id }}
+          restore-keys: site-v2-21-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/22
+          key: daily-evaluation-22-${{ github.run_id }}
+          restore-keys: site-v2-22-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/23
+          key: daily-evaluation-23-${{ github.run_id }}
+          restore-keys: site-v2-23-${{ steps.day.outputs.date }}-
+      - uses: actions/cache/restore@v4
+        if: steps.approval.outputs.approved == 'true'
+        with:
+          path: site/cache/${{ steps.day.outputs.date }}/venues/24
+          key: daily-evaluation-24-${{ github.run_id }}
+          restore-keys: site-v2-24-${{ steps.day.outputs.date }}-
+      - name: Acquire completed official results
+        if: steps.approval.outputs.approved == 'true'
+        run: python tools/site/daily_history.py
+      - name: Match genuine saved forecasts and update history profiles
+        if: steps.approval.outputs.approved == 'true'
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {dailyUpdate} from './tools/prediction/daily.mjs';
+          const manifest=JSON.parse(fs.readFileSync('site/cache/model-history/manifest.json'));
+          const day=new Date(Date.now()+9*3600000).getUTCDay();
+          console.log(dailyUpdate({files:manifest.files,cache:'site/cache',activeFile:'tools/prediction/model-v2.json',output:'site/cache/learning',trainCandidate:day===1}));
+          fs.copyFileSync('site/cache/learning/active-model.json','tools/prediction/model-v2.json');
+          JS
+      - uses: actions/cache/save@v4
+        if: steps.approval.outputs.approved == 'true' && success()
+        with:
+          path: tools/prediction/model-v2.json
+          key: active-model-v2-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@v4
+        if: steps.approval.outputs.approved == 'true' && success()
+        with:
+          name: daily-model-review-${{ steps.day.outputs.date }}
+          path: |
+            site/cache/learning/*.json
+            site/cache/model-history/manifest.json
+          retention-days: 30

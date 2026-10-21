@@ -19,9 +19,11 @@ for(const venue of current.venues){
  venues.push(data);
 }
 const now=Date.now(),fresh=v=>['OK','PARTIAL'].includes(v.update.status)&&now-Date.parse(v.update.last_success_at)<=600000;
-const candidate=venues.filter(fresh).find(v=>v.races.some(r=>r.items.length===10&&r.odds?.items?.length>=10&&now-Date.parse(r.odds.fetched_at)<=600000&&Date.parse(r.deadline_at)>now));
-assert.ok(candidate,'最新出走表・予想・オッズがそろう場が必要です');
-const race=candidate.races.find(r=>r.items.length===10&&r.odds?.items?.length>=10&&now-Date.parse(r.odds.fetched_at)<=600000&&Date.parse(r.deadline_at)>now);
+const available=venues.filter(fresh).flatMap(venue=>venue.races.map(race=>({venue,race})))
+ .filter(({race:r})=>r.items.length===10&&r.odds?.items?.length>=10&&now-Date.parse(r.odds.fetched_at)<=540000&&Date.parse(r.deadline_at)>now+60000)
+ .sort((a,b)=>Date.parse(b.race.odds.fetched_at)-Date.parse(a.race.odds.fetched_at));
+assert.ok(available.length,'最新出走表・予想・オッズがそろう場が必要です');
+const {venue:candidate,race}=available[0];
 const cdp='http://127.0.0.1:9222',page=await(await fetch(cdp+'/json/new?about:blank',{method:'PUT'})).json();
 const ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(resolve=>ws.addEventListener('open',resolve,{once:true}));
 let id=0;const pending=new Map(),errors=[];

@@ -106,7 +106,9 @@ jobs:
           path: site/staging
           merge-multiple: true
       - name: Validate forecast and freshness behavior
-        run: node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs
+        run: |
+          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs
+          python -B tools/site/test_probe.py
       - name: Build current data or explicit failure state
         env:
           EVENT_NAME: ${{ github.event_name }}

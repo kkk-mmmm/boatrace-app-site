@@ -1,16 +1,20 @@
 """GitHub Actionsから公式サイトの接続・構造を確認する。サイト公開は行わない。"""
 import argparse
+import http.client
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import json
 from pathlib import Path
 import time
+import threading
 from urllib.parse import parse_qs, urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen, getproxies
+from urllib.error import HTTPError
 from urllib.robotparser import RobotFileParser
 
 ORIGIN = 'https://www.boatrace.jp'
 USER_AGENT = 'boatrace-app/0.1 (+https://github.com/kkk-mmmm/boatrace-app)'
+TRANSPORT = threading.local()
 
 
 class Structure(HTMLParser):
@@ -68,8 +72,14 @@ class Structure(HTMLParser):
 
 
 def fetch(url):
-    if urlparse(url).hostname != 'www.boatrace.jp':
+    parsed = urlparse(url)
+    if parsed.scheme != 'https' or parsed.hostname != 'www.boatrace.jp' or parsed.port not in (None, 443):
         raise ValueError('対象外のホスト')
+    # urllib deliberately closes every connection. Reuse a verified TLS
+    # connection on runners without a proxy; preserve urllib's proxy handling
+    # in managed development environments. Each worker owns its connection.
+    if not getproxies().get('https'):
+        return fetch_persistent(url)
     with urlopen(Request(url, headers={'User-Agent': USER_AGENT}), timeout=25) as response:
         if urlparse(response.url).hostname != 'www.boatrace.jp':
             raise ValueError('対象外へのリダイレクト')
@@ -77,6 +87,51 @@ def fetch(url):
         if len(raw) > 3 * 1024 * 1024:
             raise ValueError('応答が大きすぎます')
         return raw.decode(response.headers.get_content_charset() or 'utf-8'), dict(response.headers)
+
+
+def close_transport():
+    connection = getattr(TRANSPORT, 'connection', None)
+    if connection is not None:
+        connection.close()
+        TRANSPORT.connection = None
+
+
+def fetch_persistent(url, redirects=0):
+    parsed = urlparse(url)
+    if parsed.scheme != 'https' or parsed.hostname != 'www.boatrace.jp' or parsed.port not in (None, 443):
+        raise ValueError('対象外へのリダイレクト')
+    for attempt in range(2):
+        connection = getattr(TRANSPORT, 'connection', None)
+        if connection is None:
+            connection = http.client.HTTPSConnection('www.boatrace.jp', timeout=25)
+            TRANSPORT.connection = connection
+        try:
+            target = parsed.path or '/'
+            if parsed.query:
+                target += '?' + parsed.query
+            connection.request('GET', target, headers={'User-Agent': USER_AGENT, 'Connection': 'keep-alive'})
+            response = connection.getresponse()
+            raw = response.read(3 * 1024 * 1024 + 1)
+            if response.will_close:
+                close_transport()
+            if len(raw) > 3 * 1024 * 1024:
+                raise ValueError('応答が大きすぎます')
+            if response.status in (301, 302, 303, 307, 308):
+                if redirects >= 3 or not response.headers.get('Location'):
+                    raise ValueError('リダイレクトを確認できません')
+                time.sleep(1)
+                return fetch_persistent(urljoin(url, response.headers['Location']), redirects + 1)
+            if response.status != 200:
+                raise HTTPError(url, response.status, response.reason, response.headers, None)
+            return raw.decode(response.headers.get_content_charset() or 'utf-8'), dict(response.headers)
+        except (http.client.RemoteDisconnected, http.client.CannotSendRequest, ConnectionResetError, BrokenPipeError):
+            close_transport()
+            if attempt:
+                raise
+            time.sleep(1)
+        except Exception:
+            close_transport()
+            raise
 
 
 def probe():

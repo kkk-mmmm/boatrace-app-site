@@ -1,13 +1,41 @@
 name: Verify the published site in Chromium
 on:
   workflow_dispatch:
+    inputs:
+      transport_only:
+        description: Check official HTTPS connection reuse before publication
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: published-site-verification
   cancel-in-progress: true
 jobs:
+  transport:
+    if: inputs.transport_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test transport and measure two serial requests
+        run: |
+          python -B tools/site/test_probe.py
+          python - <<'PY'
+          import sys,time
+          sys.path.insert(0,'tools/site')
+          from probe_official import fetch,ORIGIN,TRANSPORT
+          previous=None
+          for attempt in range(2):
+              started=time.monotonic()
+              text,headers=fetch(ORIGIN+'/robots.txt')
+              connection=getattr(TRANSPORT,'connection',None)
+              print({'attempt':attempt+1,'seconds':round(time.monotonic()-started,3),'reused':connection is not None and connection is previous,'bytes':len(text)},flush=True)
+              previous=connection
+              time.sleep(1)
+          PY
   verify:
+    if: ${{ !inputs.transport_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

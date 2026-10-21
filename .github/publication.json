@@ -1,6 +1,6 @@
 {
   "approved": true,
-  "reviewed_commit": "714e746cace6bf5f21ee2f3ec9edff7042bf7371",
+  "reviewed_commit": "96cd88f077182fd6ca614a0e298e6d9b6978d986",
   "approved_on": "2026-10-22",
   "note": "ユーザーが一般公開の進行を明示的に承認。履歴補正係数は0を維持。"
 }

@@ -33,6 +33,20 @@ test('robotsの専用グループ・最長一致・空の禁止・ワイルド�
   assert.equal(robotsAllowed('User-agent: *\nDisallow:',url),true);
   assert.equal(robotsAllowed('<html>error</html>',url),false);
 });
+test('実行時刻が前回より1ms早くても次の5分枠を開始し、同じ枠の再配信を重ねない',async t=>{
+  const first=now+42500,current=first+299999;
+  t.mock.timers.enable({apis:['Date'],now:current});
+  const storage=new Storage(),coordinator=new OddsCoordinator({storage},{TARGETS_URL:'https://site.test/targets'});
+  await storage.put('work',{date:target.date,started_ms:first,scheduled_slot:Math.floor(first/300000),running:false});
+  let requests=0;
+  t.mock.method(globalThis,'fetch',async url=>{requests++;return new Response(url==='https://site.test/targets'?JSON.stringify(feed):'User-agent: *\nAllow: /');});
+  const scheduled=now+300000;
+  assert.equal((await (await coordinator.start(scheduled)).json()).status,'UPDATING');
+  assert.equal(requests,2);
+  const work=await storage.get('work');await storage.put('work',{...work,running:false});
+  assert.equal((await (await coordinator.start(scheduled)).json()).status,'NOT_DUE');
+  assert.equal((await (await coordinator.start(now)).json()).status,'NOT_DUE');assert.equal(requests,2);
+});
 test('HTTPエラー・過大な応答・対象外の応答を拒否する',async()=>{
   await assert.rejects(fetchText('https://www.boatrace.jp/',async()=>new Response('x',{status:503})),/HTTP/);
   await assert.rejects(fetchText('https://www.boatrace.jp/',async()=>new Response('123456'),5),/大きすぎ/);

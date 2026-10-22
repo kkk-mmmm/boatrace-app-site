@@ -1,5 +1,5 @@
 {
-  "source_commit": "3c7643a7bf2ef1c9e5fb1e1ca0a370a35114294a",
+  "source_commit": "0aab77b3d7ab48c41f522154a6933b13a72553f9",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -43,12 +43,12 @@
     "tools/prediction/train.mjs": "953435d6307ae4c9f08baf9ef2741ed165bed1d6b055d05805bdd4364de98e50",
     "tools/prediction/daily.mjs": "75834db9dfb2e8140964310df367de055251d22644ecf4fcd8ca4800888cd04b",
     "tools/prediction/model-v2.json": "497182db06db09e22628dde7a379421bb170ad8ed654b14e6d8a25198bf08512",
-    "cloudflare/odds/worker.mjs": "6edbe5587d6f478fcead14994c93c56a121425a2b5fdfad1251459cb412ecfba",
+    "cloudflare/odds/worker.mjs": "b186faaacca2a852d4416a2c5b5d08b76e1c725650b7d07df48054a380b75bd6",
     "cloudflare/odds/official.mjs": "2b62e4e55bd2fca3e357d4649ac75a8d6aa9e4a1b1ddcd1c3ad19e6eaad4437f",
     "cloudflare/odds/wrangler.jsonc": "f7e0601301ecbf7bd16686bbb84df205a6b2c7a1c8f0c8830c38b6919ecb5087",
     "cloudflare/odds/package.json": "5fdd650b7d6c322253dc7de8cae30428e59a468f5a6dc171e9cc88ecb3f16613",
     "cloudflare/odds/package-lock.json": "4b96499ae50ceefd691045d2f95e0cb23eb63b08858928f05d88e7193b184cb8",
-    "cloudflare/odds/test_worker.mjs": "7becba5e07635659ff13d3fee97cc516a568dc2b8b46c67e88b317030c5c8e91",
+    "cloudflare/odds/test_worker.mjs": "b3e7a0f97e7f614c489cee8214a895c1d22d18ea703b62433bb78e1ebbec9d70",
     "cloudflare/odds/README.md": "e3d28532e8fe699d92670c16f4e4b20fdb6eefc78dee105cd3db4d0ff8d9a131"
   }
 }

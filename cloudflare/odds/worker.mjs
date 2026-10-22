@@ -73,15 +73,21 @@ export class OddsCoordinator {
   exclusive(fn) {const next=this.serial.then(fn);this.serial=next.catch(()=>{});return next;}
   async fetch(request) {
     const url=new URL(request.url);
-    if(url.pathname==='/start' && request.method==='POST')return this.exclusive(()=>this.start());
+    if(url.pathname==='/start' && request.method==='POST') {
+      const input=await request.json().catch(()=>({}));
+      return this.exclusive(()=>this.start(input.scheduled_at));
+    }
     if(url.pathname==='/snapshot' && request.method==='GET')return this.snapshot(url);
     return json({error:'Not found'},404);
   }
-  async start() {
+  async start(scheduledAt=Date.now()) {
     const now=Date.now(),date=japanDate(now),storage=this.ctx.storage;
+    if(!Number.isFinite(scheduledAt))return json({error:'定期実行の時刻が不正です'},400);
+    const slot=Math.floor(scheduledAt/ODDS_INTERVAL_MS);
     let work=await storage.get('work');
     if(work?.running && now-work.started_ms<15*60000)return json({status:'ALREADY_RUNNING'},202);
-    if(work && work.date===date && now-work.started_ms<ODDS_INTERVAL_MS)return json({status:'NOT_DUE'},202);
+    const previousSlot=work?.scheduled_slot ?? Math.floor(work?.started_ms/ODDS_INTERVAL_MS);
+    if(work?.date===date && slot<=previousSlot)return json({status:'NOT_DUE'},202);
     try {
       const feed=JSON.parse(await fetchText(this.env.TARGETS_URL,fetch,5*1024*1024));
       const targets=validateTargets(feed,now);
@@ -93,14 +99,14 @@ export class OddsCoordinator {
         const values={};for(const target of targets.slice(i,i+64)){const key=oddsKey(target);keys.push(key);values['target:'+key]=target;}
         await storage.put(values);
       }
-      work={date,started_ms:now,started_at:iso(now),feed_generated_at:feed.generated_at,keys,cursor:0,
+      work={date,scheduled_slot:slot,started_ms:now,started_at:iso(now),feed_generated_at:feed.generated_at,keys,cursor:0,
         running:keys.length>0,status:keys.length?'UPDATING':'IDLE',message:null,completed_at:keys.length?null:iso(now)};
       await storage.put('work',work);
       if(keys.length)await storage.setAlarm(now+1);
       return json({status:work.status,targets:keys.length},202);
     } catch(error) {
       if(work?.date!==date)await storage.deleteAll();
-      await storage.put('work',{...(work?.date===date?work:{}),date,started_ms:now,started_at:iso(now),
+      await storage.put('work',{...(work?.date===date?work:{}),date,scheduled_slot:slot,started_ms:now,started_at:iso(now),
         running:false,status:'FAILED',message:String(error.message).slice(0,200)});
       console.error(JSON.stringify({event:'odds_refresh_start_failed',date,message:error.message}));
       return json({error:error.message},503);

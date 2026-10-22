@@ -1,5 +1,5 @@
 {
-  "source_commit": "169401319cf54d12d413f61c054d2cbf1f2bb514",
+  "source_commit": "70a4a87b3583ae670a3beeb139b7fcb43171497e",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -22,7 +22,7 @@
     "tools/prerace/venues.mjs": "8b2e5dac42d81e2ad953e95a0865021f7b3336f5f180f428e4a62e923dac95c3",
     "tools/prerace/venues.json": "9b72377a7356edb14e6727583e852d97e81862c6c1c172e74157d45a55dbcf83",
     "tools/prerace/model/original_artifact.html": "7cbfff54432e7becdd6c9187ffa0f78ccfd17df009da3a4853d71246ecbda6bf",
-    "tools/site/collect_official.py": "492c620617a1a3b7d9960c36142389518c205a20bdde508abb336dce76cdb9d3",
+    "tools/site/collect_official.py": "20f51922079cdcabd84a7955fd84f1d5f6a71a1cb86fe2cee4166b551cbcde9e",
     "tools/site/probe_official.py": "58fcc014091d47be983bc232ac45b79a91aad4b39253bf08b5f66c20999a611d",
     "tools/site/race_context.py": "552cf3188ca032a912f23c0c209b16adc6b99491e54f09c2d76d53ff2ae07f68",
     "tools/site/collect_history.py": "c21f4ec6156f5878bf9dae744f21bf23b3f580c795baa64a70fbe917009aebbe",
@@ -35,6 +35,8 @@
     "tools/prediction/daily.mjs": "75834db9dfb2e8140964310df367de055251d22644ecf4fcd8ca4800888cd04b",
     "tools/prediction/model-v2.json": "497182db06db09e22628dde7a379421bb170ad8ed654b14e6d8a25198bf08512",
     "site/verify-live.mjs": "5eee41c2316ad30cfa1ae721f0a96122f228ffc4044a4f574b312005b3b99c85",
-    "tools/site/test_probe.py": "7ecbd1c9e5a4c8527171f3d844467c5a187553f4a48ce2c7a0c96e2afd39c63a"
+    "tools/site/test_probe.py": "7ecbd1c9e5a4c8527171f3d844467c5a187553f4a48ce2c7a0c96e2afd39c63a",
+    "tools/site/collect_all.py": "1f4adb7ca8c2a94d3254a065a1991b8fd4a8e5c30bb91ecafd6ba29c18716322",
+    "tools/site/test_collect_all.py": "0a569515def05a02bd8100bf1efd192a18fed5ec87c68cf54d18ca36026d1b72"
   }
 }

@@ -1,5 +1,6 @@
 """公式HTMLを正規化する。予想計算・公開処理は行わない。"""
 import argparse
+from contextlib import nullcontext
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -23,16 +24,24 @@ def require(ok, message):
 
 class RequestGate:
     """Space request starts, while allowing slow responses to overlap."""
-    def __init__(self):
+    def __init__(self, interval=1):
         self.lock = threading.Lock()
         self.next_start = 0
+        self.interval = interval
 
-    def wait(self):
-        with self.lock:
-            delay = self.next_start - time.monotonic()
-            if delay > 0:
-                time.sleep(delay)
-            self.next_start = time.monotonic() + 1
+    def wait(self, shared=None):
+        while True:
+            with shared.lock if shared is not None else nullcontext():
+                with self.lock:
+                    now = time.monotonic()
+                    delay = max(self.next_start, shared.next_start if shared else 0) - now
+                    if delay <= 0:
+                        self.next_start = now + self.interval
+                        if shared is not None:
+                            shared.next_start = now + shared.interval
+                        return
+            # Release both locks so another venue can use its available slot.
+            time.sleep(delay)
 
 
 def acquire_pages(tasks, acquire):
@@ -205,7 +214,7 @@ def collect_index(destination):
             'index_source': {'url': url, 'retrieved_at': retrieved, 'evidence_file': str(evidence), 'sha256': sha}}
 
 
-def collect(destination, venue_code='01', index=None):
+def collect(destination, venue_code='01', index=None, global_gate=None):
     require(venue_code in VENUE_CODES, '場コードが不正です')
     now = datetime.now(timezone.utc)
     date = now.astimezone(timezone(timedelta(hours=9))).date().isoformat()
@@ -228,7 +237,7 @@ def collect(destination, venue_code='01', index=None):
 
     def acquire(url):
         require(robots.can_fetch(USER_AGENT, url), 'robots.txtで取得対象外のページです')
-        gate.wait()
+        gate.wait(global_gate)
         text, _ = fetch(url)
         retrieved = datetime.now(timezone.utc).isoformat()
         sha = hashlib.sha256(text.encode('utf-8')).hexdigest()

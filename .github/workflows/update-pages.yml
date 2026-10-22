@@ -31,13 +31,6 @@ jobs:
     needs: approval
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        venue: ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24']
-    env:
-      VENUE_CODE: ${{ matrix.venue }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -48,40 +41,28 @@ jobs:
           path: tools/prediction/model-v2.json
           key: active-model-v2-${{ github.run_id }}
           restore-keys: active-model-v2-
-      - name: Compute isolated daily cache path
+      - name: Choose current Japan day
         id: cache
-        run: |
-          day=$(TZ=Asia/Tokyo date +%F)
-          echo "day=$day" >> "$GITHUB_OUTPUT"
-          if [ "$VENUE_CODE" = 01 ]; then
-            echo "directory=site/cache/$day" >> "$GITHUB_OUTPUT"
-          else
-            echo "directory=site/cache/$day/venues/$VENUE_CODE" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "day=$(TZ=Asia/Tokyo date +%F)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
-          path: ${{ steps.cache.outputs.directory }}
-          key: site-v2-${{ matrix.venue }}-${{ steps.cache.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: site-v2-${{ matrix.venue }}-${{ steps.cache.outputs.day }}-
-      - name: Collect one venue and preserve its predictions
+          path: site/cache/${{ steps.cache.outputs.day }}
+          key: site-live-v3-${{ steps.cache.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: site-live-v3-${{ steps.cache.outputs.day }}-
+      - name: Collect all venues with a shared request limit
         id: collect
         continue-on-error: true
+        run: python tools/site/collect_all.py
+      - name: Project explicit failure states if the batch was interrupted
+        if: steps.collect.outcome != 'success'
         run: |
-          python tools/site/collect_official.py --venue "$VENUE_CODE" --output "site/cache/incoming-$VENUE_CODE.json"
-          node site/update.mjs "site/cache/incoming-$VENUE_CODE.json"
-      - name: Project public fields and record collection failures
-        env:
-          OUTCOME: ${{ steps.collect.outcome }}
-        run: |
-          if [ "$OUTCOME" = success ]; then
-            node site/snapshot.mjs "$VENUE_CODE" "site/staging/$VENUE_CODE.json"
-          else
-            node site/snapshot.mjs "$VENUE_CODE" "site/staging/$VENUE_CODE.json" --failed
-          fi
+          for venue in $(seq -w 1 24); do
+            node site/snapshot.mjs "$venue" "site/staging/$venue.json" --failed
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: venue-${{ matrix.venue }}
-          path: site/staging/${{ matrix.venue }}.json
+          name: venues-current
+          path: site/staging/*.json
           retention-days: 1
   publish:
     if: always() && !cancelled() && needs.approval.outputs.approved == 'true'
@@ -102,13 +83,13 @@ jobs:
           node-version: 24
       - uses: actions/download-artifact@v4
         with:
-          pattern: venue-*
+          name: venues-current
           path: site/staging
-          merge-multiple: true
       - name: Validate forecast and freshness behavior
         run: |
           node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs
           python -B tools/site/test_probe.py
+          python -B tools/site/test_collect_all.py
       - name: Build current data or explicit failure state
         env:
           EVENT_NAME: ${{ github.event_name }}

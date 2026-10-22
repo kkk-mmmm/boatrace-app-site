@@ -61,7 +61,37 @@ export function proposalRace(race, now=Date.now()) {
     scores:proposal.scores || [],proposal_snapshot:proposal};
 }
 
-export function validateLiveOdds(data, date) {
+export function validProgram(p,date,now=Date.now()) {
+  return p && p.date===date && /^(0[1-9]|1\d|2[0-4])$/.test(p.venue_code) && Number.isInteger(p.race_no) && p.race_no>=1 && p.race_no<=12
+    && Number.isFinite(Date.parse(p.deadline_at)) && new Date(Date.parse(p.deadline_at)+9*3600000).toISOString().slice(0,10)===date
+    && Array.isArray(p.entries) && p.entries.length===6 && new Set(p.entries.map(e=>e.lane)).size===6
+    && p.entries.every(e=>Number.isInteger(e.lane)&&e.lane>=1&&e.lane<=6&&/^\d{4}$/.test(e.racer_id)&&typeof e.name==='string')
+    && Number.isFinite(Date.parse(p.entries_fetched_at)) && Date.parse(p.entries_fetched_at)<=now+60000
+    && (!p.probabilities?.length || validDistribution(p.probabilities)
+      && /^annual-v3-[a-f0-9]{64}$/.test(p.model_id||'') && p.prediction_key===`${p.model_id}:${p.prediction_saved_at}`
+      && Date.parse(p.input_fetched_at)<=Date.parse(p.prediction_saved_at) && Date.parse(p.prediction_saved_at)<=now+60000
+      && Date.parse(p.prediction_saved_at)<Date.parse(p.deadline_at)-PROPOSAL_LEAD_MS);
+}
+export function applyLivePrograms(snapshot,data,now=Date.now()) {
+  const programs=(data.programs||[]).filter(p=>p.venue_code===snapshot.venue_code&&validProgram(p,data.date,now));
+  const calendar=data.calendar?.date===data.date?data.calendar.venues?.find(v=>v.code===snapshot.venue_code):null;
+  if(!programs.length && !calendar)return snapshot;
+  const races=new Map((snapshot.date===data.date?snapshot.races:[]).map(r=>[r.race_no,r]));
+  for(const p of programs){
+    const old=races.get(p.race_no)||{date:p.date,venue_code:p.venue_code,venue:snapshot.venue,race_no:p.race_no,items:[],probabilities:[],odds:null};
+    const next={...old,...p,venue:snapshot.venue,source_kind:'CLOUDFLARE_SCHEDULED_PROGRAM'};
+    // The saved proposal is immutable. Entries may be checked later independently.
+    if(!p.probabilities?.length){for(const k of ['items','probabilities','scores','model_id','model_name','model_status','model_validation','prediction_saved_at','input_fetched_at','history'])next[k]=old[k];}
+    next.items=next.items||[];races.set(p.race_no,next);
+  }
+  const healthy=data.update?.status!=='FAILED'&&Number.isFinite(Date.parse(data.served_at))&&now-Date.parse(data.served_at)<=ODDS_MAX_AGE_MS&&Date.parse(data.served_at)<=now+60000;
+  return {...snapshot,date:data.date,source_kind:'CLOUDFLARE_SCHEDULED_PROGRAM',meeting_status:calendar?.meeting_status||snapshot.meeting_status,
+    meeting:calendar?.meeting||snapshot.meeting,races:[...races.values()].sort((a,b)=>a.race_no-b.race_no),
+    update:{status:healthy?'OK':'FAILED',attempted_at:data.served_at,last_success_at:healthy?data.served_at:snapshot.update?.last_success_at,
+      message:healthy?null:'Cloudflareの配信状態を確認できません',source_kind:'CLOUDFLARE_DELIVERY'}};
+}
+
+export function validateLiveOdds(data, date, now=Date.now()) {
   if (data?.schema_version !== 1 || data.date !== date || ![60,300].includes(data.interval_seconds) || !Array.isArray(data.races)
     || data.races.length > 288 || new Set(data.races.map(oddsKey)).size !== data.races.length
     || data.races.some(r => r.date !== date || !/^(0[1-9]|1\d|2[0-4])$/.test(r.venue_code)
@@ -69,10 +99,13 @@ export function validateLiveOdds(data, date) {
       || !['OK','FAILED','UNAVAILABLE','CLOSED'].includes(r.status) || !validQuotes(r.items)
       || !Number.isFinite(Date.parse(r.attempted_at)))) throw Error('オッズAPIの対象・形式が一致しません');
   if (data.proposals && (!Array.isArray(data.proposals) || data.proposals.length>288 || new Set(data.proposals.map(oddsKey)).size!==data.proposals.length || data.proposals.some(p=>!validProposal(p,date)))) throw Error('保存提案の形式・時刻が不正です');
+  if(data.programs && (!Array.isArray(data.programs)||data.programs.length>288||new Set(data.programs.map(oddsKey)).size!==data.programs.length||data.programs.some(p=>!validProgram(p,date,now))))throw Error('出走表・履歴予想の形式または時刻が不正です');
+  if(data.calendar && (data.calendar.date!==date||!Array.isArray(data.calendar.venues)||data.calendar.venues.length!==24||new Set(data.calendar.venues.map(v=>v.code)).size!==24||data.calendar.venues.some(v=>!/^(0[1-9]|1\d|2[0-4])$/.test(v.code)||!['OPEN','NO_MEETING','UNKNOWN'].includes(v.meeting_status))))throw Error('開催一覧の形式が不正です');
   return data;
 }
 
 export function applyLiveOdds(snapshot, data, now=Date.now()) {
+  snapshot=applyLivePrograms(snapshot,data,now);
   if (snapshot.date !== data.date) return snapshot;
   const records = new Map(data.races.map(r => [oddsKey(r),r]));
   const proposals = new Map((data.proposals || []).map(p=>[oddsKey(p),p]));
@@ -100,7 +133,7 @@ export function applyLiveOdds(snapshot, data, now=Date.now()) {
 }
 
 export function liveOpportunities(data, now=Date.now()) {
-  return (data.opportunities || []).filter(x => x.date===data.date && Date.parse(x.deadline_at)>now
+  return (data.opportunities || []).filter(x => x.date===data.date && Date.parse(x.deadline_at)>now && Date.parse(x.deadline_at)<=now+3600000
     && Number.isFinite(x.value) && x.value>1 && Number.isFinite(x.probability) && x.probability>0
     && Number.isFinite(x.odds) && x.odds>=1 && Math.abs(x.value-x.probability*x.odds)<1e-8
     && ['OK','PARTIAL'].includes(x.update_status)

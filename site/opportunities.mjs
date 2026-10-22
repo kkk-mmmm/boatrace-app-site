@@ -5,7 +5,7 @@ export function opportunityList(snapshots,now=Date.now()){
     const success=Date.parse(venue.update.last_success_at);
     if(!Number.isFinite(success)||success>now+60000||now-success>10*60000)continue;
     for(const race of venue.races){
-      if(!race.opportunity || !raceStatus(race,venue,now).currentOdds || race.opportunity.value<=1)continue;
+      if(Date.parse(race.deadline_at)>now+3600000 || !race.opportunity || !raceStatus(race,venue,now).currentOdds || race.opportunity.value<=1)continue;
       opportunities.push({venue_code:venue.venue_code,venue:venue.venue,date:race.date,race_no:race.race_no,
         deadline_at:race.deadline_at,model_name:race.model_name || '固定スコアモデル v1',...race.opportunity,
         fetched_at:race.odds.fetched_at,recorded_at:race.odds.recorded_at,classification:race.odds.classification,

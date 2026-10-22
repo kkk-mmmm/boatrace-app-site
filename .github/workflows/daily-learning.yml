@@ -1,11 +1,12 @@
-name: Daily results and history profiles (approved site only)
+name: Daily rolling-year player profiles and monthly coefficient review
 on:
   workflow_dispatch:
   schedule:
-    # Japan 02:10. Only previous calendar days enter history.
+    # Japan 02:10. Only completed calendar days enter history.
     - cron: '10 17 * * *'
 permissions:
-  contents: read
+  contents: write
+  actions: write
 concurrency:
   group: daily-history-learning
   cancel-in-progress: false
@@ -23,52 +24,49 @@ jobs:
       - name: Check publication approval
         id: approval
         run: node site/check-approval.mjs >> "$GITHUB_OUTPUT"
-      - name: Choose previous Japan day
-        if: steps.approval.outputs.approved == 'true'
-        id: day
-        run: echo "date=$(TZ=Asia/Tokyo date --date=yesterday +%F)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         if: steps.approval.outputs.approved == 'true'
         with:
-          path: site/cache/model-history
-          key: history-v1-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: history-v1-
-      - uses: actions/cache/restore@v4
+          path: site/cache/annual-history
+          key: annual-history-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: annual-history-
+      - name: Acquire one archive for each missing completed day
         if: steps.approval.outputs.approved == 'true'
-        with:
-          path: tools/prediction/model-v2.json
-          key: active-model-v2-${{ github.run_id }}
-          restore-keys: active-model-v2-
-      - uses: actions/cache/restore@v4
-        if: steps.approval.outputs.approved == 'true'
-        with:
-          path: site/cache/${{ steps.day.outputs.date }}
-          key: daily-evaluation-${{ github.run_id }}
-          restore-keys: site-live-v3-${{ steps.day.outputs.date }}-
-      - name: Acquire completed official results
-        if: steps.approval.outputs.approved == 'true'
-        run: python tools/site/daily_history.py
-      - name: Match genuine saved forecasts and update history profiles
+        run: python tools/site/annual_history.py --end "$(TZ=Asia/Tokyo date --date=yesterday +%F)"
+      - name: Update the last 365 days without daily coefficient fitting
         if: steps.approval.outputs.approved == 'true'
         run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import {dailyUpdate} from './tools/prediction/daily.mjs';
-          const manifest=JSON.parse(fs.readFileSync('site/cache/model-history/manifest.json'));
-          const day=new Date(Date.now()+9*3600000).getUTCDay();
-          console.log(dailyUpdate({files:manifest.files,cache:'site/cache',activeFile:'tools/prediction/model-v2.json',output:'site/cache/learning',trainCandidate:day===1}));
-          fs.copyFileSync('site/cache/learning/active-model.json','tools/prediction/model-v2.json');
-          JS
-      - uses: actions/cache/save@v4
-        if: steps.approval.outputs.approved == 'true' && success()
-        with:
-          path: tools/prediction/model-v2.json
-          key: active-model-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          node --test site/test_annual_model.mjs site/test_cloudflare_programs.mjs
+          node tools/prediction/update_annual.mjs site/cache/annual-history models/annual/current.json
+          cp site/cache/annual-history/manifest.json models/annual/coverage.json
+      - name: Produce a monthly coefficient candidate for review
+        if: steps.approval.outputs.approved == 'true'
+        run: |
+          if [ "$(TZ=Asia/Tokyo date +%d)" = 01 ]; then
+            node tools/prediction/train_annual.mjs site/cache/annual-history site/cache/monthly-candidate/current.json
+          fi
+      - name: Save data only; publication remains tied to approved code
+        if: steps.approval.outputs.approved == 'true'
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add models/annual/current.json models/annual/coverage.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh rolling-year player profiles from completed official results"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+      - name: Publish refreshed data with the approved runtime
+        if: steps.approval.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update-pages.yml --ref main
       - uses: actions/upload-artifact@v4
-        if: steps.approval.outputs.approved == 'true' && success()
+        if: always() && steps.approval.outputs.approved == 'true'
         with:
-          name: daily-model-review-${{ steps.day.outputs.date }}
+          name: annual-model-review
           path: |
-            site/cache/learning/*.json
-            site/cache/model-history/manifest.json
+            models/annual/coverage.json
+            models/annual/validation.json
+            site/cache/monthly-candidate/*.json
           retention-days: 30

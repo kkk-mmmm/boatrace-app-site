@@ -1,6 +1,6 @@
 {
   "approved": true,
-  "reviewed_commit": "5902f179a7607ed3f239bcd73278b09579ca1b95",
+  "reviewed_commit": "7bef2cc83ed596dcfd5ad10a04c0c51dbf155e49",
   "approved_on": "2026-10-22",
-  "note": "承認済み公開サイトのオッズ取得を、実データ確認済みCloudflareの5分更新へ接続。"
+  "note": "承認済みサイトに1着の傾向別確率・10点ずつの追加表示・スジ候補を追加。自動テスト83件とスマートフォン表示を確認。"
 }

@@ -6,7 +6,7 @@ const pct = n => n == null ? '—' : `${(n * 100).toFixed(1)}%`;
 const clock = value => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}).format(new Date(value)) : '未確認';
 let current = null, archive = null, catalog = null, selected = null, selectedVenue = null, predictionTab = 'probability', view = 'live', entryTab = 'entries', loadVersion = 0;
 let predictionScenario='all', predictionLimit=10, chosenCombo=null, predictionRaceKey=null;
-let oddsConfigPromise=null,liveOdds=null,oddsAttempt=0,oddsRequest=null,oddsFailure=null;
+let oddsConfigPromise=null,liveOdds=null,oddsAttempt=0,oddsRequest=null,oddsFailure=null,oddsVenue=null;
 async function refreshOdds() {
   if(!oddsConfigPromise)oddsConfigPromise=(async()=>{
     const response=await fetch(new URL('./data/odds-config.json',document.baseURI),{cache:'no-store'});
@@ -19,13 +19,14 @@ async function refreshOdds() {
   let config;
   try {config=await oddsConfigPromise;}catch(error){oddsConfigPromise=null;oddsFailure=error.message;return;}
   if(!config.api_url)return;
-  if(oddsRequest)return oddsRequest;
-  if(Date.now()-oddsAttempt<ODDS_INTERVAL_MS && liveOdds?.date===japanDate(Date.now()))return;
-  if(Date.now()-oddsAttempt<ODDS_INTERVAL_MS && oddsFailure)return;
-  oddsAttempt=Date.now();
+  if(oddsRequest){await oddsRequest;return oddsVenue===selectedVenue?undefined:refreshOdds();}
+  if(oddsVenue===selectedVenue && Date.now()-oddsAttempt<ODDS_INTERVAL_MS && liveOdds?.date===japanDate(Date.now()))return;
+  if(oddsVenue===selectedVenue && Date.now()-oddsAttempt<ODDS_INTERVAL_MS && oddsFailure)return;
+  oddsAttempt=Date.now();oddsVenue=selectedVenue;
   oddsRequest=(async()=>{
     try {
       const url=new URL(config.api_url);url.searchParams.set('date',japanDate(Date.now()));
+      if(oddsVenue)url.searchParams.set('venue',oddsVenue);
       const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(15000)});
       if(!response.ok)throw Error('オッズの定期更新を確認できません');
       liveOdds=validateLiveOdds(await response.json(),japanDate(Date.now()));oddsFailure=null;

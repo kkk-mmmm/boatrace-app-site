@@ -197,8 +197,8 @@ export class OddsCoordinator {
     const currentKeys=new Set(currentTargets.map(oddsKey));
     const allRecords=new Map([...records.values()].filter(r=>r.date===date && currentKeys.has(oddsKey(r))).map(r=>[oddsKey(r),r]));
     const venue=url.searchParams.get('venue'),race=Number(url.searchParams.get('race'));
-    const saved=await storage.list({prefix:'proposal:'});
-    const proposals=[...saved.values()].filter(p=>validProposal(p,date,now) && (!venue || p.venue_code===venue) && (!race || p.race_no===race));
+    const saved=await storage.list({prefix:venue?'proposal:'+venue+'-':'proposal:'});
+    const proposals=[...saved.values()].filter(p=>(!venue || p.venue_code===venue) && (!race || p.race_no===race) && validProposal(p,date,now));
     const rows=[...allRecords.values()].filter(r=>(!venue || r.venue_code===venue) && (!race || r.race_no===race));
     return json({schema_version:1,date,interval_seconds:60,far_interval_seconds:300,fast_window_minutes:30,proposal_lead_seconds:180,served_at:iso(now),
       update:{status:work?.date===date?work.status:'UNAVAILABLE',started_at:work?.date===date?work.started_at:null,

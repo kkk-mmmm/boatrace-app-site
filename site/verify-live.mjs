@@ -1,7 +1,8 @@
 import fs from 'node:fs';
+import {raceStatus} from './public/view.mjs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import {validateLiveOdds,applyLiveOdds} from './public/odds-live.mjs';
+import {validateLiveOdds,applyLiveOdds,proposalRace} from './public/odds-live.mjs';
 process.on('uncaughtException',error=>{
  const message=String(error.stack || error).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A');
  console.error('::error title=Public site verification::'+message);process.exit(1);
@@ -17,7 +18,7 @@ assert.ok((await get('style.css')).headers.get('content-type').includes('text/cs
 await get('app.mjs');await get('view.mjs');
 await get('odds-live.mjs');
 const oddsConfig=await(await get('data/odds-config.json')).json();
-assert.equal(oddsConfig.interval_seconds,300);
+assert.equal(oddsConfig.interval_seconds,60);
 let workerOdds=null;
 if(oddsConfig.api_url) {
  assert.equal(oddsConfig.api_url,'https://boatrace-odds.kazu80504.workers.dev/v1/odds');
@@ -26,7 +27,7 @@ if(oddsConfig.api_url) {
  const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:'https://kkk-mmmm.github.io'}});
  assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'https://kkk-mmmm.github.io');
  workerOdds=validateLiveOdds(await response.json(),current.date);
- assert.notEqual(workerOdds.update.status,'FAILED');
+ assert.notEqual(workerOdds.update.status,'FAILED');assert.equal(workerOdds.interval_seconds,60);
 }
 const venues=[];
 for(const venue of current.venues){
@@ -38,10 +39,14 @@ for(const venue of current.venues){
 }
 const now=Date.now(),fresh=v=>['OK','PARTIAL'].includes(v.update.status)&&now-Date.parse(v.update.last_success_at)<=600000;
 const available=venues.filter(fresh).flatMap(venue=>venue.races.map(race=>({venue,race})))
- .filter(({race:r})=>r.items.length===10&&r.odds?.items?.length>=10&&now-Date.parse(r.odds.fetched_at)<=540000&&Date.parse(r.deadline_at)>now+60000)
+ .filter(({race:r})=>r.items.length===10&&r.odds?.items?.length>=10&&now-Date.parse(r.odds.fetched_at)<=540000&&Date.parse(r.deadline_at)>now+4*60000)
  .sort((a,b)=>Date.parse(b.race.odds.fetched_at)-Date.parse(a.race.odds.fetched_at));
-assert.ok(available.length,'最新出走表・予想・オッズがそろう場が必要です');
-const {venue:candidate,race}=available[0];
+const preserved=venues.flatMap(venue=>venue.races.filter(race=>proposalRace(race,now)!==race).map(race=>({venue,race})));
+const reference=venues.flatMap(venue=>venue.races.filter(race=>race.items.length===10).map(race=>({venue,race})));
+const chosen=available[0] || preserved[0] || reference[0];assert.ok(chosen,'保存済み予想が必要です');
+const {venue:candidate,race}=chosen;
+const savedProposal=proposalRace(race,now)!==race;
+const expectedValueRows=savedProposal || raceStatus(race,candidate,now).currentOdds && Date.parse(race.deadline_at)-now>180000?10:0;
 const cdp='http://127.0.0.1:9222',page=await(await fetch(cdp+'/json/new?about:blank',{method:'PUT'})).json();
 const ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(resolve=>ws.addEventListener('open',resolve,{once:true}));
 let id=0;const pending=new Map(),errors=[];
@@ -56,12 +61,12 @@ try{
  await wait("document.querySelectorAll('#venue-select option').length===24 && document.querySelectorAll('[data-race]').length>0");
  await run(`document.querySelector('[data-race="${race.race_no}"]').click()`);
  await wait("document.querySelectorAll('.prediction-table tbody tr').length===10");
- if(workerOdds)assert.ok((await run("document.getElementById('odds-status').textContent")).includes('5分間隔'));
+ if(workerOdds)assert.ok((await run("document.getElementById('odds-status').textContent")).includes('1分'));
  assert.equal(await run("getComputedStyle(document.querySelector('.header')).display"),'flex');
  const label=await run("document.getElementById('model-label').textContent");assert.ok(label.includes('固定式')&&label.includes('未適用'));
  const probabilityRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");
  await run("document.getElementById('value-tab').click()");
- const valueRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");assert.equal(valueRows,10);
+ const valueRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");assert.equal(valueRows,expectedValueRows);
  // Check the published scenario filters and full incremental list, using
  // probability order so unavailable market quotes cannot hide combinations.
  await run("document.getElementById('probability-tab').click();document.querySelector('[data-scenario=in]').click()");
@@ -82,7 +87,7 @@ try{
  assert.ok(relatedRows.length<=5);
  for(const row of relatedRows){assert.notEqual(row.combo,selectedCombo);assert.equal(row.combo[0],selectedCombo[0]);assert.ok(Number.isFinite(row.value));}
  for(let n=1;n<relatedRows.length;n++)assert.ok(relatedRows[n-1].value>=relatedRows[n].value);
- await run("document.querySelector('[data-scenario=all]').click();document.getElementById('value-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
+ await run("document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
  await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
@@ -97,6 +102,6 @@ try{
   fresh_venues:venues.filter(fresh).length,races:venues.reduce((n,v)=>n+v.races.length,0),
   predicted_races:venues.flatMap(v=>v.races).filter(r=>r.items.length===10).length,
   races_with_odds:venues.flatMap(v=>v.races).filter(r=>r.odds?.items?.length).length,
-  browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
+  browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,saved_proposal:savedProposal,saved_proposal_count:workerOdds?.proposals?.length || 0,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

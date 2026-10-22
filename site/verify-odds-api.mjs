@@ -28,16 +28,16 @@ try {
     const changed=baseline && records.filter(r=>{
       const before=baseline.records.get(`${r.venue_code}-${r.race_no}`);
       const interval=before && Date.parse(r.attempted_at)-Date.parse(before.attempted_at);
-      return before && Date.parse(r.fetched_at)>Date.parse(before.fetched_at) && interval>=300000 && interval<=420000;
+      return before && Date.parse(r.fetched_at)>Date.parse(before.fetched_at) && interval>=(data.interval_seconds===60?60000:300000) && interval<=(data.interval_seconds===60?120000:420000);
     });
     // Start a fresh measurement after a long gap; do not accept ten-minute updates.
     if(observe && baseline)for(const record of records) {
       const key=`${record.venue_code}-${record.race_no}`,before=baseline.records.get(key);
-      if(!before || Date.parse(record.attempted_at)-Date.parse(before.attempted_at)>420000)baseline.records.set(key,record);
+      if(!before || Date.parse(record.attempted_at)-Date.parse(before.attempted_at)>(data.interval_seconds===60?120000:420000))baseline.records.set(key,record);
     }
     if(records.length && (!observe || changed.length)) {
       const selected=(observe?changed:records).sort((a,b)=>Date.parse(b.deadline_at)-Date.parse(a.deadline_at))[0];
-      const report={checked_at:new Date().toISOString(),api_url:api,date:data.date,interval_seconds:300,update:data.update,
+      const report={checked_at:new Date().toISOString(),api_url:api,date:data.date,interval_seconds:data.interval_seconds,update:data.update,
         record_count:data.races.length,live_records:records.length,failed_records:data.races.filter(r=>r.status==='FAILED').length,
         live_venues:[...new Set(records.map(r=>r.venue_code))],opportunities:data.opportunities?.length || 0,
         selected:{venue_code:selected.venue_code,race_no:selected.race_no,quotes:selected.items.length,fetched_at:selected.fetched_at,

@@ -1,5 +1,5 @@
 import {fetchText,officialUrl,robotsAllowed,parseOfficialHtml,OFFICIAL_ORIGIN} from './official.mjs';
-import {ODDS_INTERVAL_MS,ODDS_MAX_AGE_MS,oddsKey,rankExpectedValue,validQuotes} from '../../site/public/odds-live.mjs';
+import {ODDS_INTERVAL_MS,ODDS_MAX_AGE_MS,oddsKey,rankExpectedValue,validQuotes,proposalCandidate,validProposal,oddsRefreshInterval,FAR_ODDS_INTERVAL_MS} from '../../site/public/odds-live.mjs';
 
 const japanDate=now=>new Date(now+9*3600000).toISOString().slice(0,10);
 const json=(body,status=200,headers={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers}});
@@ -45,7 +45,7 @@ export default {
   async scheduled(event,env,ctx) {
     ctx.waitUntil((async()=>{
       const response=await stub(env).fetch('https://internal/start',{method:'POST',body:JSON.stringify({scheduled_at:event.scheduledTime})});
-      if(!response.ok)throw Error('5分更新の開始に失敗: '+await response.text());
+      if(!response.ok)throw Error('定期更新の開始に失敗: '+await response.text());
     })());
   },
   async fetch(request,env) {
@@ -89,15 +89,19 @@ export class OddsCoordinator {
     const previousSlot=work?.scheduled_slot ?? Math.floor(work?.started_ms/ODDS_INTERVAL_MS);
     if(work?.date===date && slot<=previousSlot)return json({status:'NOT_DUE'},202);
     try {
+      if(work?.date===date)await this.freezeDue(now);
       const feed=JSON.parse(await fetchText(this.env.TARGETS_URL,fetch,5*1024*1024));
       const targets=validateTargets(feed,now);
-      const robots=targets.length?await fetchText(OFFICIAL_ORIGIN+'/robots.txt',fetch,128*1024):'';
+      const cachedRobots=await storage.get('robots'),reuseRobots=cachedRobots && now-cachedRobots.checked_at<300000;
+      const robots=targets.length?(reuseRobots?cachedRobots.text:await fetchText(OFFICIAL_ORIGIN+'/robots.txt',fetch,128*1024)):'';
       if(targets.some(r=>!robotsAllowed(robots,officialUrl(r))))throw Error('robots.txtで取得対象外のページです');
       if(work?.date!==date)await storage.deleteAll();
+      if(targets.length)await storage.put('robots',{text:robots,checked_at:reuseRobots?cachedRobots.checked_at:now});
+      targets.sort((a,b)=>a.deadline_at.localeCompare(b.deadline_at));
       const keys=[];
       for(let i=0;i<targets.length;i+=64) {
         const values={};for(const target of targets.slice(i,i+64)){const key=oddsKey(target);keys.push(key);values['target:'+key]=target;}
-        await storage.put(values);
+        if(work?.date!==date || work.feed_generated_at!==feed.generated_at)await storage.put(values);
       }
       work={date,scheduled_slot:slot,started_ms:now,started_at:iso(now),feed_generated_at:feed.generated_at,keys,cursor:0,
         running:keys.length>0,status:keys.length?'UPDATING':'IDLE',message:null,completed_at:keys.length?null:iso(now)};
@@ -129,7 +133,9 @@ export class OddsCoordinator {
       const attempted=Date.parse(item.previous?.attempted_at);
       // A retried alarm must not repeat attempts made by this same cycle.
       item.skip=!item.target || Date.parse(item.target.deadline_at)<=Date.now() || attempted>=work.started_ms;
-      item.due=Number.isFinite(attempted)?attempted+ODDS_INTERVAL_MS:Date.now();
+      item.interval=oddsRefreshInterval(item.target || {},now);
+      item.due=Number.isFinite(attempted)?attempted+item.interval:Date.now();
+      if(item.interval===FAR_ODDS_INTERVAL_MS && item.due-now>1000)item.skip=true;
     }
     let nextStart=Date.now();const venues=new Map();
     const waitTurn=async venue=>{
@@ -145,7 +151,7 @@ export class OddsCoordinator {
         const target=item.target;
         if(item.due>=Date.parse(target.deadline_at))continue;
         // Keep the previous successful quote available while waiting for its
-        // five-minute interval, rather than dropping the race for another cycle.
+        // refresh interval, rather than dropping the race for another cycle.
         while(item.due>Date.now())await new Promise(resolve=>setTimeout(resolve,item.due-Date.now()));
         await waitTurn(target.venue_code);
         const attempted=Date.now();
@@ -158,18 +164,31 @@ export class OddsCoordinator {
           const text=await fetchText(base.source_url),fetched=Date.now();
           const items=await parseOfficialHtml(text);
           const status=fetched>=Date.parse(target.deadline_at)?'CLOSED':items.length?'OK':'UNAVAILABLE';
-          await storage.put('race:'+item.key,{...base,status,items,fetched_at:iso(fetched),message:status==='UNAVAILABLE'?'公式オッズは未提供です':null});
+          const record={...base,status,items,fetched_at:iso(fetched),message:status==='UNAVAILABLE'?'公式オッズは未提供です':null};
+          await storage.put('race:'+item.key,record);
+          const candidate=proposalCandidate(target,record,Date.now());
+          if(candidate && !await storage.get('proposal:'+item.key))await storage.put('proposal-candidate:'+item.key,candidate);
         } catch(error) {
           await storage.put('race:'+item.key,{...item.previous,...base,status:'FAILED',items:item.previous?.items || [],message:String(error.message).slice(0,200)});
         }
       }
     };
     await Promise.all(Array.from({length:6},()=>run()));
+    await this.freezeDue(Date.now());
     work.cursor+=keys.length;work.running=work.cursor<work.keys.length;
     work.status=work.running?'UPDATING':'COMPLETE';if(!work.running)work.completed_at=iso(Date.now());
     await storage.put('work',work);
     if(work.running)await storage.setAlarm(Date.now()+1000);else await storage.deleteAlarm();
     console.log(JSON.stringify({event:'odds_refresh_batch',date:work.date,completed:work.cursor,total:work.keys.length,running:work.running}));
+  }
+  async freezeDue(now) {
+    const storage=this.ctx.storage,candidates=await storage.list({prefix:'proposal-candidate:'}),saved=await storage.list({prefix:'proposal:'});
+    for(const candidate of candidates.values()) {
+      const key='proposal:'+oddsKey(candidate);
+      if(saved.has(key) || candidate.date!==japanDate(now) || Date.parse(candidate.cutoff_at)>now)continue;
+      const frozen={...candidate,frozen_at:iso(now)};
+      if(validProposal(frozen,candidate.date,now))await storage.put(key,frozen);
+    }
   }
   async snapshot(url) {
     const now=Date.now(),date=url.searchParams.get('date'),storage=this.ctx.storage,work=await storage.get('work');
@@ -178,10 +197,12 @@ export class OddsCoordinator {
     const currentKeys=new Set(currentTargets.map(oddsKey));
     const allRecords=new Map([...records.values()].filter(r=>r.date===date && currentKeys.has(oddsKey(r))).map(r=>[oddsKey(r),r]));
     const venue=url.searchParams.get('venue'),race=Number(url.searchParams.get('race'));
+    const saved=await storage.list({prefix:'proposal:'});
+    const proposals=[...saved.values()].filter(p=>validProposal(p,date,now) && (!venue || p.venue_code===venue) && (!race || p.race_no===race));
     const rows=[...allRecords.values()].filter(r=>(!venue || r.venue_code===venue) && (!race || r.race_no===race));
-    return json({schema_version:1,date,interval_seconds:300,served_at:iso(now),
+    return json({schema_version:1,date,interval_seconds:60,far_interval_seconds:300,fast_window_minutes:30,proposal_lead_seconds:180,served_at:iso(now),
       update:{status:work?.date===date?work.status:'UNAVAILABLE',started_at:work?.date===date?work.started_at:null,
         completed_at:work?.date===date?work.completed_at:null,message:work?.date===date?work.message:'当日のオッズは更新待ちです'},
-      races:rows,opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
+      races:rows,proposals,opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
   }
 }

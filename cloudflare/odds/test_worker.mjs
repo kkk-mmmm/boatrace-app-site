@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {OddsCoordinator,validateTargets,opportunityRows} from './worker.mjs';
+import {proposalCandidate} from '../../site/public/odds-live.mjs';
 import {robotsAllowed,fetchText} from './official.mjs';
 
 const now=Date.parse('2030-01-01T01:00:00Z');
@@ -33,14 +34,14 @@ test('robotsの専用グループ・最長一致・空の禁止・ワイルド�
   assert.equal(robotsAllowed('User-agent: *\nDisallow:',url),true);
   assert.equal(robotsAllowed('<html>error</html>',url),false);
 });
-test('実行時刻が前回より1ms早くても次の5分枠を開始し、同じ枠の再配信を重ねない',async t=>{
-  const first=now+42500,current=first+299999;
+test('実行時刻が前回より1ms早くても次の1分枠を開始し、同じ枠の再配信を重ねない',async t=>{
+  const first=now+42500,current=first+59999;
   t.mock.timers.enable({apis:['Date'],now:current});
   const storage=new Storage(),coordinator=new OddsCoordinator({storage},{TARGETS_URL:'https://site.test/targets'});
-  await storage.put('work',{date:target.date,started_ms:first,scheduled_slot:Math.floor(first/300000),running:false});
+  await storage.put('work',{date:target.date,started_ms:first,scheduled_slot:Math.floor(first/60000),running:false});
   let requests=0;
   t.mock.method(globalThis,'fetch',async url=>{requests++;return new Response(url==='https://site.test/targets'?JSON.stringify(feed):'User-agent: *\nAllow: /');});
-  const scheduled=now+300000;
+  const scheduled=now+60000;
   assert.equal((await (await coordinator.start(scheduled)).json()).status,'UPDATING');
   assert.equal(requests,2);
   const work=await storage.get('work');await storage.put('work',{...work,running:false});
@@ -51,20 +52,21 @@ test('HTTPエラー・過大な応答・対象外の応答を拒否する',async
   await assert.rejects(fetchText('https://www.boatrace.jp/',async()=>new Response('x',{status:503})),/HTTP/);
   await assert.rejects(fetchText('https://www.boatrace.jp/',async()=>new Response('123456'),5),/大きすぎ/);
 });
-test('5分に満たないレースは残り時間を待って取得し、同じ更新の再実行では取得を重ねない',async t=>{
+test('1分に満たないレースは残り時間を待って取得し、同じ更新の再実行では取得を重ねない',async t=>{
   t.mock.timers.enable({apis:['Date','setTimeout'],now});
   const storage=new Storage(),coordinator=new OddsCoordinator({storage},{TARGETS_URL:'https://site.test/targets'});
   await storage.put('work',{date:target.date,started_ms:now,keys:['06-1'],cursor:0,running:true});
-  await storage.put('target:06-1',target);
-  const previous={...target,attempted_at:new Date(now-60000).toISOString(),fetched_at:new Date(now-59000).toISOString(),status:'OK',items:[{combo:'1-2-3',odds:10}]};
+  const near={...target,deadline_at:new Date(now+20*60000).toISOString()};
+  await storage.put('target:06-1',near);
+  const previous={...near,attempted_at:new Date(now-10000).toISOString(),fetched_at:new Date(now-59000).toISOString(),status:'OK',items:[{combo:'1-2-3',odds:10}]};
   await storage.put('race:06-1',previous);
   let requests=0;t.mock.method(globalThis,'fetch',async()=>{requests++;return new Response('fail',{status:503});});
   const pending=coordinator.alarm();await new Promise(resolve=>setImmediate(resolve));
   assert.equal(requests,0);assert.deepEqual(await storage.get('race:06-1'),previous);
-  t.mock.timers.tick(239999);await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,0);
+  t.mock.timers.tick(49999);await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,0);
   t.mock.timers.tick(1);await pending;const failed=await storage.get('race:06-1');
   assert.equal(requests,1);assert.equal(failed.status,'FAILED');assert.equal(failed.fetched_at,previous.fetched_at);assert.deepEqual(failed.items,previous.items);
-  assert.equal(Date.parse(failed.attempted_at)-Date.parse(previous.attempted_at),300000);
+  assert.equal(Date.parse(failed.attempted_at)-Date.parse(previous.attempted_at),60000);
   await storage.put('work',{date:target.date,started_ms:now,keys:['06-1'],cursor:0,running:true});
   await coordinator.alarm();assert.equal(requests,1);
   assert.equal(storage.alarm,null);
@@ -90,4 +92,45 @@ test('複数場の取得開始は全体で250ms・同じ場で1秒以上空け�
   for(let i=1;i<starts.length;i++)assert.ok(starts[i].time-starts[i-1].time>=240);
   for(const venue of ['06','24']){const times=starts.filter(x=>x.venue===venue);assert.ok(times[1].time-times[0].time>=990);}
   for(const key of keys)assert.equal((await storage.get('race:'+key)).status,'FAILED');
+});
+
+test('締切後も3分前以前の保存提案をAPIで返し、確定後は更新で上書きしない',async t=>{
+  t.mock.timers.enable({apis:['Date'],now});
+  const storage=new Storage(),coordinator=new OddsCoordinator({storage},{}),probabilities=[];
+  for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)for(let c=1;c<=6;c++)if(new Set([a,b,c]).size===3)probabilities.push({rank:probabilities.length+1,combo:`${a}-${b}-${c}`,probability:1/120});
+  const deadline=now+10*60000,cutoff=deadline-180000;
+  const t1={...target,deadline_at:new Date(deadline).toISOString(),probabilities,model_id:'test',prediction_saved_at:new Date(now-1000).toISOString(),input_fetched_at:new Date(now-2000).toISOString()};
+  t1.prediction_key=`test:${t1.prediction_saved_at}`;
+  const q={...t1,status:'OK',fetched_at:new Date(now).toISOString(),source_url:'https://www.boatrace.jp/owpc/pc/race/odds3t?hd=20300101&jcd=06&rno=1',items:[{combo:'1-2-3',odds:10}]};
+  const candidate=proposalCandidate(t1,q,now);assert.ok(candidate);
+  await storage.put('proposal-candidate:06-1',candidate);
+  await storage.put('work',{date:target.date,keys:[],status:'IDLE'});
+  await coordinator.freezeDue(cutoff-1);assert.equal(await storage.get('proposal:06-1'),undefined);
+  t.mock.timers.tick(deadline-now+1000);await coordinator.freezeDue(Date.now());
+  const frozen=await storage.get('proposal:06-1');assert.ok(frozen);assert.equal(frozen.odds.items[0].odds,10);
+  await storage.put('proposal-candidate:06-1',{...candidate,odds:{...candidate.odds,items:[{combo:'1-2-3',odds:999}]}});
+  await coordinator.freezeDue(Date.now());assert.deepEqual(await storage.get('proposal:06-1'),frozen);
+  const snapshot=await(await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01'))).json();
+  assert.equal(snapshot.races.length,0);assert.equal(snapshot.proposals.length,1);assert.equal(snapshot.proposals[0].odds.items[0].odds,10);
+  const other=await(await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01&venue=24'))).json();assert.equal(other.proposals.length,0);
+});
+test('締切が遠いレースは5分待ちの間に取得せず、近いレースの1分更新を塞がない',async t=>{
+  t.mock.timers.enable({apis:['Date'],now});
+  const storage=new Storage(),coordinator=new OddsCoordinator({storage},{});
+  await storage.put('work',{date:target.date,started_ms:now,keys:['06-1'],cursor:0,running:true});await storage.put('target:06-1',target);
+  await storage.put('race:06-1',{...target,attempted_at:new Date(now-60000).toISOString(),status:'OK'});
+  let requests=0;t.mock.method(globalThis,'fetch',async()=>{requests++;return new Response('',{status:503});});
+  await coordinator.alarm();assert.equal(requests,0);assert.equal((await storage.get('work')).running,false);
+});
+
+test('取得対象が同じ配信版なら毎分の全件書き込みを省き、robotsも5分間共有する',async t=>{
+  t.mock.timers.enable({apis:['Date'],now});
+  const storage=new Storage(),coordinator=new OddsCoordinator({storage},{TARGETS_URL:'https://site.test/targets'});
+  let requests=0,targetWrites=0;
+  const originalPut=storage.put.bind(storage);
+  t.mock.method(storage,'put',async(key,value)=>{if(typeof key==='object' && Object.keys(key).some(k=>k.startsWith('target:')))targetWrites++;return originalPut(key,value);});
+  t.mock.method(globalThis,'fetch',async url=>{requests++;return new Response(url==='https://site.test/targets'?JSON.stringify(feed):'User-agent: *\nAllow: /');});
+  await coordinator.start(now);const work=await storage.get('work');await storage.put('work',{...work,running:false});
+  t.mock.timers.tick(60000);await coordinator.start(now+60000);
+  assert.equal(requests,3);assert.equal(targetWrites,1);assert.deepEqual(await storage.get('target:06-1'),target);
 });

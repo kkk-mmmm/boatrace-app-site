@@ -1,6 +1,6 @@
 {
   "approved": true,
-  "reviewed_commit": "e736a765270b4f3f619f0616f3ee1df9e472a785",
+  "reviewed_commit": "272f52329e52e8adb2e257535ddc42886c7ed784",
   "approved_on": "2026-10-22",
-  "note": "ユーザーが一般公開の進行を明示的に承認。履歴補正係数は0を維持。"
+  "note": "承認済みの公開サイトを5分間隔のオッズ取得に対応。Cloudflare接続先未設定では従来の取得を継続。"
 }

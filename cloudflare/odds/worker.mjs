@@ -211,10 +211,14 @@ export class OddsCoordinator {
     try{
       const model=validateAnnualModel(JSON.parse(await fetchText(this.env.PLAYER_MODEL_URL,fetch,5*1024*1024)),date);
       if(Date.parse(model.created_at)>now+60000)throw Error('未来の履歴モデルです');
-      this.annualModel=model;this.modelCheckedDate=date;await this.ctx.storage.put('annual-model-status',{status:'OK',model_id:model.id,coverage:model.coverage,checked_at:iso(now)});
+      this.annualModel=model;this.modelCheckedDate=date;
+      const cached=await this.ctx.storage.list({prefix:'program:'});
+      for(const [key,program] of cached)if(program.date===date&&program.entries?.length===6&&program.history_model_id!==model.id)await this.ctx.storage.put(key,annualEntryData(program,model));
+      await this.ctx.storage.put('annual-model-status',{status:'OK',model_id:model.id,coverage:model.coverage,checked_at:iso(now)});
     }catch(error){await this.ctx.storage.put('annual-model-status',{status:'FAILED',message:String(error.message).slice(0,200),checked_at:iso(now)});}
   }
   async bootstrapPrograms(calendar,date,robots,now){
+    let calendarChanged=false;
     const targets=[],storage=this.ctx.storage,hour=Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Tokyo',hour:'2-digit',hourCycle:'h23'}).format(new Date(now)));
     if(hour<7||!calendar)return targets;
     for(const venue of calendar.venues.filter(v=>v.meeting_status==='OPEN')){
@@ -231,12 +235,14 @@ export class OddsCoordinator {
           await storage.put('agenda:'+venue.code,agenda);
           const first=agenda.find(r=>r.race_no===1);
           if(first){let p={...first,entries:programEntries(page),context:programContext(page,venue.meeting),entries_fetched_at:iso(Date.now()),input_source_url:url,entries_30m_done:Date.parse(first.deadline_at)-Date.now()<=1800000};
+            if(p.context.meeting_day&&venue.meeting.meeting_day!==p.context.meeting_day){venue.meeting={...venue.meeting,meeting_day:p.context.meeting_day};calendarChanged=true;}
             if(this.annualModel)p=annualEntryData(p,this.annualModel);const forecast=this.annualModel?annualForecast(p,this.annualModel,Date.now()):null;if(forecast)p={...p,...forecast};await storage.put('program:'+oddsKey(p),p);}
         }catch(error){await storage.put('bootstrap-issue:'+venue.code,{message:String(error.message).slice(0,200),attempted_at:iso(now)});}
         await new Promise(resolve=>setTimeout(resolve,250));
       }
       if(agenda)targets.push(...agenda);
     }
+    if(calendarChanged)await storage.put('calendar',calendar);
     return targets;
   }
   async refreshProgram(target,waitTurn){

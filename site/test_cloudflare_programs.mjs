@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {ANNUAL_ENGINE,ANNUAL_FEATURES,emptyAnnualProfiles,observeAnnual} from './public/annual-model.mjs';
-import {annualForecast} from '../cloudflare/odds/program.mjs';
+import {annualForecast,annualEntryData} from '../cloudflare/odds/program.mjs';
 import {applyLiveOdds,validateLiveOdds,validProgram,proposalCandidate,proposalRace} from './public/odds-live.mjs';
 import {cloudflareSnapshots} from './collect-cloudflare.mjs';
 const now=Date.parse('2030-01-01T01:00:00Z'),date='2030-01-01';
@@ -36,4 +36,11 @@ test('保存提案は後から新しい年次モデル・出走表が届いて�
  const next=applyLiveOdds(snapshot,{...data,programs:[{...p,entries:p.entries.map(e=>({...e,name:'更新後'}))}]},cutoff+1);
  assert.deepEqual(proposalRace(next.races[0],cutoff+1).probabilities,saved.probabilities);
  assert.equal(next.races[0].entries[0].name,'更新後');
+});
+
+test('締切後も出走表へ年次統計を追加でき、保存済みの予想は計算し直さない',()=>{
+ const {p,model}=example(),closed={...p,deadline_at:new Date(now-1000).toISOString(),model_id:'legacy',prediction_saved_at:'2029-12-31T12:00:00Z'};
+ const enriched=annualEntryData(closed,model);assert.equal(enriched.entries[0].annual_lane.samples,1);assert.equal(enriched.history_window.days,365);
+ assert.equal(enriched.model_id,'legacy');assert.equal(enriched.prediction_saved_at,closed.prediction_saved_at);assert.deepEqual(enriched.probabilities,closed.probabilities);
+ assert.equal(annualForecast(enriched,model,now),null);
 });

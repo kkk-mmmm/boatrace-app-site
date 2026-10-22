@@ -15,6 +15,7 @@ for(let n=0;n<18;n++){
   assert.ok((data.opportunities||[]).every(p=>Date.parse(p.deadline_at)>Date.now()&&Date.parse(p.deadline_at)<=Date.now()+3600000));
   const programs=data.programs||[];assert.ok(programs.every(p=>p.entries.length===6));
   const annual=programs.filter(p=>p.probabilities?.length===120&&p.model_id===id),stats=programs.filter(p=>p.entries.some(e=>e.annual_lane?.samples));
+  if(programs.length)assert.ok(stats.length>0,'枠別統計の配信は更新待ちです');
   report={checked_at:new Date().toISOString(),date:data.date,model_id:id,coverage:model.coverage,validation:model.validation,
    calendar_venues:data.calendar.venues.length,held_venues:data.calendar.venues.filter(v=>v.meeting_status==='OPEN').length,
    program_count:programs.length,annual_prediction_count:annual.length,lane_statistics_programs:stats.length,

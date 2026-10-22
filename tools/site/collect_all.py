@@ -60,6 +60,13 @@ if __name__ == '__main__':
     parser.add_argument('--staging', type=Path, default=Path('site/staging'))
     args = parser.parse_args()
     try:
-        print('::notice title=Full collection::'+json.dumps(collect_all(args.cache.resolve(), args.staging.resolve()), ensure_ascii=False))
+        report=collect_all(args.cache.resolve(), args.staging.resolve())
+        # Keep annotations short enough for GitHub's single-line limit.
+        summary={key:report[key] for key in ('date','failed_venues','elapsed_seconds','max_venues','max_responses_per_venue','max_request_starts_per_second')}
+        summary.update(venues=len(report['venues']),held=sum(v['meeting_status']=='OPEN' for v in report['venues']),
+                       predicted_races=sum(v['predicted_races'] for v in report['venues']),
+                       races_with_odds=sum(v['races_with_odds'] for v in report['venues']),
+                       updates={v['venue_code']:v['update_status'] for v in report['venues']})
+        print('::notice title=Full collection::'+json.dumps(summary,ensure_ascii=False))
     except Exception as error:
         parser.exit(1, str(error)+'\n')

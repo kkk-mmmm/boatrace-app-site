@@ -31,6 +31,7 @@ test('自動取得入力を元モデルで保存し、次回更新で元予想�
   assert.equal(update(f.file,f.directory).update.status,'OK');
   const first=liveData(f.directory);
   assert.equal(first.races[0].items.length,10);
+  assert.equal(first.races[0].probabilities.length,120);
   assert.equal(first.races[0].odds.items[0].odds,10);
   const bytes=fs.readFileSync(path.join(f.directory,'2030-01-01/predictions/kiryu_20300101_R3/prediction.json'));
   t.mock.timers.tick(1000);
@@ -40,6 +41,9 @@ test('自動取得入力を元モデルで保存し、次回更新で元予想�
   assert.deepEqual(fs.readFileSync(path.join(f.directory,'2030-01-01/predictions/kiryu_20300101_R3/prediction.json')),bytes);
   const result=build({cacheDirectory:f.directory,outputDirectory:path.join(f.directory,'dist'),requireCurrent:true});
   assert.equal(result.status,'OK');
+  const feed=JSON.parse(fs.readFileSync(path.join(f.directory,'dist/data/odds-targets.json')));
+  assert.equal(feed.races.length,1);assert.equal(feed.races[0].probabilities.length,120);
+  assert.equal(feed.races[0].probabilities.reduce((sum,x)=>sum+x.probability,0).toFixed(8),'1.00000000');
 });
 
 test('全体の取得失敗時は以前の予想と成功時刻を保持して失敗状態を公開する',t=>{

@@ -15,6 +15,7 @@ export function raceStatus(race, snapshot, now = Date.now()) {
     return {code: 'INVALID', text: 'オッズ時刻を確認できません', currentOdds: false};
   }
   if (race.odds.classification !== 'PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED') return {code: 'REFERENCE', text: '参考オッズ', currentOdds: false};
+  if (race.odds_update && race.odds_update.status!=='OK') return {code:'FAILED',text:'オッズの更新を確認できません',currentOdds:false};
   if (!['OK', 'PARTIAL'].includes(snapshot.update.status) || race.issue) return {code: 'FAILED', text: '更新を確認できません', currentOdds: false};
   if (now - fetched > MAX_ODDS_AGE_MS || now - recorded > MAX_ODDS_AGE_MS) return {code: 'STALE', text: 'オッズの更新待ち', currentOdds: false};
   return {code: 'OPEN', text: '締切前・取得時点オッズ', currentOdds: true};

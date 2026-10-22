@@ -4,9 +4,16 @@ import {fileURLToPath} from 'node:url';
 import {allLiveData, archiveData, root, modelHash, japanDate, liveData} from './data.mjs';
 import {venues} from '../tools/prerace/venues.mjs';
 import {opportunityList} from './opportunities.mjs';
+import {predictionKey} from './public/odds-live.mjs';
 
 export function build({cacheDirectory = path.join(root, 'site/cache'), outputDirectory = path.join(root, 'site/dist'),
-  now = Date.now(), requireCurrent = false, snapshotDirectory = null} = {}) {
+  now = Date.now(), requireCurrent = false, snapshotDirectory = null, oddsApiUrl = process.env.BOATRACE_ODDS_API_URL || null} = {}) {
+  let apiOrigin=null;
+  if(oddsApiUrl) {
+    const url=new URL(oddsApiUrl);
+    if(url.protocol!=='https:' || url.username || url.password || url.pathname!=='/v1/odds' || url.search || url.hash)throw Error('オッズAPIにはHTTPSの /v1/odds を指定してください');
+    apiOrigin=url.origin;
+  }
   const snapshots = snapshotDirectory ? venues.map(venue => {
     const file = path.join(snapshotDirectory,`${venue.code}.json`);
     if (!fs.existsSync(file)) return liveData(path.join(snapshotDirectory,'missing'),now,venue.code);
@@ -27,9 +34,20 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   const current = {...snapshots[0], opportunities:opportunityList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
     meeting_status:s.meeting_status,meeting:s.meeting,update:s.update,race_count:s.races.length, data_url:`./data/venues/${s.venue_code}.json`}))};
   fs.mkdirSync(path.join(outputDirectory, 'data/venues'), {recursive: true});
-  for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs']) {
+  for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs']) {
     fs.copyFileSync(path.join(root, 'site/public', file), path.join(outputDirectory, file));
   }
+  if(apiOrigin) {
+    const html=path.join(outputDirectory,'index.html');
+    fs.writeFileSync(html,fs.readFileSync(html,'utf8').replace("connect-src 'self'",`connect-src 'self' ${apiOrigin}`));
+  }
+  fs.writeFileSync(path.join(outputDirectory,'data/odds-config.json'),JSON.stringify({schema_version:1,api_url:oddsApiUrl,interval_seconds:300}));
+  const targets=snapshots.filter(s=>s.meeting_status==='OPEN').flatMap(snapshot=>snapshot.races
+    .filter(r=>Number.isFinite(Date.parse(r.deadline_at)) && Date.parse(r.deadline_at)>now)
+    .map(r=>({date:r.date,venue_code:snapshot.venue_code,venue:snapshot.venue,race_no:r.race_no,deadline_at:r.deadline_at,
+      probabilities:r.probabilities || [],prediction_key:predictionKey(r,snapshot),model_name:r.model_name || snapshot.model.name,
+      update_status:snapshot.update.status,last_success_at:snapshot.update.last_success_at,issue:r.issue || null})));
+  fs.writeFileSync(path.join(outputDirectory,'data/odds-targets.json'),JSON.stringify({schema_version:1,date:japanDate(now),generated_at:new Date(now).toISOString(),races:targets}));
   fs.writeFileSync(path.join(outputDirectory, '.nojekyll'), '');
   fs.writeFileSync(path.join(outputDirectory, 'data/current.json'), JSON.stringify(current, null, 2) + '\n');
   for (const snapshot of snapshots) {

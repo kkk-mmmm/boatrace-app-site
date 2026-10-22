@@ -1,4 +1,8 @@
 __pycache__/
 *.py[cod]
+node_modules/
 /site/cache/
 /site/dist/
+/cloudflare/odds/.wrangler/
+/cloudflare/odds/.dry-run/
+/cloudflare/odds/.dev.vars

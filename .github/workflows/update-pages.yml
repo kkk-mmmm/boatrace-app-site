@@ -52,7 +52,14 @@ jobs:
       - name: Collect all venues with a shared request limit
         id: collect
         continue-on-error: true
-        run: python tools/site/collect_all.py
+        env:
+          BOATRACE_ODDS_API_URL: ${{ vars.BOATRACE_ODDS_API_URL }}
+        run: |
+          if [ -n "$BOATRACE_ODDS_API_URL" ]; then
+            python tools/site/collect_all.py --skip-odds
+          else
+            python tools/site/collect_all.py
+          fi
       - name: Project explicit failure states if the batch was interrupted
         if: steps.collect.outcome != 'success'
         run: |
@@ -89,12 +96,13 @@ jobs:
           path: site/staging
       - name: Validate forecast and freshness behavior
         run: |
-          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs
+          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_live_odds.mjs
           python -B tools/site/test_probe.py
           python -B tools/site/test_collect_all.py
       - name: Build current data or explicit failure state
         env:
           EVENT_NAME: ${{ github.event_name }}
+          BOATRACE_ODDS_API_URL: ${{ vars.BOATRACE_ODDS_API_URL }}
         run: |
           if [ "$EVENT_NAME" = schedule ]; then
             node site/build.mjs --snapshots site/staging

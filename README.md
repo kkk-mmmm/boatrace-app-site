@@ -38,3 +38,5 @@ node site/build.mjs --require-current
 ```
 
 `site/dist/` が配信ファイルです。公式HTML・保存レシート・非公開の学習用データセット・管理用HTTP APIは配信しません。ソース一式の元コミットとファイルハッシュは `RELEASE_MANIFEST.json` に記録しています。
+
+Cloudflareによる5分間隔のオッズ取得と、全120通りからの期待値再計算に対応しました。[本番接続手順](cloudflare/odds/README.md)を参照してください。接続先を設定するまでは従来のGitHub Actionsの取得を継続します。

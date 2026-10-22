@@ -50,5 +50,10 @@ class BatchTests(unittest.TestCase):
             report=collect_all(Path(tmp)/'cache',Path(tmp)/'staging',[{'code':'06'}])
             self.assertEqual(report['failed_venues'],0);self.assertEqual(report['venues'][0]['races_with_odds'],0)
 
+    def test_cloudflare_mode_delegates_only_odds_collection(self):
+        with tempfile.TemporaryDirectory() as tmp,patch('collect_all.collect_index',return_value={'date':'2030-01-01'}),patch('collect_all.collect',return_value={'date':'2030-01-01','races':[]}) as collector,patch('collect_all.subprocess.run',return_value=SimpleNamespace(returncode=0,stderr='')):
+            collect_all(Path(tmp)/'cache',Path(tmp)/'staging',[{'code':'06'}],include_odds=False)
+            self.assertEqual(collector.call_args.kwargs,{'include_odds':False})
+
 
 if __name__=='__main__':unittest.main()

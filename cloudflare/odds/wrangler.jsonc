@@ -1,0 +1,14 @@
+{
+  "name": "boatrace-odds",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-06-11",
+  "workers_dev": true,
+  "triggers": {"crons": ["*/5 * * * *"]},
+  "vars": {
+    "SITE_ORIGIN": "https://kkk-mmmm.github.io",
+    "TARGETS_URL": "https://kkk-mmmm.github.io/boatrace-app-site/data/odds-targets.json"
+  },
+  "durable_objects": {"bindings": [{"name": "ODDS", "class_name": "OddsCoordinator"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["OddsCoordinator"]}],
+  "observability": {"enabled": true}
+}

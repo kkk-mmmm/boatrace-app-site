@@ -127,6 +127,7 @@ export function liveData(cacheDirectory, now = Date.now(), venueCode = '01') {
       race.model_trained_through=candidate.model_trained_through;race.model_validation=candidate.validation;
     }
     if(!race.scores)race.scores=scoreDetails(race.entries);
+    race.probabilities=(allItems.get(race.race_no) || []).map(({rank,combo,probability})=>({rank,combo,probability}));
     const prices=new Map((race.odds?.items || []).map(x=>[x.combo,x.odds]));
     const opportunities=(allItems.get(race.race_no) || []).filter(x=>prices.has(x.combo)).map(x=>({...x,odds:prices.get(x.combo),value:x.probability*prices.get(x.combo)})).sort((a,b)=>b.value-a.value);
     race.expected_value_items=opportunities.slice(0,10).map(({rank,combo,probability})=>({rank,combo,probability}));

@@ -214,7 +214,7 @@ def collect_index(destination):
             'index_source': {'url': url, 'retrieved_at': retrieved, 'evidence_file': str(evidence), 'sha256': sha}}
 
 
-def collect(destination, venue_code='01', index=None, global_gate=None):
+def collect(destination, venue_code='01', index=None, global_gate=None, include_odds=True):
     require(venue_code in VENUE_CODES, '場コードが不正です')
     now = datetime.now(timezone.utc)
     date = now.astimezone(timezone(timedelta(hours=9))).date().isoformat()
@@ -263,6 +263,8 @@ def collect(destination, venue_code='01', index=None, global_gate=None):
         if not times[n] or datetime.now(timezone.utc) >= datetime.fromisoformat(times[n]):
             continue
         for kind in ('racelist', 'beforeinfo', 'odds3t'):
+            if kind == 'odds3t' and not include_odds:
+                continue
             if kind == 'racelist' and n == 1:
                 continue
             tasks[(n, kind)] = prefix + kind + query + str(n)
@@ -298,6 +300,8 @@ def collect(destination, venue_code='01', index=None, global_gate=None):
                 item['exhibition_source'] = before_source
             except Exception as error:
                 item['exhibition_issue'] = str(error)
+            if not include_odds:
+                continue
             odds_page, odds_source = acquired(n, 'odds3t')
             values = odds(odds_page)
             if values:
@@ -317,13 +321,14 @@ if __name__ == '__main__':
     parser.add_argument('--venue', default='01', choices=sorted(VENUE_CODES))
     parser.add_argument('--index-only', action='store_true')
     parser.add_argument('--index-input', type=Path)
+    parser.add_argument('--skip-odds', action='store_true', help='オッズ取得をCloudflareへ分離する場合に指定')
     args = parser.parse_args()
     try:
         if args.index_only:
             result = collect_index(args.output)
         else:
             index = json.loads(args.index_input.read_text()) if args.index_input else None
-            result = collect(args.output, args.venue, index)
+            result = collect(args.output, args.venue, index, include_odds=not args.skip_odds)
     except Exception as error:
         result = {'date': datetime.now(timezone(timedelta(hours=9))).date().isoformat(), 'venue_code': args.venue,
                   'attempted_at': datetime.now(timezone.utc).isoformat(), 'error': str(error)}

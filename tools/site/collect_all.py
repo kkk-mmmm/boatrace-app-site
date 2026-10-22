@@ -11,7 +11,7 @@ from collect_official import collect, collect_index, RequestGate, VENUES
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def collect_all(cache=Path('site/cache'), staging=Path('site/staging'), venues=VENUES):
+def collect_all(cache=Path('site/cache'), staging=Path('site/staging'), venues=VENUES, include_odds=True):
     started = time.monotonic()
     cache.mkdir(parents=True, exist_ok=True)
     staging.mkdir(parents=True, exist_ok=True)
@@ -24,7 +24,7 @@ def collect_all(cache=Path('site/cache'), staging=Path('site/staging'), venues=V
         code = venue['code']
         destination = cache / f'incoming-{code}.json'
         try:
-            value = collect(destination, code, index, global_gate)
+            value = collect(destination, code, index, global_gate) if include_odds else collect(destination, code, index, global_gate, include_odds=False)
         except Exception as error:
             value = {'date': index['date'], 'venue_code': code,
                      'attempted_at': datetime.now(timezone.utc).isoformat(), 'error': str(error)}
@@ -58,9 +58,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cache', type=Path, default=Path('site/cache'))
     parser.add_argument('--staging', type=Path, default=Path('site/staging'))
+    parser.add_argument('--skip-odds', action='store_true')
     args = parser.parse_args()
     try:
-        report=collect_all(args.cache.resolve(), args.staging.resolve())
+        report=collect_all(args.cache.resolve(), args.staging.resolve(), include_odds=not args.skip_odds)
         # Keep annotations short enough for GitHub's single-line limit.
         summary={key:report[key] for key in ('date','failed_venues','elapsed_seconds','max_venues','max_responses_per_venue','max_request_starts_per_second')}
         summary.update(venues=len(report['venues']),held=sum(v['meeting_status']=='OPEN' for v in report['venues']),

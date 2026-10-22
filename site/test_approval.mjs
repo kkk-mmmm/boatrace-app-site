@@ -13,6 +13,7 @@ test('一般公開は初期状態で無効であり、確認したコード以�
   const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
   git('init','-q');git('config','user.name','Test');git('config','user.email','test@example.invalid');
   fs.mkdirSync(path.join(dir,'.github'));fs.mkdirSync(path.join(dir,'site'));
+  fs.mkdirSync(path.join(dir,'cloudflare'));fs.writeFileSync(path.join(dir,'cloudflare/worker.mjs'),'reviewed worker');
   const file=path.join(dir,'.github/publication.json');
   fs.writeFileSync(file,JSON.stringify({approved:false,reviewed_commit:null}));
   fs.writeFileSync(path.join(dir,'site/index.html'),'reviewed site');
@@ -21,6 +22,12 @@ test('一般公開は初期状態で無効であり、確認したコード以�
   const reviewed=git('rev-parse','HEAD');
   fs.writeFileSync(file,JSON.stringify({approved:true,reviewed_commit:reviewed}));
   git('add','.');git('commit','-qm','record approval');
+  assert.equal(publicationApproved(dir),true);
+  fs.writeFileSync(path.join(dir,'cloudflare/worker.mjs'),'changed worker');
+  git('add','.');git('commit','-qm','change worker');
+  assert.equal(publicationApproved(dir),false);
+  fs.writeFileSync(path.join(dir,'cloudflare/worker.mjs'),'reviewed worker');
+  git('add','.');git('commit','-qm','restore worker');
   assert.equal(publicationApproved(dir),true);
   fs.writeFileSync(path.join(dir,'site/index.html'),'changed site');
   git('add','.');git('commit','-qm','change code');

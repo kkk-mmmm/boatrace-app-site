@@ -1,9 +1,45 @@
 import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups} from './view.mjs';
+import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveOpportunities} from './odds-live.mjs';
 const $ = id => document.getElementById(id);
 const yen = n => `${n.toLocaleString('ja-JP')}円`;
 const pct = n => n == null ? '—' : `${(n * 100).toFixed(1)}%`;
 const clock = value => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}).format(new Date(value)) : '未確認';
 let current = null, archive = null, catalog = null, selected = null, selectedVenue = null, predictionTab = 'probability', view = 'live', entryTab = 'entries', loadVersion = 0;
+let oddsConfigPromise=null,liveOdds=null,oddsAttempt=0,oddsRequest=null,oddsFailure=null;
+async function refreshOdds() {
+  if(!oddsConfigPromise)oddsConfigPromise=(async()=>{
+    const response=await fetch(new URL('./data/odds-config.json',document.baseURI),{cache:'no-store'});
+    if(!response.ok)throw Error('オッズ更新の設定を読み込めません');
+    const config=await response.json();
+    if(config.schema_version!==1 || config.interval_seconds!==300)throw Error('オッズ更新の設定が不正です');
+    if(config.api_url){const u=new URL(config.api_url);if(u.protocol!=='https:' || u.pathname!=='/v1/odds' || u.search || u.hash || u.username || u.password)throw Error('オッズAPIの接続先が不正です');}
+    return config;
+  })();
+  let config;
+  try {config=await oddsConfigPromise;}catch(error){oddsConfigPromise=null;oddsFailure=error.message;return;}
+  if(!config.api_url)return;
+  if(oddsRequest)return oddsRequest;
+  if(Date.now()-oddsAttempt<ODDS_INTERVAL_MS && liveOdds?.date===japanDate(Date.now()))return;
+  if(Date.now()-oddsAttempt<ODDS_INTERVAL_MS && oddsFailure)return;
+  oddsAttempt=Date.now();
+  oddsRequest=(async()=>{
+    try {
+      const url=new URL(config.api_url);url.searchParams.set('date',japanDate(Date.now()));
+      const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+      if(!response.ok)throw Error('オッズの5分更新を確認できません');
+      liveOdds=validateLiveOdds(await response.json(),japanDate(Date.now()));oddsFailure=null;
+      if(liveOdds.update?.status==='FAILED')oddsFailure=liveOdds.update.message || 'オッズの取得に失敗しました';
+    }catch(error){oddsFailure=error.message;liveOdds=null;}
+    finally{oddsRequest=null;}
+  })();
+  return oddsRequest;
+}
+function applyOddsState() {
+  if(liveOdds && current)current=applyLiveOdds(current,liveOdds);
+  if(oddsFailure && current)current={...current,races:current.races.map(r=>({...r,odds_update:{status:'FAILED',message:oddsFailure}}))};
+  const latest=liveOdds?.races.reduce((value,r)=>r.status==='OK' && Date.parse(r.fetched_at)>Date.parse(value || '1970-01-01')?r.fetched_at:value,null);
+  $('odds-status').textContent=oddsFailure?`オッズ更新失敗：${oddsFailure}`:liveOdds?`オッズ取得：${clock(latest)} / 5分間隔${liveOdds.update?.status==='UPDATING'?'（更新中）':''}`:'';
+}
 const venueFilters={held:'OPEN',grade:null,day:null,schedule:null};
 const shortClock=value=>value&&Number.isFinite(Date.parse(value))?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'未確認';
 const venueName = () => catalog?.venues.find(v => v.code === selectedVenue)?.name || '選んだ場';
@@ -81,7 +117,7 @@ function notify(message) { $('message').textContent = message; $('message').hidd
 
 function renderOpportunities() {
   const now=Date.now();
-  const rows=(catalog?.opportunities || []).filter(x=>x.date===japanDate(now) && Date.parse(x.deadline_at)>now
+  const rows=(oddsFailure?[]:liveOdds?liveOpportunities(liveOdds,now):catalog?.opportunities || []).filter(x=>x.date===japanDate(now) && Date.parse(x.deadline_at)>now
     && ['OK','PARTIAL'].includes(x.update_status) && x.classification==='PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED'
     && [x.fetched_at,x.recorded_at,x.last_success_at].every(t=>Number.isFinite(Date.parse(t)) && Date.parse(t)<=now+60000 && now-Date.parse(t)<=10*60000));
   $('opportunities-content').innerHTML=rows.length?`<div class="opportunity-grid">${rows.slice(0,3).map((x,i)=>`<button class="opportunity-card" data-opportunity-venue="${e(x.venue_code)}" data-opportunity-race="${x.race_no}" title="${e(x.model_name)} / オッズ取得 ${e(clock(x.fetched_at))}"><span class="opportunity-top"><span class="eyebrow">${i+1} / ${e(x.venue)} ${x.race_no}R</span><span>締切 ${e(shortClock(x.deadline_at))}</span></span><span class="opportunity-main"><strong>${e(x.combo)}</strong><span class="opportunity-value"><b>${x.value.toFixed(3)}</b>倍<small>期待値</small></span></span><span class="opportunity-bottom"><span>${pct(x.probability)} × ${x.odds.toFixed(1)}倍</span><span>${x.model_name?.includes('検証中')?'検証中 / ':''}取得 ${e(shortClock(x.fetched_at))}</span></span></button>`).join('')}</div>`
@@ -228,6 +264,9 @@ async function load() {
     if (value.schema_version !== 1 || value.venue_code !== code || value.venue !== venueName() || !Array.isArray(value.races)
       || value.races.some(r => r.date !== value.date || r.venue_code !== code)) throw Error('選んだ場と表示データが一致しません');
     current = value;
+    await refreshOdds();
+    if(version!==loadVersion || code!==selectedVenue)return;
+    applyOddsState();renderOpportunities();
     renderCurrent();
   } catch (error) {
     if (version !== loadVersion) return;
@@ -258,5 +297,6 @@ try {
   if (!response.ok) throw Error('検証記録を読み込めませんでした');
   archive = await response.json(); renderArchive();
 } catch { $('archive-content').textContent = '検証記録を読み込めませんでした。時間をおいて再度ご確認ください。'; }
-setInterval(load, 60000);
+setInterval(()=>{if(!document.hidden && view==='live')load();}, ODDS_INTERVAL_MS);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden && view==='live')load();});
 setInterval(() => {if (catalog) {renderVenueOptions();renderOpportunities();}if (view === 'live') renderCurrent();}, 15000);

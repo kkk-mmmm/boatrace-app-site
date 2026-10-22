@@ -1,13 +1,13 @@
 {
-  "source_commit": "1708ef3230f848c0a1046fdb5de4ca9192da1211",
+  "source_commit": "038dc92d13b9125bd193de6f5b8d5bee11bfc74b",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "AGENTS.md": "edaf48fe52d1f31068ef66205552cedd69fcd7d98173d7444de25cbae12a3120",
-    "docs/release-notes.md": "24a4dbe68025a48aca85f4844a3dcf08427fc9831da530e1f7804d15aeef4eb2",
+    "docs/release-notes.md": "9731d9261850fa1577a1122c07397069069b49d0e2d93c28690a28436b43d75c",
     "site/releases.json": "fda6ec46890b5726fdd2c4d044f91dec0a1ca3ca09ab1cb2c257bcf726bb09c3",
     "site/releases.mjs": "ce3d98449bebf508f29a600d5033d48b179ce80896dbe4a16de77069327b99bf",
-    "site/check-release-notes.mjs": "1291e064ac104d6adcd91e65d0f43aff2a1a13df0629481cde432ff3b361c9c0",
-    "site/test_releases.mjs": "e2ef721442aa8d7314369a388aed11fd1bb440151d2f7109cf4fee2818ebe724",
+    "site/check-release-notes.mjs": "d3766a59460a43633bb7d163c976708f2dcef903679bdefe8c457a0fdd705fbd",
+    "site/test_releases.mjs": "1c5a0bf0dca98713c03a389a2c718ce6eb27633bfa68755776dc03e5a26fe3a9",
     "docs/annual-data-release.md": "19fdfce1c196fa20dad8e2b1b90dddf179fbe3b1099a6564840102f14212ceed",
     "models/annual/current.json": "9bfdce9e857c5c4775a2665bd16c4401ebaa8356343cfa34f35c22b8ad4653fe",
     "models/annual/validation.json": "ab50b129131457e11d4f3048330377580056c81cc2c3430b354c8214d277feeb",

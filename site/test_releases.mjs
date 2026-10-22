@@ -13,12 +13,15 @@ test('コード変更は履歴の追記が必要で、既存の書換・削除�
  const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
  git('init','-q');git('config','user.name','Test');git('config','user.email','test@example.invalid');fs.mkdirSync(path.join(dir,'site/public'),{recursive:true});fs.mkdirSync(path.join(dir,'.github'));
  const file=path.join(dir,'site/releases.json'),initial={schema_version:1,releases:[release('1.0.0')]},write=data=>fs.writeFileSync(file,JSON.stringify(data)),commit=()=>{git('add','.');git('commit','-qm','Update');return git('rev-parse','HEAD');};
+ fs.mkdirSync(path.join(dir,'models/annual'),{recursive:true});const modelFile=path.join(dir,'models/annual/current.json');fs.writeFileSync(modelFile,JSON.stringify({coefficients:[1],profiles:{samples:10}}));
  write(initial);fs.writeFileSync(path.join(dir,'site/public/app.mjs'),'original');const base=commit();
  fs.writeFileSync(path.join(dir,'site/public/app.mjs'),'changed');commit();assert.throws(()=>checkReleaseNotes({directory:dir,base}),/追記が必要/);
  // The publication gate must reject a runtime even if its commit was approved without a new note.
  let reviewed=git('rev-parse','HEAD');fs.writeFileSync(path.join(dir,'.github/publication.json'),JSON.stringify({approved:true,reviewed_commit:reviewed}));commit();assert.throws(()=>publicationApproved(dir),/追記が必要/);
  write({schema_version:1,releases:[release('1.1.0'),...initial.releases]});reviewed=commit();fs.writeFileSync(path.join(dir,'.github/publication.json'),JSON.stringify({approved:true,reviewed_commit:reviewed}));commit();assert.equal(publicationApproved(dir),true);assert.equal(checkReleaseNotes({directory:dir,base}).added,1);
  write({schema_version:1,releases:[release('1.1.0'),{...initial.releases[0],title:'rewritten'}]});commit();assert.throws(()=>checkReleaseNotes({directory:dir,base}),/書換/);
- write(initial);fs.writeFileSync(path.join(dir,'site/public/app.mjs'),'original');fs.mkdirSync(path.join(dir,'models/annual'),{recursive:true});fs.writeFileSync(path.join(dir,'models/annual/current.json'),'daily data');commit();assert.equal(checkReleaseNotes({directory:dir,base}).added,0);
+ write(initial);fs.writeFileSync(path.join(dir,'site/public/app.mjs'),'original');fs.mkdirSync(path.join(dir,'models/annual'),{recursive:true});fs.writeFileSync(modelFile,JSON.stringify({coefficients:[1],profiles:{samples:20}}));commit();assert.equal(checkReleaseNotes({directory:dir,base}).added,0);
+ fs.writeFileSync(modelFile,JSON.stringify({coefficients:[2],profiles:{samples:20}}));commit();assert.throws(()=>checkReleaseNotes({directory:dir,base}),/追記が必要/);
+ fs.writeFileSync(modelFile,JSON.stringify({coefficients:[1],profiles:{samples:20}}));
  fs.mkdirSync(path.join(dir,'tools/site'),{recursive:true});fs.writeFileSync(path.join(dir,'tools/site/annual_history.py'),'changed acquisition');commit();assert.throws(()=>checkReleaseNotes({directory:dir,base}),/追記が必要/);
 });

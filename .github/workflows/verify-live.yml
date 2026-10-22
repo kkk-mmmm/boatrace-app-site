@@ -6,12 +6,40 @@ on:
         description: Check official HTTPS connection reuse before publication
         type: boolean
         default: false
+      odds_only:
+        description: Verify the Cloudflare odds API without changing the site
+        type: boolean
+        default: false
+      observe_update:
+        description: Observe a second odds acquisition at least five minutes later
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: published-site-verification
   cancel-in-progress: true
 jobs:
+  odds:
+    if: inputs.odds_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Verify live Cloudflare odds and CORS
+        env:
+          ODDS_OBSERVE_UPDATE: ${{ inputs.observe_update }}
+          SITE_VERIFY_OUTPUT: /tmp/boatrace-odds-check
+        run: node site/verify-odds-api.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloudflare-odds-verification
+          path: /tmp/boatrace-odds-check/
+          retention-days: 7
   transport:
     if: inputs.transport_only
     runs-on: ubuntu-latest
@@ -36,7 +64,7 @@ jobs:
               time.sleep(1)
           PY
   verify:
-    if: ${{ !inputs.transport_only }}
+    if: ${{ !inputs.transport_only && !inputs.odds_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

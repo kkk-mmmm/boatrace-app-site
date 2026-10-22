@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import {validateLiveOdds,applyLiveOdds} from './public/odds-live.mjs';
 process.on('uncaughtException',error=>{
  const message=String(error.stack || error).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A');
  console.error('::error title=Public site verification::'+message);process.exit(1);
@@ -14,13 +15,26 @@ assert.equal(current.venues.length,24);assert.equal(new Set(current.venues.map(v
 const html=await(await get('')).text();assert.ok(html.includes('BOATRACE NOTE'));
 assert.ok((await get('style.css')).headers.get('content-type').includes('text/css'));
 await get('app.mjs');await get('view.mjs');
+await get('odds-live.mjs');
+const oddsConfig=await(await get('data/odds-config.json')).json();
+assert.equal(oddsConfig.interval_seconds,300);
+let workerOdds=null;
+if(oddsConfig.api_url) {
+ assert.equal(oddsConfig.api_url,'https://boatrace-odds.kazu80504.workers.dev/v1/odds');
+ assert.ok(html.includes(new URL(oddsConfig.api_url).origin),'CSPにWorkerの接続先が必要です');
+ const url=new URL(oddsConfig.api_url);url.searchParams.set('date',current.date);
+ const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:'https://kkk-mmmm.github.io'}});
+ assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'https://kkk-mmmm.github.io');
+ workerOdds=validateLiveOdds(await response.json(),current.date);
+ assert.notEqual(workerOdds.update.status,'FAILED');
+}
 const venues=[];
 for(const venue of current.venues){
  const data=await(await get(`data/venues/${venue.code}.json`)).json();
  assert.equal(data.venue_code,venue.code);assert.equal(data.date,current.date);
  assert.ok(data.races.every(r=>r.date===data.date&&r.venue_code===venue.code));
  assert.ok(data.races.every(r=>r.items.length===0||r.items.length===10));
- venues.push(data);
+ venues.push(workerOdds?applyLiveOdds(data,workerOdds):data);
 }
 const now=Date.now(),fresh=v=>['OK','PARTIAL'].includes(v.update.status)&&now-Date.parse(v.update.last_success_at)<=600000;
 const available=venues.filter(fresh).flatMap(venue=>venue.races.map(race=>({venue,race})))
@@ -42,6 +56,7 @@ try{
  await wait("document.querySelectorAll('#venue-select option').length===24 && document.querySelectorAll('[data-race]').length>0");
  await run(`document.querySelector('[data-race="${race.race_no}"]').click()`);
  await wait("document.querySelectorAll('.prediction-table tbody tr').length===10");
+ if(workerOdds)assert.ok((await run("document.getElementById('odds-status').textContent")).includes('5分間隔'));
  assert.equal(await run("getComputedStyle(document.querySelector('.header')).display"),'flex');
  const label=await run("document.getElementById('model-label').textContent");assert.ok(label.includes('固定式')&&label.includes('未適用'));
  const probabilityRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");
@@ -56,6 +71,7 @@ try{
  fs.writeFileSync(path.join(output,'mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
  assert.deepEqual(errors,[]);
  const report={checked_at:new Date().toISOString(),site_url:base,date:current.date,venues:venues.length,
+  odds_api_url:oddsConfig.api_url,odds_interval_seconds:oddsConfig.interval_seconds,worker_live_records:workerOdds?.races.filter(r=>r.status==='OK').length || 0,
   held:venues.filter(v=>v.meeting_status==='OPEN').length,not_held:venues.filter(v=>v.meeting_status==='NO_MEETING').length,
   fresh_venues:venues.filter(fresh).length,races:venues.reduce((n,v)=>n+v.races.length,0),
   predicted_races:venues.flatMap(v=>v.races).filter(r=>r.items.length===10).length,

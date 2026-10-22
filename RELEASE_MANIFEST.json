@@ -1,5 +1,5 @@
 {
-  "source_commit": "65513cac785495a7631edc15cf63433d0f7538f8",
+  "source_commit": "e7c6b28f6a5ca7af694916f8ac3aae08e5f80a14",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -8,7 +8,8 @@
     "site/update.mjs": "6a758e9dac67c7bec87537861022b79ce2c467367e6d47a206ec15a6368d65db",
     "site/check-approval.mjs": "45dc741ff95729a15a8f913f8ebbbcb4d1b1d15e428a4cdf694e688b73a7a36c",
     "site/snapshot.mjs": "8501aecead04a02245294833643974c15a2d4d0f4cfc2cd7528d539aaf0859c1",
-    "site/verify-live.mjs": "5eee41c2316ad30cfa1ae721f0a96122f228ffc4044a4f574b312005b3b99c85",
+    "site/verify-live.mjs": "a167cf08624228aa0062f11d052667e8b0850c20ac2ddc0be4af908877798aad",
+    "site/verify-odds-api.mjs": "fcbeef6924c743abf43e87686f4a8adef27a890006597eee6734fdbbaaef0007",
     "site/public/index.html": "434fc9c53f3d498c26d4f740897dd5ddf01a32dd9ff95b93d81a303df0adc4cc",
     "site/public/style.css": "0a75214f2b8b46e2d7621e70b22dd1e51a95ca6130a303f67b8f845b66c5b1cd",
     "site/public/app.mjs": "bc68df0a8edb4c0b0c84604726da0916a53430ab8f228f628441e77da80df1fb",

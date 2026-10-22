@@ -54,7 +54,7 @@ const freshUpdate = (update, date) => date === japanDate(Date.now()) && ['OK','P
   && Date.now() - Date.parse(update.last_success_at) <= 10 * 60000;
 function identifyVenue() {
   for (const element of document.querySelectorAll('[data-venue-name]')) element.textContent = venueName();
-  document.title = `BOATRACE NOTE | ${venueName()}のモデル予想とオッズ`;
+  document.title = view==='releases'?'リリースノート | BOATRACE NOTE':`BOATRACE NOTE | ${venueName()}のモデル予想とオッズ`;
 }
 function renderVenueOptions() {
   const facts = venue => {
@@ -111,14 +111,20 @@ const table = (headers, rows) => `<div class="table-wrap"><table><thead><tr>${he
 
 function showView(name) {
   view = name;
+  $('releases-view').hidden = name !== 'releases';
+  for(const selector of ['.venue-picker','.update-bar','.meeting-summary','#message'])document.querySelector(selector)?.toggleAttribute('hidden',name==='releases' || selector==='#message'&&!$('message').textContent);
   $('live-view').hidden = name !== 'live';
   $('archive-view').hidden = name !== 'archive';
   $('opportunities-section').hidden = name !== 'live';
   $('live-tab').setAttribute('aria-pressed', String(name === 'live'));
   $('archive-tab').setAttribute('aria-pressed', String(name === 'archive'));
+  $('releases-tab').setAttribute('aria-pressed',String(name==='releases'));
+  const url=new URL(location.href);url.hash=name==='releases'?'releases':name==='archive'?'archive':'';
+  if(url.href!==location.href)history.pushState(null,'',url);
+  identifyVenue();
 }
 
-function notify(message) { $('message').textContent = message; $('message').hidden = !message; }
+function notify(message) { $('message').textContent = message; $('message').hidden = !message || view==='releases'; }
 
 
 function renderOpportunities() {
@@ -328,6 +334,9 @@ $('venue-select').addEventListener('change', () => {
 });
 $('live-tab').addEventListener('click', () => showView('live'));
 $('archive-tab').addEventListener('click', () => showView('archive'));
+$('releases-tab').addEventListener('click',()=>showView('releases'));
+const routeView=()=>showView(location.hash==='#releases'?'releases':location.hash==='#archive'?'archive':'live');
+window.addEventListener('popstate',routeView);window.addEventListener('hashchange',routeView);routeView();
 $('refresh-button').addEventListener('click', load);
 await load();
 try {

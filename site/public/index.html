@@ -10,7 +10,7 @@
   <script type="module" src="./app.mjs"></script>
 </head>
 <body>
-  <header class="header"><a class="brand" href="./"><span class="mark">≋</span><span>BOATRACE<span class="brand-small">NOTE / 24 VENUES</span></span></a><nav aria-label="メイン"><button id="live-tab" aria-pressed="true">今日の予想</button><button id="archive-tab" aria-pressed="false">検証記録</button></nav><span class="header-caption">全国24場の記録。</span></header>
+  <header class="header"><a class="brand" href="./"><span class="mark">≋</span><span>BOATRACE<span class="brand-small">NOTE / 24 VENUES</span></span></a><nav aria-label="メイン"><button id="live-tab" aria-pressed="true">今日の予想</button><button id="archive-tab" aria-pressed="false">検証記録</button><button id="releases-tab" aria-pressed="false" aria-controls="releases-view">リリースノート</button></nav><span class="header-caption">全国24場の記録。</span></header>
   <main>
     <section id="opportunities-section" class="opportunities"><div class="section-heading"><div><p class="eyebrow">EXPECTED VALUE</p><h1>ねらい目レース</h1></div><span>締切前・新鮮なオッズがあるレース</span></div><div id="opportunities-content">オッズと予想を確認しています。</div><p class="small-note">予想確率 × 取得時点オッズが1.0を上回るレースを、高い順に表示します。計算値は参考で、利益や的中を保証しません。</p></section>
     <section class="venue-picker" aria-label="場の選択">
@@ -25,6 +25,7 @@
     <div id="message" role="status" aria-live="polite" hidden></div>
     <section id="live-view"><div class="section-heading"><div><p class="eyebrow">RACE FORECAST</p><h2>今日のレース</h2></div><div class="day-heading"><span id="current-date">—</span><span id="model-label" class="model-label">固定スコアモデル v1</span></div></div><div id="live-content"></div></section>
     <section id="archive-view" hidden><div class="section-heading"><div><p class="eyebrow">VERIFICATION LOG</p><h2>保存した予想を、結果と確かめる。</h2></div><span class="pill">過去の記録・仮想評価</span></div><div id="archive-content"></div></section>
+    <section id="releases-view" hidden aria-labelledby="releases-title"><div class="section-heading"><div><p class="eyebrow">RELEASE NOTES</p><h2 id="releases-title">リリースノート</h2></div></div><div id="releases-content"><!-- release-notes --></div></section>
   </main>
   <footer><div><a class="brand small" href="./"><span class="mark">≋</span><span>BOATRACE<span class="brand-small">NOTE / 24 VENUES</span></span></a><p>データは取得時点の情報です。締切・オッズ・結果は公式サイトで確認してください。</p></div><div><p>情報提供・検証を目的とした非公式サイトです。投票・購入機能はありません。</p><p>公式情報：<a href="https://www.boatrace.jp/" target="_blank" rel="noopener noreferrer">BOAT RACE オフィシャルウェブサイト ↗</a></p></div></footer>
 </body>

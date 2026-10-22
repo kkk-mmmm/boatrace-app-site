@@ -119,4 +119,12 @@ try{
   browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,saved_proposal:savedProposal,saved_proposal_count:workerOdds?.proposals?.length || 0,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
  }
+ await run("document.getElementById('releases-tab').click()");
+ await wait("!document.getElementById('releases-view').hidden && document.querySelectorAll('.release-card').length>=7");
+ assert.equal(await run("document.querySelector('.venue-picker').hidden"),true);
+ assert.equal(await run("document.querySelector('.update-bar').hidden"),true);
+ assert.equal(await run("location.hash"),'#releases');
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
+ const releaseReport={checked_at:new Date().toISOString(),url:base+'#releases',cards:await run("document.querySelectorAll('.release-card').length"),latest:await run("document.querySelector('.release-card .pill').textContent"),mobile_overflow:false,errors};
+ fs.writeFileSync(path.join(output,'release-notes.json'),JSON.stringify(releaseReport,null,2)+'\n');console.log('::notice title=Published release notes verification::'+JSON.stringify(releaseReport));
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

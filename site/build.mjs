@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {allLiveData, archiveData, root, modelHash, japanDate, liveData} from './data.mjs';
 import {venues} from '../tools/prerace/venues.mjs';
+import {renderReleases} from './releases.mjs';
 import {opportunityList} from './opportunities.mjs';
 import {validateAnnualModel} from './public/annual-model.mjs';
 import {predictionKey} from './public/odds-live.mjs';
@@ -38,6 +39,8 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs']) {
     fs.copyFileSync(path.join(root, 'site/public', file), path.join(outputDirectory, file));
   }
+  const indexHtml=path.join(outputDirectory,'index.html');
+  fs.writeFileSync(indexHtml,fs.readFileSync(indexHtml,'utf8').replace('<!-- release-notes -->',()=>renderReleases()));
   if(apiOrigin) {
     const html=path.join(outputDirectory,'index.html');
     fs.writeFileSync(html,fs.readFileSync(html,'utf8').replace("connect-src 'self'",`connect-src 'self' ${apiOrigin}`));

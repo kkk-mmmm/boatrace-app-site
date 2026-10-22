@@ -14,6 +14,7 @@ test('一般公開は初期状態で無効であり、確認したコード以�
   git('init','-q');git('config','user.name','Test');git('config','user.email','test@example.invalid');
   fs.mkdirSync(path.join(dir,'.github'));fs.mkdirSync(path.join(dir,'site'));
   fs.mkdirSync(path.join(dir,'cloudflare'));fs.writeFileSync(path.join(dir,'cloudflare/worker.mjs'),'reviewed worker');
+  fs.writeFileSync(path.join(dir,'site/releases.json'),JSON.stringify({schema_version:1,releases:[{version:'1.0.0',date:'2026-10-23',title:'Initial',changes:['First release']}]}));
   const file=path.join(dir,'.github/publication.json');
   fs.writeFileSync(file,JSON.stringify({approved:false,reviewed_commit:null}));
   fs.writeFileSync(path.join(dir,'site/index.html'),'reviewed site');

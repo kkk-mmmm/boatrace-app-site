@@ -88,7 +88,7 @@ export function applyLivePrograms(snapshot,data,now=Date.now()) {
   const waiting=(calendar?.meeting_status||snapshot.meeting_status)==='OPEN'&&!races.size;
   return {...snapshot,date:data.date,source_kind:'CLOUDFLARE_SCHEDULED_PROGRAM',meeting_status:calendar?.meeting_status||snapshot.meeting_status,
     meeting:calendar?.meeting||snapshot.meeting,races:[...races.values()].sort((a,b)=>a.race_no-b.race_no),
-    update:{status:healthy?(waiting?'PARTIAL':'OK'):'FAILED',attempted_at:data.served_at,last_success_at:healthy?data.served_at:snapshot.update?.last_success_at,
+    update:{status:healthy?(waiting?'PARTIAL':'OK'):'FAILED',reason:healthy&&waiting?'INITIAL_COLLECTION_PENDING':null,attempted_at:data.served_at,last_success_at:healthy?data.served_at:snapshot.update?.last_success_at,
       message:healthy?(waiting?'本日の出走表・予想は取得待ちです。初回取得は朝7時以降です。':null):'Cloudflareの配信状態を確認できません',source_kind:'CLOUDFLARE_DELIVERY'}};
 }
 

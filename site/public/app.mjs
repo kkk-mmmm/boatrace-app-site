@@ -7,7 +7,7 @@ const clock = value => value && Number.isFinite(Date.parse(value)) ? new Intl.Da
 let current = null, archive = null, catalog = null, selected = null, selectedVenue = null, predictionTab = 'probability', view = 'live', entryTab = 'entries', loadVersion = 0;
 let predictionScenario='all', predictionLimit=10, chosenCombo=null, predictionRaceKey=null;
 let oddsConfigPromise=null,liveOdds=null,oddsAttempt=0,oddsRequest=null,oddsFailure=null,oddsVenue=null;
-async function refreshOdds() {
+async function refreshOdds({force=false}={}) {
   if(!oddsConfigPromise)oddsConfigPromise=(async()=>{
     const response=await fetch(new URL('./data/odds-config.json',document.baseURI),{cache:'no-store'});
     if(!response.ok)throw Error('オッズ更新の設定を読み込めません');
@@ -19,9 +19,9 @@ async function refreshOdds() {
   let config;
   try {config=await oddsConfigPromise;}catch(error){oddsConfigPromise=null;oddsFailure=error.message;return;}
   if(!config.api_url)return;
-  if(oddsRequest){await oddsRequest;return oddsVenue===selectedVenue?undefined:refreshOdds();}
-  if(oddsVenue===selectedVenue && Date.now()-oddsAttempt<ODDS_INTERVAL_MS && liveOdds?.date===japanDate(Date.now()))return;
-  if(oddsVenue===selectedVenue && Date.now()-oddsAttempt<ODDS_INTERVAL_MS && oddsFailure)return;
+  if(oddsRequest){await oddsRequest;if(!force && oddsVenue===selectedVenue)return;}
+  if(!force && oddsVenue===selectedVenue && Date.now()-oddsAttempt<ODDS_INTERVAL_MS && liveOdds?.date===japanDate(Date.now()))return;
+  if(!force && oddsVenue===selectedVenue && Date.now()-oddsAttempt<ODDS_INTERVAL_MS && oddsFailure)return;
   oddsAttempt=Date.now();oddsVenue=selectedVenue;
   oddsRequest=(async()=>{
     try {
@@ -64,7 +64,7 @@ function renderVenueOptions() {
     const m = sameDay ? venue.meeting || {} : {};
     const day = m.day_label === '最終日' && m.meeting_day ? `最終日（${m.meeting_day}日目）` : m.day_label || (m.meeting_day ? `${m.meeting_day}日目` : '日次未確認');
     return [held ? '本日開催' : absent ? '非開催' : '開催未確認', ...(absent ? [] : [m.grade || 'グレード未確認',day,m.schedule_type || '時間帯未確認']),
-      freshUpdate(venue.update,catalog.date) ? venue.update.status === 'PARTIAL' ? '一部取得失敗' : '取得確認済み' : '更新待ち'];
+      freshUpdate(venue.update,catalog.date) ? venue.update.reason==='INITIAL_COLLECTION_PENDING' ? '初回取得待ち' : venue.update.status === 'PARTIAL' ? '一部取得失敗' : '取得確認済み' : '更新待ち'];
   };
   $('venue-select').innerHTML = catalog.venues.map(v => `<option value="${e(v.code)}">${e(v.name)} · ${facts(v).map(e).join(' / ')}</option>`).join('');
   $('venue-select').value = selectedVenue;
@@ -151,7 +151,7 @@ function renderCurrent() {
   const fresh = sameDay && ['OK','PARTIAL'].includes(current.update.status) && Number.isFinite(successTime)
     && successTime <= now + 60000 && now - successTime <= 10 * 60000;
   $('updated-at').textContent = `${current.source_kind==='CLOUDFLARE_SCHEDULED_PROGRAM'?'Cloudflare配信確認':'公式データの確認'}：${clock(current.update.last_success_at)}（日本時間）`;
-  $('update-status').textContent = fresh ? current.update.status === 'PARTIAL' ? '一部レースの取得に失敗' : '' : '最新データを確認できていません';
+  $('update-status').textContent = fresh ? current.update.reason==='INITIAL_COLLECTION_PENDING' ? '本日の出走表・予想は初回取得待ちです' : current.update.status === 'PARTIAL' ? '一部レースの取得に失敗' : '' : '最新データを確認できていません';
   $('update-status').hidden=!$('update-status').textContent;
   $('update-dot').classList.toggle('ok', fresh && current.update.status === 'OK');
   $('current-date').textContent = `${today} / 日本時間`;
@@ -277,39 +277,45 @@ function renderArchive() {
     + '<p class="small-note">分類：締切前のローカル保存記録（第三者の時刻証明なし）。少数の検証で将来の収益性やモデルの優位性は結論づけられません。</p>';
 }
 
-async function load() {
+async function load({forceOdds=false}={}) {
   const version = ++loadVersion;
   const requestedVenue = selectedVenue;
   $('refresh-button').disabled = true;
+  $('refresh-button').setAttribute('aria-busy','true');
+  $('refresh-button').textContent='更新中…';
   try {
-    const response = await fetch(new URL('./data/current.json', document.baseURI), {cache:'no-store'});
-    if (!response.ok) throw Error('開催一覧を読み込めませんでした');
-    const nextCatalog = await response.json();
-    if (version !== loadVersion) return;
-    if (nextCatalog.schema_version !== 1 || !Array.isArray(nextCatalog.venues)
-      || nextCatalog.venues.length !== 24 || new Set(nextCatalog.venues.map(v => v.code)).size !== 24
-      || nextCatalog.venues.some(v => !/^(0[1-9]|1\d|2[0-4])$/.test(v.code) || typeof v.name !== 'string')) throw Error('開催一覧の形式を確認できませんでした');
-    catalog = nextCatalog;
-    if (!selectedVenue) {
-      const query = new URL(location.href).searchParams.get('venue');
-      selectedVenue = catalog.venues.some(v => v.code === query) ? query
-        : catalog.venues.find(v => v.meeting_status === 'OPEN' && freshUpdate(v.update,catalog.date))?.code || '01';
-      clearCurrent();
+    // Manual refresh reads the shared Cloudflare snapshot directly once connected,
+    // preserving the displayed entries and saved proposals if that request fails.
+    if(!forceOdds || !liveOdds || !current || current.venue_code!==selectedVenue) {
+      const response = await fetch(new URL('./data/current.json', document.baseURI), {cache:'no-store'});
+      if (!response.ok) throw Error('開催一覧を読み込めませんでした');
+      const nextCatalog = await response.json();
+      if (version !== loadVersion) return;
+      if (nextCatalog.schema_version !== 1 || !Array.isArray(nextCatalog.venues)
+        || nextCatalog.venues.length !== 24 || new Set(nextCatalog.venues.map(v => v.code)).size !== 24
+        || nextCatalog.venues.some(v => !/^(0[1-9]|1\d|2[0-4])$/.test(v.code) || typeof v.name !== 'string')) throw Error('開催一覧の形式を確認できませんでした');
+      catalog = nextCatalog;
+      if (!selectedVenue) {
+        const query = new URL(location.href).searchParams.get('venue');
+        selectedVenue = catalog.venues.some(v => v.code === query) ? query
+          : catalog.venues.find(v => v.meeting_status === 'OPEN' && freshUpdate(v.update,catalog.date))?.code || '01';
+        clearCurrent();
+      }
+      renderVenueOptions();renderOpportunities();
+      const code = requestedVenue || selectedVenue;
+      let value = catalog;
+      if (code !== '01') {
+        const result = await fetch(new URL(`./data/venues/${code}.json`, document.baseURI), {cache:'no-store'});
+        if (!result.ok) throw Error(`${venueName()}のデータを読み込めませんでした`);
+        value = await result.json();
+      }
+      if (version !== loadVersion || code !== selectedVenue) return;
+      if (value.schema_version !== 1 || value.venue_code !== code || value.venue !== venueName() || !Array.isArray(value.races)
+        || value.races.some(r => r.date !== value.date || r.venue_code !== code)) throw Error('選んだ場と表示データが一致しません');
+      current = value;
     }
-    renderVenueOptions();renderOpportunities();
-    const code = requestedVenue || selectedVenue;
-    let value = catalog;
-    if (code !== '01') {
-      const result = await fetch(new URL(`./data/venues/${code}.json`, document.baseURI), {cache:'no-store'});
-      if (!result.ok) throw Error(`${venueName()}のデータを読み込めませんでした`);
-      value = await result.json();
-    }
-    if (version !== loadVersion || code !== selectedVenue) return;
-    if (value.schema_version !== 1 || value.venue_code !== code || value.venue !== venueName() || !Array.isArray(value.races)
-      || value.races.some(r => r.date !== value.date || r.venue_code !== code)) throw Error('選んだ場と表示データが一致しません');
-    current = value;
-    await refreshOdds();
-    if(version!==loadVersion || code!==selectedVenue)return;
+    await refreshOdds({force:forceOdds});
+    if(version!==loadVersion || requestedVenue && requestedVenue!==selectedVenue)return;
     applyOddsState();renderOpportunities();
     renderCurrent();
   } catch (error) {
@@ -324,7 +330,11 @@ async function load() {
     $('update-status').hidden=false;$('update-status').textContent = '更新に失敗しました';
     $('update-dot').classList.remove('ok');
     notify(error.message + '。公式サイトも確認してください。');
-  } finally { if (version === loadVersion) $('refresh-button').disabled = false; }
+  } finally { if (version === loadVersion) {
+    $('refresh-button').disabled = false;
+    $('refresh-button').setAttribute('aria-busy','false');
+    $('refresh-button').innerHTML='表示を更新 <span>↻</span>';
+  } }
 }
 $('clear-venue-filters').addEventListener('click',()=>{for(const key of Object.keys(venueFilters))venueFilters[key]=null;renderVenueFilters();});
 $('venue-select').addEventListener('change', () => {
@@ -337,7 +347,7 @@ $('archive-tab').addEventListener('click', () => showView('archive'));
 $('releases-tab').addEventListener('click',()=>showView('releases'));
 const routeView=()=>showView(location.hash==='#releases'?'releases':location.hash==='#archive'?'archive':'live');
 window.addEventListener('popstate',routeView);window.addEventListener('hashchange',routeView);routeView();
-$('refresh-button').addEventListener('click', load);
+$('refresh-button').addEventListener('click',()=>load({forceOdds:true}));
 await load();
 try {
   const response = await fetch(new URL('./data/archive.json', document.baseURI));

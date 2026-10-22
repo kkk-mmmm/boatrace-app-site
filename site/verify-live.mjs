@@ -57,6 +57,16 @@ const run=async expression=>{const result=await send('Runtime.evaluate',{express
 const wait=async expression=>{for(let n=0;n<200;n++){if(await run(expression))return;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('画面待ち: '+expression);};
 try{
  await send('Runtime.enable');await send('Page.enable');
+ await send('Page.addScriptToEvaluateOnNewDocument',{source:`{
+  const nativeFetch=window.fetch.bind(window);window.__cloudflareReads=[];
+  window.fetch=async(input,options)=>{
+   const response=await nativeFetch(input,options),url=new URL(String(input),location.href);
+   if(url.origin==='https://boatrace-odds.kazu80504.workers.dev'&&url.pathname==='/v1/odds'){
+    const data=await response.clone().json();window.__cloudflareReads.push({status:response.status,cache:options?.cache,date:data.date,served_at:data.served_at,venue:url.searchParams.get('venue')});
+   }
+   return response;
+  };
+ }`});
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
  await send('Page.navigate',{url:base+'?venue='+candidate.venue_code});
  if(morning){
@@ -118,6 +128,23 @@ try{
   races_with_odds:venues.flatMap(v=>v.races).filter(r=>r.odds?.items?.length).length,
   browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,saved_proposal:savedProposal,saved_proposal_count:workerOdds?.proposals?.length || 0,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
+ }
+ if(workerOdds){
+  await wait("!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length>0");
+  const before=await run('window.__cloudflareReads.length');
+  for(let n=1;n<=2;n++){
+   await run("document.getElementById('refresh-button').click()");
+   await wait(`!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length===${before+n}`);
+  }
+  const reads=await run('window.__cloudflareReads.slice(-2)');
+  for(const read of reads){assert.equal(read.status,200);assert.equal(read.cache,'no-store');assert.equal(read.date,current.date);assert.equal(read.venue,candidate.venue_code);}
+  if(morning&&candidate.meeting_status==='OPEN'){
+   assert.ok((await run("document.getElementById('update-status').textContent")).includes('初回取得待ち'));
+   assert.equal(await run("document.getElementById('update-status').textContent.includes('取得に失敗')"),false);
+  }
+  assert.deepEqual(errors,[]);
+  const refreshReport={checked_at:new Date().toISOString(),site_url:base,manual_refreshes:reads,waited_for_60_second_throttle:false,update_status:await run("document.getElementById('update-status').textContent"),errors};
+  fs.writeFileSync(path.join(output,'manual-refresh.json'),JSON.stringify(refreshReport,null,2)+'\n');console.log('::notice title=Published manual refresh verification::'+JSON.stringify(refreshReport));
  }
  await run("document.getElementById('releases-tab').click()");
  await wait("!document.getElementById('releases-view').hidden && document.querySelectorAll('.release-card').length>=7");

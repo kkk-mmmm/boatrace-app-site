@@ -1,6 +1,6 @@
 {
   "approved": true,
-  "reviewed_commit": "f730a1d651a7b4562df4e53f47b840368c69d0c9",
+  "reviewed_commit": "5902f179a7607ed3f239bcd73278b09579ca1b95",
   "approved_on": "2026-10-22",
   "note": "承認済み公開サイトのオッズ取得を、実データ確認済みCloudflareの5分更新へ接続。"
 }

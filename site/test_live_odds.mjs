@@ -6,6 +6,7 @@ import path from 'node:path';
 import {ODDS_INTERVAL_MS,rankExpectedValue,validateLiveOdds,applyLiveOdds} from './public/odds-live.mjs';
 import {raceStatus} from './public/view.mjs';
 import {build} from './build.mjs';
+import {oddsProvider} from './odds-provider.mjs';
 
 const now=Date.parse('2030-01-01T01:00:00Z'),date='2030-01-01';
 const race={date,venue_code:'06',race_no:1,deadline_at:'2030-01-01T02:00:00Z',items:[{rank:1,combo:'1-2-3',probability:.2}],
@@ -43,4 +44,13 @@ test('接続先未設定では外部通信を有効にせず、設定時はそ�
   assert.ok(read('index.html').includes("connect-src 'self' https://odds.example.test"));
   assert.equal(JSON.parse(read('data/odds-config.json')).interval_seconds,300);
   assert.throws(()=>build({...opts,oddsApiUrl:'http://odds.example.test/v1/odds'}),/HTTPS/);
+});
+test('リポジトリの接続設定を読み、環境変数を優先し、不正なURLを拒否する',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'boatrace-provider-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const file=path.join(dir,'provider.json');fs.writeFileSync(file,JSON.stringify({api_url:null}));
+  assert.equal(oddsProvider({file,environment:{}}),'');
+  fs.writeFileSync(file,JSON.stringify({api_url:'https://odds.example.test/v1/odds'}));
+  assert.equal(oddsProvider({file,environment:{}}),'https://odds.example.test/v1/odds');
+  assert.equal(oddsProvider({file,environment:{BOATRACE_ODDS_API_URL:'https://other.example.test/v1/odds'}}),'https://other.example.test/v1/odds');
+  assert.throws(()=>oddsProvider({file,environment:{BOATRACE_ODDS_API_URL:'http://bad.example.test/v1/odds'}}),/HTTPS/);
 });

@@ -55,6 +55,8 @@ jobs:
         env:
           BOATRACE_ODDS_API_URL: ${{ vars.BOATRACE_ODDS_API_URL }}
         run: |
+          BOATRACE_ODDS_API_URL="$(node site/odds-provider.mjs)"
+          export BOATRACE_ODDS_API_URL
           if [ -n "$BOATRACE_ODDS_API_URL" ]; then
             python tools/site/collect_all.py --skip-odds
           else
@@ -104,6 +106,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BOATRACE_ODDS_API_URL: ${{ vars.BOATRACE_ODDS_API_URL }}
         run: |
+          BOATRACE_ODDS_API_URL="$(node site/odds-provider.mjs)"
+          export BOATRACE_ODDS_API_URL
           if [ "$EVENT_NAME" = schedule ]; then
             node site/build.mjs --snapshots site/staging
           else

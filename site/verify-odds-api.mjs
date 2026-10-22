@@ -20,6 +20,8 @@ try {
     const state=JSON.stringify({update:data.update,statuses:data.races.reduce((counts,r)=>(counts[r.status]=(counts[r.status] || 0)+1,counts),{}),live:records.length});
     if(state!==lastState){console.log('::notice title=Cloudflare odds status::'+state);lastState=state;}
     if(data.update.status==='FAILED')throw Error(data.update.message || 'Cloudflareの定期取得が失敗しました');
+    if(data.update.status==='COMPLETE' && data.races.length && data.races.every(r=>r.status==='FAILED'))
+      throw Error('全レースの取得に失敗: '+data.races.slice(0,3).map(r=>r.message).join(' / '));
     if(records.length && !baseline) {
       baseline={started_at:data.update.started_at,records:new Map(records.map(r=>[`${r.venue_code}-${r.race_no}`,r]))};
     }

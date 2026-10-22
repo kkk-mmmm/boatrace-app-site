@@ -28,13 +28,13 @@ npm run check
 
 ## 本番接続
 
-実装時点ではCloudflareは未認証です。公開サイトは引き続きActionsの取得を使い、Worker接続先の初期値は無効です。
+接続先は `site/odds-provider.json` の `api_url` で管理します。初期値は `null` です。Actions Variableの `BOATRACE_ODDS_API_URL` が設定されている場合はそちらを優先します。GitHubの変数操作権限がなくても、レビュー対象の設定ファイルで接続・切り戻しを行えます。
 
 1. Cloudflareでプラン・Freeの利用上限を確認します。SQLite型Durable Objectsを使います。有料プランへの変更はコードでは行いません。
 2. `kkk-mmmm/boatrace-app-site` のActions Secretsへ `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録します。APIトークンは対象アカウントのWorkersを編集する範囲に限定します。認証情報をチャットやコードに貼らないでください。
 3. Actionsの **Deploy Cloudflare odds worker** を手動実行します。テスト後にデプロイし、ログへWorkerのURLが表示されます。ローカルなら `npx wrangler login` → `npm run deploy` でも実行できます。
 4. 先にPagesの `data/odds-targets.json` が公開されていることを確認します。Workerのログ、Cron実行、`/v1/odds?date=当日の日付` で公式への接続と取得時刻・状態を確認します。テスト資料の成功だけで本番の取得成功とは判断しません。
-5. 公開用リポジトリのActions Variablesへ `BOATRACE_ODDS_API_URL` を `https://実際のWorkerホスト/v1/odds` の形式で登録します。このURLは秘密情報ではありません。
+5. 本番の取得確認後、公開用リポジトリの `site/odds-provider.json` の `api_url` に `https://実際のWorkerホスト/v1/odds` を設定します。このURLは秘密情報ではありません。代わりにActions Variableの `BOATRACE_ODDS_API_URL` も使用できます。
 6. **Refresh and publish approved site** を手動実行します。変数の設定時だけActions側のオッズ取得を停止し、画面の接続先とCSPを変更します。出走表・展示・予想保存・日次結果照合は継続します。
 7. 公開画面で5分経過後の更新、全120通りからの期待値上位10点、ねらい目、失敗時の参考表示を確認します。無料枠の超過時は停止する可能性があり、利用量を監視します。
 
@@ -42,7 +42,7 @@ npm run check
 
 ## 切り戻し
 
-公開用リポジトリの `BOATRACE_ODDS_API_URL` を削除しPages更新を実行すると、Actions側の取得へ戻ります。WorkerのCronも `wrangler.jsonc` の `crons` を空配列にして再デプロイして停止します。保存予想は変更しません。
+`site/odds-provider.json` の `api_url` を `null` に戻し、設定していれば `BOATRACE_ODDS_API_URL` 変数も削除して、承認対象コミットの更新とPages更新を実行するとActions側の取得へ戻ります。WorkerのCronも `wrangler.jsonc` の `crons` を空配列にして再デプロイして停止します。保存予想は変更しません。
 
 ## API
 

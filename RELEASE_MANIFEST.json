@@ -1,5 +1,5 @@
 {
-  "source_commit": "e7c6b28f6a5ca7af694916f8ac3aae08e5f80a14",
+  "source_commit": "c47649a2c606334356c23e485e8e0a359028699a",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -9,7 +9,9 @@
     "site/check-approval.mjs": "45dc741ff95729a15a8f913f8ebbbcb4d1b1d15e428a4cdf694e688b73a7a36c",
     "site/snapshot.mjs": "8501aecead04a02245294833643974c15a2d4d0f4cfc2cd7528d539aaf0859c1",
     "site/verify-live.mjs": "a167cf08624228aa0062f11d052667e8b0850c20ac2ddc0be4af908877798aad",
-    "site/verify-odds-api.mjs": "fcbeef6924c743abf43e87686f4a8adef27a890006597eee6734fdbbaaef0007",
+    "site/verify-odds-api.mjs": "1ad552406789baddedd64a1a4859f0833baa5dc73804ca7c5e89e0c8ae3ed3ab",
+    "site/odds-provider.mjs": "f5c26443b2cc077402540586df5ef0216a5698737c72cc9a6dcce2c8a36d2ce8",
+    "site/odds-provider.json": "eb2157f4ef3cc7a81ab4d89a499a4d812c440f89ea90155a9d09dc301ade4400",
     "site/public/index.html": "434fc9c53f3d498c26d4f740897dd5ddf01a32dd9ff95b93d81a303df0adc4cc",
     "site/public/style.css": "0a75214f2b8b46e2d7621e70b22dd1e51a95ca6130a303f67b8f845b66c5b1cd",
     "site/public/app.mjs": "bc68df0a8edb4c0b0c84604726da0916a53430ab8f228f628441e77da80df1fb",
@@ -18,7 +20,7 @@
     "site/test_data.mjs": "ed34b2855f17b5299b2defc04f24c3b2ddae7096e4c13803798599cf50c8d7af",
     "site/test_update.mjs": "093bab4ca1c8971f0d2f1712904175c4fdc5ac274f2f7a4058b6c2a7cd42704b",
     "site/test_approval.mjs": "49020403a84d4a1293a562a46beab364f0adbb5b5211fff9ecc604730a71d08f",
-    "site/test_live_odds.mjs": "2a44eddb70be8b70493137e1d30f229a9b7df4b5aa4ea3d27921849cc4e3f8a2",
+    "site/test_live_odds.mjs": "6d427f3f3189511599fbf39cc9a87976b2b8dfbb466fa2b22491d2afe75b4edc",
     "app/odds.mjs": "dfc0655a64967919a6e26b044a1477c221f944e2d69e97fde36ca3178233ea3f",
     "tools/prerace/save_prediction.mjs": "f634bd37628b7641c4d6ff5b5a60d3b4f37778ee1d1ae693039addaa1ae19a5e",
     "tools/prerace/save_selected.mjs": "b0236d0d2710223c86c72384a15901026a674417d5f5bedb51e29764bd32aace",
@@ -47,6 +49,6 @@
     "cloudflare/odds/package.json": "5fdd650b7d6c322253dc7de8cae30428e59a468f5a6dc171e9cc88ecb3f16613",
     "cloudflare/odds/package-lock.json": "4b96499ae50ceefd691045d2f95e0cb23eb63b08858928f05d88e7193b184cb8",
     "cloudflare/odds/test_worker.mjs": "4fb74829aead0fd527b8f93aaa59e5ac9dc15a56416b6a7892c1fca499b830f5",
-    "cloudflare/odds/README.md": "7c412f7820071c17b0e4cbf7c009b23d686a02a5e92c77ea189f797be4496d96"
+    "cloudflare/odds/README.md": "3cda202cbc245418d91e0887c9f246b537a51b97b9382b501ec7152d6ce6fd7f"
   }
 }

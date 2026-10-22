@@ -27,8 +27,14 @@ try {
     }
     const changed=baseline && records.filter(r=>{
       const before=baseline.records.get(`${r.venue_code}-${r.race_no}`);
-      return before && Date.parse(r.fetched_at)>Date.parse(before.fetched_at) && Date.parse(r.attempted_at)-Date.parse(before.attempted_at)>=300000;
+      const interval=before && Date.parse(r.attempted_at)-Date.parse(before.attempted_at);
+      return before && Date.parse(r.fetched_at)>Date.parse(before.fetched_at) && interval>=300000 && interval<=420000;
     });
+    // Start a fresh measurement after a long gap; do not accept ten-minute updates.
+    if(observe && baseline)for(const record of records) {
+      const key=`${record.venue_code}-${record.race_no}`,before=baseline.records.get(key);
+      if(!before || Date.parse(record.attempted_at)-Date.parse(before.attempted_at)>420000)baseline.records.set(key,record);
+    }
     if(records.length && (!observe || changed.length)) {
       const selected=(observe?changed:records).sort((a,b)=>Date.parse(b.deadline_at)-Date.parse(a.deadline_at))[0];
       const report={checked_at:new Date().toISOString(),api_url:api,date:data.date,interval_seconds:300,update:data.update,
@@ -37,7 +43,8 @@ try {
         selected:{venue_code:selected.venue_code,race_no:selected.race_no,quotes:selected.items.length,fetched_at:selected.fetched_at,
           attempted_at:selected.attempted_at,deadline_at:selected.deadline_at},
         repeated_update_observed:!!(observe && changed.length),
-        previous_attempted_at:observe?baseline.records.get(`${selected.venue_code}-${selected.race_no}`).attempted_at:null};
+        previous_attempted_at:observe?baseline.records.get(`${selected.venue_code}-${selected.race_no}`).attempted_at:null,
+        attempt_interval_seconds:observe?(Date.parse(selected.attempted_at)-Date.parse(baseline.records.get(`${selected.venue_code}-${selected.race_no}`).attempted_at))/1000:null};
       fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,'odds-api.json'),JSON.stringify(report,null,2)+'\n');
       console.log('::notice title=Cloudflare odds verification::'+JSON.stringify(report));verified=true;break;
     }

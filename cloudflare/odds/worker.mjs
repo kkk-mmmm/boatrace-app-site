@@ -119,16 +119,12 @@ export class OddsCoordinator {
     const targets=await storage.get(keys.map(key=>'target:'+key));
     const previous=await storage.get(keys.map(key=>'race:'+key));
     const queue=keys.map(key=>({key,target:targets.get('target:'+key),previous:previous.get('race:'+key)}));
-    const attempts={};
     for(const item of queue) {
-      item.attempted=Date.now();
-      item.skip=!item.target || Date.parse(item.target.deadline_at)<=item.attempted
-        || item.previous && item.attempted-Date.parse(item.previous.attempted_at)<ODDS_INTERVAL_MS;
-      if(!item.skip)attempts['race:'+item.key]={...(item.previous || {}),date:work.date,venue_code:item.target.venue_code,
-        race_no:item.target.race_no,deadline_at:item.target.deadline_at,status:'FAILED',items:item.previous?.items || [],
-        attempted_at:iso(item.attempted),message:'取得中または前回の取得が中断されました'};
+      const attempted=Date.parse(item.previous?.attempted_at);
+      // A retried alarm must not repeat attempts made by this same cycle.
+      item.skip=!item.target || Date.parse(item.target.deadline_at)<=Date.now() || attempted>=work.started_ms;
+      item.due=Number.isFinite(attempted)?attempted+ODDS_INTERVAL_MS:Date.now();
     }
-    if(Object.keys(attempts).length)await storage.put(attempts);
     let nextStart=Date.now();const venues=new Map();
     const waitTurn=async venue=>{
       while(true) {
@@ -140,12 +136,19 @@ export class OddsCoordinator {
     const run=async()=>{
       while(queue.length) {
         const item=queue.shift();if(item.skip)continue;
-        const target=item.target;await waitTurn(target.venue_code);
+        const target=item.target;
+        if(item.due>=Date.parse(target.deadline_at))continue;
+        // Keep the previous successful quote available while waiting for its
+        // five-minute interval, rather than dropping the race for another cycle.
+        while(item.due>Date.now())await new Promise(resolve=>setTimeout(resolve,item.due-Date.now()));
+        await waitTurn(target.venue_code);
         const attempted=Date.now();
         if(attempted>=Date.parse(target.deadline_at))continue;
         const base={date:work.date,venue_code:target.venue_code,race_no:target.race_no,deadline_at:target.deadline_at,
           prediction_key:target.prediction_key,attempted_at:iso(attempted),source_url:officialUrl(target)};
         try {
+          await storage.put('race:'+item.key,{...item.previous,...base,status:'FAILED',items:item.previous?.items || [],
+            message:'取得中または前回の取得が中断されました'});
           const text=await fetchText(base.source_url),fetched=Date.now();
           const items=await parseOfficialHtml(text);
           const status=fetched>=Date.parse(target.deadline_at)?'CLOSED':items.length?'OK':'UNAVAILABLE';

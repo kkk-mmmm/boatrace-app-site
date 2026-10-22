@@ -37,19 +37,22 @@ test('HTTPエラー・過大な応答・対象外の応答を拒否する',async
   await assert.rejects(fetchText('https://www.boatrace.jp/',async()=>new Response('x',{status:503})),/HTTP/);
   await assert.rejects(fetchText('https://www.boatrace.jp/',async()=>new Response('123456'),5),/大きすぎ/);
 });
-test('中断後の再実行でも5分未満は再取得せず、失敗時は前回値と取得時刻を保持する',async t=>{
-  t.mock.timers.enable({apis:['Date'],now});
+test('5分に満たないレースは残り時間を待って取得し、同じ更新の再実行では取得を重ねない',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now});
   const storage=new Storage(),coordinator=new OddsCoordinator({storage},{TARGETS_URL:'https://site.test/targets'});
   await storage.put('work',{date:target.date,started_ms:now,keys:['06-1'],cursor:0,running:true});
   await storage.put('target:06-1',target);
   const previous={...target,attempted_at:new Date(now-60000).toISOString(),fetched_at:new Date(now-59000).toISOString(),status:'OK',items:[{combo:'1-2-3',odds:10}]};
   await storage.put('race:06-1',previous);
   let requests=0;t.mock.method(globalThis,'fetch',async()=>{requests++;return new Response('fail',{status:503});});
-  await coordinator.alarm();assert.equal(requests,0);assert.deepEqual(await storage.get('race:06-1'),previous);
-  t.mock.timers.tick(300000);
-  await storage.put('work',{date:target.date,started_ms:now+300000,keys:['06-1'],cursor:0,running:true});
-  await coordinator.alarm();const failed=await storage.get('race:06-1');
+  const pending=coordinator.alarm();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requests,0);assert.deepEqual(await storage.get('race:06-1'),previous);
+  t.mock.timers.tick(239999);await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,0);
+  t.mock.timers.tick(1);await pending;const failed=await storage.get('race:06-1');
   assert.equal(requests,1);assert.equal(failed.status,'FAILED');assert.equal(failed.fetched_at,previous.fetched_at);assert.deepEqual(failed.items,previous.items);
+  assert.equal(Date.parse(failed.attempted_at)-Date.parse(previous.attempted_at),300000);
+  await storage.put('work',{date:target.date,started_ms:now,keys:['06-1'],cursor:0,running:true});
+  await coordinator.alarm();assert.equal(requests,1);
   assert.equal(storage.alarm,null);
 });
 test('全場集計は古いオッズ、締切、予想版の不一致をねらい目に入れない',()=>{

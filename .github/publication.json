@@ -1,6 +1,6 @@
 {
   "approved": true,
-  "reviewed_commit": "7bef2cc83ed596dcfd5ad10a04c0c51dbf155e49",
+  "reviewed_commit": "53cb80f529fec110756ec17ce8ead08dc1e643e7",
   "approved_on": "2026-10-22",
-  "note": "承認済みサイトに1着の傾向別確率・10点ずつの追加表示・スジ候補を追加。自動テスト83件とスマートフォン表示を確認。"
+  "note": "承認済みサイトの提案を締切3分前以前の記録で固定し、締切30分以内のオッズを1分更新へ変更。Node 86件、Workers 13件と締切後・再読込・API失敗の保持を確認。"
 }

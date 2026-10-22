@@ -45,7 +45,7 @@ export function proposalCandidate(target, quote, now=Date.now()) {
   if (now>cutoff || quote?.status!=='OK' || quote.prediction_key!==target.prediction_key || quote.deadline_at!==target.deadline_at
     || quote.date!==target.date || quote.venue_code!==target.venue_code || quote.race_no!==target.race_no
     || !['OK','PARTIAL'].includes(target.update_status) || target.issue
-    || !Number.isFinite(Date.parse(target.last_success_at)) || now-Date.parse(target.last_success_at)>ODDS_MAX_AGE_MS) return null;
+    || !Number.isFinite(Date.parse(target.last_success_at)) || Date.parse(target.last_success_at)>now+60000) return null;
   const proposal={...target,schema_version:1,cutoff_at:new Date(cutoff).toISOString(),proposal_saved_at:new Date(now).toISOString(),
     odds:{items:quote.items,fetched_at:quote.fetched_at,recorded_at:quote.fetched_at,source_url:quote.source_url,
       classification:'PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED'}};

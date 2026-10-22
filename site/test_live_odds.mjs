@@ -67,6 +67,9 @@ test('締切30分以内だけ1分、それより先は5分を選び、境界で�
 });
 test('締切3分前以前の確率・予想版・オッズを保存し、後から得た値で当時の提案を作らない',()=>{
   const candidate=proposalCandidate(proposalTarget,proposalQuote,now);assert.ok(candidate);
+  // A saved prediction may be older than the odds; keep the latest valid
+  // quote instead of treating a delayed static publication as a new model.
+  assert.ok(proposalCandidate({...proposalTarget,last_success_at:new Date(now-11*60000).toISOString()},proposalQuote,now));
   const cutoff=Date.parse(candidate.cutoff_at),frozen={...candidate,frozen_at:new Date(cutoff+1000).toISOString()};
   assert.equal(validProposal(frozen,date,cutoff+1000),true);
   assert.equal(validProposal(candidate,date,cutoff+1000),false);

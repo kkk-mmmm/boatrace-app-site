@@ -7,7 +7,7 @@ const api='https://boatrace-odds.kazu80504.workers.dev/v1/odds';
 const observe=process.env.ODDS_OBSERVE_UPDATE==='true';
 const output=process.env.SITE_VERIFY_OUTPUT || '/tmp/boatrace-odds-check';
 const date=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
-const started=Date.now();let baseline=null,lastState=null,verified=false;
+const started=Date.now();let baseline=null,idleBaseline=null,lastState=null,verified=false;
 try {
   while(Date.now()-started<12*60000) {
     const url=new URL(api);url.searchParams.set('date',date());
@@ -22,6 +22,22 @@ try {
     if(data.update.status==='FAILED')throw Error(data.update.message || 'Cloudflareの定期取得が失敗しました');
     if(data.update.status==='COMPLETE' && data.races.length && data.races.every(r=>r.status==='FAILED'))
       throw Error('全レースの取得に失敗: '+data.races.slice(0,3).map(r=>r.message).join(' / '));
+    // After racing ends, verify the scheduler separately. This is not proof
+    // of a real race's acquisition interval and must be reported as such.
+    if(!records.length && !data.races.length && data.update.status==='IDLE') {
+      const cycle=Date.parse(data.update.started_at);
+      if(Number.isFinite(cycle) && !idleBaseline)idleBaseline=cycle;
+      const gap=cycle-idleBaseline;
+      if(!observe || Number.isFinite(cycle) && gap>=60000 && gap<=120000) {
+        const report={checked_at:new Date().toISOString(),api_url:api,date:data.date,interval_seconds:data.interval_seconds,
+          mode:'IDLE_SCHEDULER',update:data.update,record_count:0,live_records:0,saved_proposals:data.proposals?.length || 0,
+          repeated_scheduler_observed:!!observe,scheduler_interval_seconds:observe?gap/1000:null,
+          live_race_interval_verified:false,reason:'締切前の取得対象がないため定期処理のみ確認。実レースの1分取得間隔は未計測。'};
+        fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,'odds-api.json'),JSON.stringify(report,null,2)+'\n');
+        console.log('::notice title=Cloudflare odds verification::'+JSON.stringify(report));verified=true;break;
+      }
+      if(gap>120000)idleBaseline=cycle;
+    }
     if(records.length && !baseline) {
       baseline={started_at:data.update.started_at,records:new Map(records.map(r=>[`${r.venue_code}-${r.race_no}`,r]))};
     }

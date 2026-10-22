@@ -1,5 +1,5 @@
 {
-  "source_commit": "3779d4ebd1d714ec5bd2febf68884ff8884e5c0d",
+  "source_commit": "fe96c9f142dc2b7b32a56d363dcb5434fcf80d1f",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -9,12 +9,12 @@
     "site/check-approval.mjs": "45dc741ff95729a15a8f913f8ebbbcb4d1b1d15e428a4cdf694e688b73a7a36c",
     "site/snapshot.mjs": "8501aecead04a02245294833643974c15a2d4d0f4cfc2cd7528d539aaf0859c1",
     "site/verify-live.mjs": "7990b980f02e31ec29a3eb537655aab3291033cac789d15f8753113a9a768136",
-    "site/verify-odds-api.mjs": "9c6c8165d61ac0399fe7ca1cbe71dbd789bb9722a96bc0ddea6e5b8131a66c82",
+    "site/verify-odds-api.mjs": "7901644d19b6367a2ba25ec6818983699bdcd8c9848b102ef513da24995ac4ce",
     "site/odds-provider.mjs": "f5c26443b2cc077402540586df5ef0216a5698737c72cc9a6dcce2c8a36d2ce8",
     "site/odds-provider.json": "bdc8b4bc2a0105c7a28d11ae94dadac957e5660700fbc922eb5d1222eef3554f",
     "site/public/index.html": "434fc9c53f3d498c26d4f740897dd5ddf01a32dd9ff95b93d81a303df0adc4cc",
     "site/public/style.css": "9a49ef2b00d462a5bf597618c07dc6e40a8a29efa87697ba6901f09636831ce6",
-    "site/public/app.mjs": "63639c276b5da90fa398c46178e12b172c13a028f7d98619efdd5f16aadd66c7",
+    "site/public/app.mjs": "6d7a1d5e2c529cac275070b201ae2f3e365cf754d38b52628c1cd9528510de9a",
     "site/public/view.mjs": "47158eb2704b7a0e5a955664b39eb497b748f94835d76ae98078124e9a68421b",
     "site/public/odds-live.mjs": "6b8d852755edb19852ea3bbfc8b0fd00329d7d04d6d191adc744eb539ec32a46",
     "site/test_data.mjs": "ed34b2855f17b5299b2defc04f24c3b2ddae7096e4c13803798599cf50c8d7af",

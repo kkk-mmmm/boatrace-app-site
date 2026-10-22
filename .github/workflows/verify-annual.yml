@@ -1,0 +1,21 @@
+name: Verify annual model and Cloudflare programs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: node site/verify-annual-data.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: annual-production-verification
+          path: /tmp/annual-production.json
+          retention-days: 30

@@ -1,4 +1,4 @@
-import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,dataActions,annualForecast,programCalendar} from './program.mjs';
+import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,dataActions,annualForecast,programCalendar,annualEntryData} from './program.mjs';
 import {validateAnnualModel} from '../../site/public/annual-model.mjs';
 import {fetchText,officialUrl,robotsAllowed,parseOfficialHtml,OFFICIAL_ORIGIN} from './official.mjs';
 import {ODDS_INTERVAL_MS,ODDS_MAX_AGE_MS,oddsKey,rankExpectedValue,validQuotes,proposalCandidate,validProposal,oddsRefreshInterval,FAR_ODDS_INTERVAL_MS} from '../../site/public/odds-live.mjs';
@@ -231,7 +231,7 @@ export class OddsCoordinator {
           await storage.put('agenda:'+venue.code,agenda);
           const first=agenda.find(r=>r.race_no===1);
           if(first){let p={...first,entries:programEntries(page),context:programContext(page,venue.meeting),entries_fetched_at:iso(Date.now()),input_source_url:url,entries_30m_done:Date.parse(first.deadline_at)-Date.now()<=1800000};
-            const forecast=this.annualModel?annualForecast(p,this.annualModel,Date.now()):null;if(forecast)p={...p,...forecast};await storage.put('program:'+oddsKey(p),p);}
+            if(this.annualModel)p=annualEntryData(p,this.annualModel);const forecast=this.annualModel?annualForecast(p,this.annualModel,Date.now()):null;if(forecast)p={...p,...forecast};await storage.put('program:'+oddsKey(p),p);}
         }catch(error){await storage.put('bootstrap-issue:'+venue.code,{message:String(error.message).slice(0,200),attempted_at:iso(now)});}
         await new Promise(resolve=>setTimeout(resolve,250));
       }
@@ -241,21 +241,25 @@ export class OddsCoordinator {
   }
   async refreshProgram(target,waitTurn){
     const storage=this.ctx.storage,key=oddsKey(target),now=Date.now();let program=await storage.get('program:'+key);
+    const identity={date:target.date,venue_code:target.venue_code,venue:target.venue,race_no:target.race_no,deadline_at:target.deadline_at,context:target.context};
     const actions=dataActions(program,target.deadline_at,now);let changed=false,dirty=false;
     const robots=(await storage.get('robots'))?.text||'User-agent: *\nDisallow: /';
     if(actions.entries && (!program?.entries_last_attempt || now-Date.parse(program.entries_last_attempt)>=300000)){
       const url=`${OFFICIAL_ORIGIN}/owpc/pc/race/racelist?hd=${target.date.replaceAll('-','')}&jcd=${target.venue_code}&rno=${target.race_no}`;
-      await waitTurn(target.venue_code);program={...target,...program,entries_last_attempt:iso(Date.now())};dirty=true;
+      await waitTurn(target.venue_code);program={...identity,...program,entries_last_attempt:iso(Date.now())};dirty=true;
       try{if(!robotsAllowed(robots,url))throw Error('出走表はrobots.txtで取得対象外です');const page=await parseProgramHtml(await fetchText(url));program={...program,entries:programEntries(page),context:programContext(page,target.context||program.context),entries_fetched_at:iso(Date.now()),input_source_url:url,entries_30m_done:Date.parse(target.deadline_at)-Date.now()<=1800000,entries_issue:null};changed=true;}
       catch(error){program.entries_issue=String(error.message).slice(0,200);}
     }
     if(actions.exhibition){
       const url=`${OFFICIAL_ORIGIN}/owpc/pc/race/beforeinfo?hd=${target.date.replaceAll('-','')}&jcd=${target.venue_code}&rno=${target.race_no}`;
-      await waitTurn(target.venue_code);program={...target,...program};dirty=true;
+      await waitTurn(target.venue_code);program={...identity,...program};dirty=true;
       try{if(!robotsAllowed(robots,url))throw Error('展示はrobots.txtで取得対象外です');const display=programExhibition(await parseProgramHtml(await fetchText(url)));
         program.entries=(program.entries||[]).map(e=>({...e,...display.find(x=>x.lane===e.lane)}));program.exhibition_fetched_at=iso(Date.now());program.exhibition_source_url=url;program.exhibition_available=display.length===6&&display.every(e=>e.exhibition_time!==null);program.exhibition_issue=null;changed=true;
       }catch(error){program.exhibition_issue=String(error.message).slice(0,200);}
       if(Date.parse(target.deadline_at)-now<=300000)program.exhibition_5m_done=true;else program.exhibition_10m_done=true;
+    }
+    if(program?.entries?.length===6 && this.annualModel && (changed||program.history_model_id!==this.annualModel.id)){
+      try{program=annualEntryData(program,this.annualModel);dirty=true;}catch(error){program.model_issue=String(error.message).slice(0,200);}
     }
     if(program && this.annualModel && (changed||program.model_id!==this.annualModel.id)){
       try{const forecast=annualForecast(program,this.annualModel,Date.now());if(forecast){program={...program,...forecast};dirty=true;}}

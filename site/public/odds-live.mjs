@@ -81,7 +81,7 @@ export function applyLivePrograms(snapshot,data,now=Date.now()) {
     const old=races.get(p.race_no)||{date:p.date,venue_code:p.venue_code,venue:snapshot.venue,race_no:p.race_no,items:[],probabilities:[],odds:null};
     const next={...old,...p,venue:snapshot.venue,source_kind:'CLOUDFLARE_SCHEDULED_PROGRAM'};
     // The saved proposal is immutable. Entries may be checked later independently.
-    if(!p.probabilities?.length){for(const k of ['items','probabilities','scores','model_id','model_name','model_status','model_validation','prediction_saved_at','input_fetched_at','history'])next[k]=old[k];}
+    if(!p.probabilities?.length){for(const k of ['items','probabilities','scores','model_id','model_name','model_status','model_validation','prediction_saved_at','input_fetched_at'])next[k]=old[k];}
     next.items=next.items||[];races.set(p.race_no,next);
   }
   const healthy=data.update?.status!=='FAILED'&&Number.isFinite(Date.parse(data.served_at))&&now-Date.parse(data.served_at)<=ODDS_MAX_AGE_MS&&Date.parse(data.served_at)<=now+60000;

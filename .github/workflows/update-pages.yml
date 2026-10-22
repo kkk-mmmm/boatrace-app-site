@@ -58,7 +58,7 @@ jobs:
           BOATRACE_ODDS_API_URL="$(node site/odds-provider.mjs)"
           export BOATRACE_ODDS_API_URL
           if [ -n "$BOATRACE_ODDS_API_URL" ]; then
-            python tools/site/collect_all.py --skip-odds
+            node site/collect-cloudflare.mjs
           else
             python tools/site/collect_all.py
           fi
@@ -98,7 +98,7 @@ jobs:
           path: site/staging
       - name: Validate forecast and freshness behavior
         run: |
-          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs
+          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs
           python -B tools/site/test_probe.py
           python -B tools/site/test_collect_all.py
       - name: Build current data or explicit failure state

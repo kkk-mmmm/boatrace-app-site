@@ -1,4 +1,4 @@
-import {predictAnnual,validateAnnualModel,annualHistory} from '../../site/public/annual-model.mjs';
+import {predictAnnual,validateAnnualModel,annualHistory,annualLaneStats} from '../../site/public/annual-model.mjs';
 export const norm=value=>String(value||'').normalize('NFKC').replace(/&nbsp;|&#160;/g,' ').trim();
 const requireValue=(ok,message)=>{if(!ok)throw Error(message);};
 const num=value=>/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(norm(value).replaceAll(',',''))?Number(norm(value).replaceAll(',','')):null;
@@ -83,4 +83,10 @@ export function programCalendar(page,date){
  }
  if(!held.size&&!/本日.*開催.*ありません/.test(page.body||''))throw Error('公式開催一覧の構造を確認できません');
  return Array.from({length:24},(_,i)=>{const code=String(i+1).padStart(2,'0');return held.get(code)||{code,meeting_status:'NO_MEETING',meeting:{}};});
+}
+
+export function annualEntryData(program,model){
+ if(!model||program.entries?.length!==6)return program;
+ validateAnnualModel(model,program.date);
+ return {...program,history_model_id:model.id,history_window:model.coverage,history:annualHistory(program,model),entries:program.entries.map(e=>({...e,annual_lane:annualLaneStats(model,e.racer_id,e.lane)}))};
 }

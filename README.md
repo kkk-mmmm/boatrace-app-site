@@ -2,7 +2,7 @@
 
 全24場の出走表・展示情報・固定式予想・取得時点の3連単オッズを表示する閲覧専用サイトです。
 
-公開先： https://kkk-mmmm.github.io/boatrace-app-site/ （初回配信作業中）
+公開先： https://kkk-mmmm.github.io/boatrace-app-site/
 
 ## 画面で確認できること
 

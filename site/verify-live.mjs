@@ -43,10 +43,11 @@ const available=venues.filter(fresh).flatMap(venue=>venue.races.map(race=>({venu
  .sort((a,b)=>Date.parse(b.race.odds.fetched_at)-Date.parse(a.race.odds.fetched_at));
 const preserved=venues.flatMap(venue=>venue.races.filter(race=>proposalRace(race,now)!==race).map(race=>({venue,race})));
 const reference=venues.flatMap(venue=>venue.races.filter(race=>race.items.length===10).map(race=>({venue,race})));
-const chosen=available[0] || preserved[0] || reference[0];assert.ok(chosen,'保存済み予想が必要です');
-const {venue:candidate,race}=chosen;
-const savedProposal=proposalRace(race,now)!==race;
-const expectedValueRows=savedProposal || raceStatus(race,candidate,now).currentOdds && Date.parse(race.deadline_at)-now>180000?10:0;
+const chosen=available[0] || preserved[0] || reference[0];
+const morning=!chosen && new Date(now+9*3600000).getUTCHours()<7;assert.ok(chosen || morning,'日中に保存済み予想を確認できません');
+const {venue:candidate,race}=chosen || {venue:venues.find(v=>v.meeting_status==='OPEN')||venues[0],race:null};
+const savedProposal=race?proposalRace(race,now)!==race:false;
+const expectedValueRows=race&&(savedProposal || raceStatus(race,candidate,now).currentOdds && Date.parse(race.deadline_at)-now>180000)?10:0;
 const cdp='http://127.0.0.1:9222',page=await(await fetch(cdp+'/json/new?about:blank',{method:'PUT'})).json();
 const ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(resolve=>ws.addEventListener('open',resolve,{once:true}));
 let id=0;const pending=new Map(),errors=[];
@@ -58,12 +59,25 @@ try{
  await send('Runtime.enable');await send('Page.enable');
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
  await send('Page.navigate',{url:base+'?venue='+candidate.venue_code});
+ if(morning){
+  await wait("document.querySelectorAll('#venue-select option').length===24 && document.querySelector('.empty h3')");
+  assert.equal(await run("document.querySelectorAll('.prediction-table tbody tr').length"),0);
+  assert.ok((await run("document.getElementById('current-date').textContent")).includes(current.date));
+  assert.equal(await run("getComputedStyle(document.querySelector('.header')).display"),'flex');
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
+  const report={checked_at:new Date().toISOString(),site_url:base,date:current.date,mode:'MORNING_WAIT',venues:venues.length,
+   annual_model:workerOdds?.annual_model,initial_collection_hour_jst:7,browser:{prediction_rows:0,empty_state:await run("document.querySelector('.empty h3').textContent"),mobile_overflow:false,errors},
+   live_prediction_verified:false,note:'朝の初回取得前。前日の予想やサンプルを当日の予想として表示していません。'};
+  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
+ }else{
  await wait("document.querySelectorAll('#venue-select option').length===24 && document.querySelectorAll('[data-race]').length>0");
  await run(`document.querySelector('[data-race="${race.race_no}"]').click()`);
  await wait("document.querySelectorAll('.prediction-table tbody tr').length===10");
  if(workerOdds)assert.ok((await run("document.getElementById('odds-status').textContent")).includes('1分'));
  assert.equal(await run("getComputedStyle(document.querySelector('.header')).display"),'flex');
- const label=await run("document.getElementById('model-label').textContent");assert.ok(label.includes('固定式')&&label.includes('未適用'));
+ const label=await run("document.getElementById('model-label').textContent"),displayed=proposalRace(race,now);
+ assert.equal(label,displayed.model_validation?.selected_lambda===null?'固定式 / 履歴補正は未適用':displayed.model_name || '固定スコアモデル v1');
  const probabilityRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");
  await run("document.getElementById('value-tab').click()");
  const valueRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");assert.equal(valueRows,expectedValueRows);
@@ -104,4 +118,5 @@ try{
   races_with_odds:venues.flatMap(v=>v.races).filter(r=>r.odds?.items?.length).length,
   browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,saved_proposal:savedProposal,saved_proposal_count:workerOdds?.proposals?.length || 0,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
+ }
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

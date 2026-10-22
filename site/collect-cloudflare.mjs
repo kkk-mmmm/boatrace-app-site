@@ -29,7 +29,6 @@ export async function collectCloudflare(apiUrl,output='site/staging') {
       && saved.races.every(p=>p.date===data.date&&p.venue_code===v.code))previous.push(saved);
   }catch{ /* New-day or unavailable cache remains explicitly empty. */ }}}));
   const snapshots=cloudflareSnapshots(data,Date.now(),previous);
-  if(snapshots.some(s=>s.meeting_status==='OPEN')&&!snapshots.some(s=>s.races.some(r=>r.probabilities?.length===120)))throw Error('Cloudflare側の予想初期取得を確認できません');
   fs.mkdirSync(output,{recursive:true});
   for(const s of snapshots)fs.writeFileSync(path.join(output,s.venue_code+'.json'),JSON.stringify(s)+'\n');
   console.log(JSON.stringify({date:snapshots[0].date,venues:snapshots.length,races:snapshots.reduce((n,s)=>n+s.races.length,0),source:'CLOUDFLARE_SHARED_CACHE'}));

@@ -165,8 +165,8 @@ function renderCurrent() {
   } else {
     notify(current.update.status === 'PARTIAL' ? current.update.message : null);
     const next = current.races.find(r => Date.parse(r.deadline_at) > now);
-    $('meeting-title').textContent = next ? `次の締切予定 ${next.race_no}R` : '本日の締切は終了しました';
-    $('meeting-detail').textContent = next ? `${clock(next.deadline_at)}（日本時間）` : '保存済みの予想は参考として確認できます。';
+    $('meeting-title').textContent = next ? `次の締切予定 ${next.race_no}R` : current.races.length ? '本日の締切は終了しました' : '本日の出走表は更新待ちです';
+    $('meeting-detail').textContent = next ? `${clock(next.deadline_at)}（日本時間）` : current.races.length ? '保存済みの予想は参考として確認できます。' : current.update.message || '取得できた出走表から表示します。';
   }
   if (!sameDay || current.races.length === 0) {
     $('live-content').innerHTML = `<div class="empty"><div class="empty-mark">≋</div><h3>${fresh && current.meeting_status === 'NO_MEETING' ? '次の開催で、また記録を。' : '本日の予想はまだ表示できません'}</h3><p>${fresh && current.meeting_status === 'NO_MEETING' ? `本日は${e(name)}の開催が確認できていません。保存済みの検証結果がある場合は、検証記録からご覧いただけます。` : '最新の出走表や必須データが確認できたレースから表示します。過去の記録やサンプルを、本日の予想として使うことはありません。'}</p><button id="empty-archive" class="text-button">これまでの検証記録を見る ↗</button></div>`;

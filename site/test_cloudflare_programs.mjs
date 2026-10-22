@@ -44,3 +44,8 @@ test('締切後も出走表へ年次統計を追加でき、保存済みの予�
  assert.equal(enriched.model_id,'legacy');assert.equal(enriched.prediction_saved_at,closed.prediction_saved_at);assert.deepEqual(enriched.probabilities,closed.probabilities);
  assert.equal(annualForecast(enriched,model,now),null);
 });
+
+test('日付変更後の朝の取得待ちは新しい開催日と空の出走表を明示し、前日の予想を混ぜない',()=>{
+ const {data}=example();const rows=cloudflareSnapshots({...data,programs:[],races:[],update:{status:'IDLE'}},now,[{date:'2029-12-31',venue_code:'06',races:[{race_no:12}]}]);
+ const next=rows.find(s=>s.venue_code==='06');assert.equal(next.date,'2030-01-01');assert.deepEqual(next.races,[]);assert.equal(next.update.status,'PARTIAL');assert.match(next.update.message,/取得待ち/);
+});

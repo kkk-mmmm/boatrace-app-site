@@ -1,5 +1,5 @@
 {
-  "source_commit": "26ae4f79fb039e365171dea0399e1757577c6597",
+  "source_commit": "169401319cf54d12d413f61c054d2cbf1f2bb514",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -22,7 +22,7 @@
     "tools/prerace/venues.mjs": "8b2e5dac42d81e2ad953e95a0865021f7b3336f5f180f428e4a62e923dac95c3",
     "tools/prerace/venues.json": "9b72377a7356edb14e6727583e852d97e81862c6c1c172e74157d45a55dbcf83",
     "tools/prerace/model/original_artifact.html": "7cbfff54432e7becdd6c9187ffa0f78ccfd17df009da3a4853d71246ecbda6bf",
-    "tools/site/collect_official.py": "5b5ee515c43674973c4e4b4980aa9e0dfde740d060722a750d408e7eeee4d433",
+    "tools/site/collect_official.py": "492c620617a1a3b7d9960c36142389518c205a20bdde508abb336dce76cdb9d3",
     "tools/site/probe_official.py": "58fcc014091d47be983bc232ac45b79a91aad4b39253bf08b5f66c20999a611d",
     "tools/site/race_context.py": "552cf3188ca032a912f23c0c209b16adc6b99491e54f09c2d76d53ff2ae07f68",
     "tools/site/collect_history.py": "c21f4ec6156f5878bf9dae744f21bf23b3f580c795baa64a70fbe917009aebbe",

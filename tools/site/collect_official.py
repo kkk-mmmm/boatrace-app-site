@@ -1,5 +1,6 @@
 """公式HTMLを正規化する。予想計算・公開処理は行わない。"""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -7,6 +8,7 @@ import math
 from pathlib import Path
 import re
 import time
+import threading
 import unicodedata
 from urllib.parse import parse_qs, urlparse
 from urllib.robotparser import RobotFileParser
@@ -17,6 +19,32 @@ from race_context import race_context, daily_metadata, exhibition
 def require(ok, message):
     if not ok:
         raise ValueError(message)
+
+
+class RequestGate:
+    """Space request starts, while allowing slow responses to overlap."""
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.next_start = 0
+
+    def wait(self):
+        with self.lock:
+            delay = self.next_start - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            self.next_start = time.monotonic() + 1
+
+
+def acquire_pages(tasks, acquire):
+    """At most three connections within a venue; keep failures per page."""
+    def one(url):
+        try:
+            return acquire(url)
+        except Exception as error:
+            return error
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {key: pool.submit(one, url) for key, url in tasks.items()}
+        return {key: future.result() for key, future in futures.items()}
 
 
 def normalized(value):
@@ -196,15 +224,17 @@ def collect(destination, venue_code='01', index=None):
     robots = RobotFileParser()
     robots.parse(index['robots_text'].splitlines())
 
+    gate = RequestGate()
+
     def acquire(url):
         require(robots.can_fetch(USER_AGENT, url), 'robots.txtで取得対象外のページです')
+        gate.wait()
         text, _ = fetch(url)
         retrieved = datetime.now(timezone.utc).isoformat()
         sha = hashlib.sha256(text.encode('utf-8')).hexdigest()
         evidence = raw_dir / (sha + '.html')
         if not evidence.exists():
             evidence.write_text(text, encoding='utf-8')
-        time.sleep(1)
         return parse_page(text), {'url': url, 'retrieved_at': retrieved, 'evidence_file': str(evidence), 'sha256': sha}
 
     result['index_source'] = source
@@ -219,6 +249,22 @@ def collect(destination, venue_code='01', index=None):
     first_context = race_context(first_page.raw_html,date,venue_code)
     result['meeting'].update({k:first_context[k] for k in ['meeting_day','day_label','meeting_id','series_start']})
     times = deadlines(first_page, date)
+    tasks = {}
+    for n in range(1, 13):
+        if not times[n] or datetime.now(timezone.utc) >= datetime.fromisoformat(times[n]):
+            continue
+        for kind in ('racelist', 'beforeinfo', 'odds3t'):
+            if kind == 'racelist' and n == 1:
+                continue
+            tasks[(n, kind)] = prefix + kind + query + str(n)
+    pages = acquire_pages(tasks, acquire)
+
+    def acquired(n, kind):
+        value = (first_page, first_source) if n == 1 and kind == 'racelist' else pages[(n, kind)]
+        if isinstance(value, Exception):
+            raise value
+        return value
+
     for n in range(1, 13):
         item = {'race_no': n, 'deadline_at': times[n], 'input': None, 'odds': None, 'issue': None}
         result['races'].append(item)
@@ -229,21 +275,21 @@ def collect(destination, venue_code='01', index=None):
             item['closed'] = True
             continue
         try:
-            page, source = (first_page, first_source) if n == 1 else acquire(prefix + 'racelist' + query + str(n))
+            page, source = acquired(n, 'racelist')
             require(deadlines(page, date)[n] == times[n], '公式締切が取得中に変更されました')
             item['input'] = {'date': date, 'venue_code': venue_code, 'race_no': n, 'deadline_at': times[n],
                              'input_source_url': source['url'], 'input_fetched_at': source['retrieved_at'],
                              'result_not_seen': True, 'context':race_context(page.raw_html,date,venue_code), 'entries': entries(page), 'odds': None}
             item['input_source'] = source
             try:
-                before, before_source = acquire(prefix + 'beforeinfo' + query + str(n))
+                before, before_source = acquired(n, 'beforeinfo')
                 display = exhibition(before)
                 for boat in item['input']['entries']:
                     boat.update(display.get(boat['lane'],{}))
                 item['exhibition_source'] = before_source
             except Exception as error:
                 item['exhibition_issue'] = str(error)
-            odds_page, odds_source = acquire(prefix + 'odds3t' + query + str(n))
+            odds_page, odds_source = acquired(n, 'odds3t')
             values = odds(odds_page)
             if values:
                 item['odds'] = {'source_url': odds_source['url'], 'fetched_at': odds_source['retrieved_at'], 'items': values}

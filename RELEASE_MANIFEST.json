@@ -1,5 +1,5 @@
 {
-  "source_commit": "587392c46bece528f71de3f64f9726dce75b5b5d",
+  "source_commit": "26ae4f79fb039e365171dea0399e1757577c6597",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "site/opportunities.mjs": "68a5afcd03c3ad1b5784c1669fd58f892f6be0328c5f0b9e8668602b7e91ab71",
@@ -34,7 +34,7 @@
     "tools/prediction/train.mjs": "953435d6307ae4c9f08baf9ef2741ed165bed1d6b055d05805bdd4364de98e50",
     "tools/prediction/daily.mjs": "75834db9dfb2e8140964310df367de055251d22644ecf4fcd8ca4800888cd04b",
     "tools/prediction/model-v2.json": "497182db06db09e22628dde7a379421bb170ad8ed654b14e6d8a25198bf08512",
-    "site/verify-live.mjs": "db962e6a1e0ff17414a4e96a0c2e1428a7f44c840a688166ac72068974152c3f",
+    "site/verify-live.mjs": "5eee41c2316ad30cfa1ae721f0a96122f228ffc4044a4f574b312005b3b99c85",
     "tools/site/test_probe.py": "7ecbd1c9e5a4c8527171f3d844467c5a187553f4a48ce2c7a0c96e2afd39c63a"
   }
 }

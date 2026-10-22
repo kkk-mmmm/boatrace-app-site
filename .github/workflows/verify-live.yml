@@ -22,7 +22,7 @@ jobs:
         run: |
           python -B tools/site/test_probe.py
           python - <<'PY'
-          import sys,time
+          import sys,time,json
           sys.path.insert(0,'tools/site')
           from probe_official import fetch,ORIGIN,TRANSPORT
           previous=None
@@ -30,7 +30,8 @@ jobs:
               started=time.monotonic()
               text,headers=fetch(ORIGIN+'/robots.txt')
               connection=getattr(TRANSPORT,'connection',None)
-              print({'attempt':attempt+1,'seconds':round(time.monotonic()-started,3),'reused':connection is not None and connection is previous,'bytes':len(text)},flush=True)
+              result={'attempt':attempt+1,'seconds':round(time.monotonic()-started,3),'reused':connection is not None and connection is previous,'bytes':len(text)}
+              print('::notice title=HTTPS transport::'+json.dumps(result),flush=True)
               previous=connection
               time.sleep(1)
           PY

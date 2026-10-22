@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+process.on('uncaughtException',error=>{
+ const message=String(error.stack || error).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A');
+ console.error('::error title=Public site verification::'+message);process.exit(1);
+});
 const output=path.resolve(process.env.SITE_VERIFY_OUTPUT || '/tmp/boatrace-public-check');fs.mkdirSync(output,{recursive:true});
 const base='https://kkk-mmmm.github.io/boatrace-app-site/';
 const get=async path=>{const response=await fetch(new URL(path,base),{signal:AbortSignal.timeout(20000),cache:'no-store'});assert.equal(response.status,200,path);return response;};
@@ -57,5 +61,5 @@ try{
   predicted_races:venues.flatMap(v=>v.races).filter(r=>r.items.length===10).length,
   races_with_odds:venues.flatMap(v=>v.races).filter(r=>r.odds?.items?.length).length,
   browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,mobile_overflow:false,opportunity_card_heights:heights,errors}};
- fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+ fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

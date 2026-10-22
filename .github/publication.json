@@ -1,6 +1,4 @@
 {
   "approved": true,
-  "reviewed_commit": "64f99d54e474a1b7f4b4836fadd6ffef3b878889",
-  "approved_on": "2026-10-22",
-  "note": "承認済みサイトの提案を締切3分前以前の記録で固定し、締切30分以内のオッズを1分更新へ変更。Node 86件、Workers 13件と締切後・再読込・API失敗の保持を確認。"
+  "reviewed_commit": "bdf17c8a4efc394c2deaf578a93a82ce1352f75a"
 }

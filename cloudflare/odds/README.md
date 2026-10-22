@@ -30,6 +30,8 @@ npm run check
 
 接続先は `site/odds-provider.json` の `api_url` で管理します。初期値は `null` です。Actions Variableの `BOATRACE_ODDS_API_URL` が設定されている場合はそちらを優先します。GitHubの変数操作権限がなくても、レビュー対象の設定ファイルで接続・切り戻しを行えます。
 
+2026-10-22に `https://boatrace-odds.kazu80504.workers.dev` へデプロイし、Cloudflareから公式オッズの取得とPages向けCORSを確認しました。接続先の設定ファイルにはこのAPIのURLを設定しています。認証情報はGitHub Secretsに保持し、コードには含めません。
+
 1. Cloudflareでプラン・Freeの利用上限を確認します。SQLite型Durable Objectsを使います。有料プランへの変更はコードでは行いません。
 2. `kkk-mmmm/boatrace-app-site` のActions Secretsへ `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録します。APIトークンは対象アカウントのWorkersを編集する範囲に限定します。認証情報をチャットやコードに貼らないでください。
 3. Actionsの **Deploy Cloudflare odds worker** を手動実行します。テスト後にデプロイし、ログへWorkerのURLが表示されます。ローカルなら `npx wrangler login` → `npm run deploy` でも実行できます。

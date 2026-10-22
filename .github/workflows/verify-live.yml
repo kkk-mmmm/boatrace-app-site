@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: published-site-verification
+  group: published-site-verification-${{ inputs.odds_only && 'odds' || 'browser' }}
   cancel-in-progress: true
 jobs:
   odds:

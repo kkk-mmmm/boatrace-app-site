@@ -98,7 +98,7 @@ jobs:
           path: site/staging
       - name: Validate forecast and freshness behavior
         run: |
-          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_live_odds.mjs
+          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs
           python -B tools/site/test_probe.py
           python -B tools/site/test_collect_all.py
       - name: Build current data or explicit failure state

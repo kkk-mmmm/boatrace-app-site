@@ -1,10 +1,11 @@
-import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups} from './view.mjs';
+import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates} from './view.mjs';
 import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveOpportunities} from './odds-live.mjs';
 const $ = id => document.getElementById(id);
 const yen = n => `${n.toLocaleString('ja-JP')}円`;
 const pct = n => n == null ? '—' : `${(n * 100).toFixed(1)}%`;
 const clock = value => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}).format(new Date(value)) : '未確認';
 let current = null, archive = null, catalog = null, selected = null, selectedVenue = null, predictionTab = 'probability', view = 'live', entryTab = 'entries', loadVersion = 0;
+let predictionScenario='all', predictionLimit=10, chosenCombo=null, predictionRaceKey=null;
 let oddsConfigPromise=null,liveOdds=null,oddsAttempt=0,oddsRequest=null,oddsFailure=null;
 async function refreshOdds() {
   if(!oddsConfigPromise)oddsConfigPromise=(async()=>{
@@ -91,7 +92,7 @@ function renderVenueFilters() {
   });
 }
 function clearCurrent() {
-  current = null;selected = null;entryTab='entries';identifyVenue();
+  current = null;selected = null;entryTab='entries';predictionRaceKey=null;identifyVenue();
   $('update-status').hidden=false;$('update-status').textContent = `${venueName()}の情報を取得中`;
   $('update-dot').classList.remove('ok');$('updated-at').textContent = '—';
   $('meeting-title').textContent = `${venueName()}の開催情報を確認中`;
@@ -170,6 +171,13 @@ function renderCurrent() {
   if (!current.races.some(r => r.race_no === selected)) selected = current.races.find(r => Date.parse(r.deadline_at) > now)?.race_no || current.races[0].race_no;
   const race = current.races.find(r => r.race_no === selected);
   const status = raceStatus(race, current, now);
+  const raceKey = `${race.date}/${race.venue_code}/${race.race_no}/${race.prediction_saved_at}`;
+  if (predictionRaceKey !== raceKey) {predictionRaceKey=raceKey;predictionLimit=10;chosenCombo=null;}
+  const pool = race.items.length ? predictionPool(race) : [];
+  const scenarioMass = scenarioProbabilities(pool);
+  const ranked = predictionRanking(pool, race.odds?.items || [], {scenario:predictionScenario,tab:predictionTab,currentOdds:status.currentOdds});
+  const forecastItems = ranked.slice(0,predictionLimit);
+  if (!pool.some(row=>row.combo===chosenCombo && matchesPredictionScenario(row.combo,predictionScenario))) chosenCombo=null;
   const correctionPending=race.model_validation?.selected_lambda===null;
   const displayedModel=correctionPending?'固定式 / 履歴補正は未適用':race.model_name || '固定スコアモデル v1';
   $('model-label').textContent = displayedModel;
@@ -187,19 +195,24 @@ function renderCurrent() {
     <p class="small-note">STのばらつきは標準偏差で、小さいほど安定した傾向です。少数の集計は全体の傾向へ寄せて補正します。集計対象は${e(race.history?.trained_through || '未取得')}までです。通過条件が確認できない選手を勝負掛け扱いにはしません。</p>`;
   const sheetTabs=`<div class="entry-tabs" role="tablist" aria-label="出走表と展示情報"><button id="entries-tab" role="tab" aria-selected="${entryTab==='entries'}" aria-controls="entries-panel">出走表</button><button id="exhibition-tab" role="tab" aria-selected="${entryTab==='exhibition'}" aria-controls="exhibition-panel">展示情報・過去傾向</button></div><div id="entries-panel" role="tabpanel" aria-labelledby="entries-tab" ${entryTab==='entries'?'':'hidden'}>${entrySheet}</div><div id="exhibition-panel" role="tabpanel" aria-labelledby="exhibition-tab" ${entryTab==='exhibition'?'':'hidden'}>${exhibit}</div>`;
   const scores=`<section class="score-section"><div class="table-heading"><h3>予想のもとになる各スコア</h3></div>${table(['枠','選手','基礎スコア','履歴補正','総合スコア'],(race.scores || []).map(x=>[e(x.lane),e(x.name),numeric(x.base_score),signed(x.history_adjustment),numeric(x.total)]))}<p class="small-note">${race.items.length?'表示中の保存予想に用いた計算値です。最新の出走表とは取得時刻が異なる場合があります。':'出走表から計算した参考スコアです。必須データが欠けるため予想には使用していません。'}スコアは順位付け用で、的中率ではありません。履歴の特徴量は件数が少ない場合に縮小し、検証で採用した係数だけを適用します。</p><details><summary>全国・当地・モーター・ST・枠番と履歴補正の内訳</summary>${table(['枠','全国勝率','当地勝率','モーター','平均ST','枠番'],(race.scores || []).map(x=>[e(x.lane),...(x.base_components || [null,null,null,null,null]).map(numeric)]))}${(race.scores || []).map(x=>`<details><summary>${e(x.lane)}号艇 / 履歴補正の内訳</summary>${table(['項目','補正前の特徴量','適用スコア'],x.history_components.map(c=>[e(c.label),signed(c.raw_value),signed(c.value)]))}</details>`).join('')}</details></section>`;
-  const market = race.odds?.items?.length ? `<details class="market-odds"><summary>3連単オッズ一覧（${race.odds.items.length}通り）</summary><p class="small-note">取得 ${e(clock(race.odds.fetched_at))} / ${status.currentOdds ? '締切前・取得時点のオッズ' : '参考オッズ。取得時刻・締切・更新状態を確認してください。'}</p>${table(['買い目','取得時点オッズ'],race.odds.items.map(x=>[e(x.combo),`${x.odds.toFixed(1)}倍`]))}</details>` : '<p class="small-note">3連単オッズは未取得・未提供です。</p>';
-  const expectedItems=(race.expected_value_items || []).filter(x=>Number.isFinite(oddsMap.get(x.combo))).sort((a,b)=>b.probability*oddsMap.get(b.combo)-a.probability*oddsMap.get(a.combo)||a.rank-b.rank).slice(0,10);
-  const forecastItems=predictionTab==='value'?(status.currentOdds?expectedItems:[]):race.items.slice(0,10);
+  const marketItems=(race.odds?.items || []).filter(row=>matchesPredictionScenario(row.combo,predictionScenario));
+  const market = marketItems.length ? `<details class="market-odds"><summary>3連単オッズ一覧（${marketItems.length}通り / ${predictionScenario==='in'?'1号艇1着':predictionScenario==='other'?'1号艇以外が1着':'すべて'}）</summary><p class="small-note">取得 ${e(clock(race.odds.fetched_at))} / ${status.currentOdds ? '締切前・取得時点のオッズ' : '参考オッズ。取得時刻・締切・更新状態を確認してください。'}</p>${table(['買い目','取得時点オッズ'],marketItems.map(x=>[e(x.combo),`${x.odds.toFixed(1)}倍`]))}</details>` : '<p class="small-note">この条件の3連単オッズは未取得・未提供です。</p>';
+  const scenarios=`<div class="prediction-scenarios" role="group" aria-label="1着の傾向で絞り込み"><button data-scenario="all" aria-pressed="${predictionScenario==='all'}"><span>すべて</span><strong>${scenarioMass?'100%':'—'}</strong></button>${[['in','イン逃げ想定','1号艇が1着'],['other','それ以外','1号艇以外が1着']].map(([key,label,detail])=>`<button data-scenario="${key}" aria-pressed="${predictionScenario===key}"><span>${label}</span><strong>${pct(scenarioMass?.[key])}</strong><small>${detail}</small></button>`).join('')}</div><p class="small-note scenario-note">${scenarioMass?'全120通りの推定確率を集計。イン逃げ想定は1号艇1着として分類し、実際の進入・決まり手の確率を示すものではありません。':'全120通りの確率を確認できないため、傾向別の確率は表示できません。'}</p>`;
   const unavailableReason=!status.currentOdds?`期待値上位は表示できません：${status.text}。締切前で新鮮なオッズの取得をお待ちください。`:'期待値を計算できる買い目がありません。';
+  const chosen = pool.find(row=>row.combo===chosenCombo);
+  const related=sujiCandidates(pool,race.odds?.items || [],chosenCombo,{scenario:predictionScenario,currentOdds:status.currentOdds});
+  const relatedBlock=`<section class="related-bets" aria-labelledby="related-title"><h4 id="related-title">選んだ買い目から、スジの候補</h4>${chosen?`<p class="related-selection">選択中 <strong>${e(chosen.combo)}</strong> <span>推定確率 ${pct(chosen.probability)} / 期待値 ${status.currentOdds && oddsMap.has(chosen.combo)?(chosen.probability*oddsMap.get(chosen.combo)).toFixed(3)+'倍':'—'}</span></p>${related.length?table(['買い目 / スジ','推定確率','オッズ','期待値'],related.map(row=>[`<button class="combo-select" data-combo="${e(row.combo)}" aria-label="${e(row.combo)}を選択">${e(row.combo)}</button><small class="suji-reason">${e(row.reason)}</small>`,pct(row.probability),`${row.odds.toFixed(1)}倍`,`${row.value.toFixed(3)}倍`])):`<p class="related-empty" role="status">${status.currentOdds?'このスジでオッズを確認できる追加候補はありません。':`現在は候補の提案を休止しています：${e(status.text)}。締切前の新鮮なオッズが必要です。`}</p>`}<p class="small-note">同じ1着を軸に、2・3着の入れ替え、または選んだ相手を1艇以上残した相手替えから期待値上位5点を表示します。決まり手を推定したスジではありません。期待値は各1点の値で、1.0倍未満なら推定払戻が購入額を下回ります。複数の買い目が同時に的中するものではありません。</p>`:'<p class="related-empty">上の買い目を1つ押すと、同じ1着を軸にしたスジ候補を期待値順に表示します。</p>'}</section>`;
   const forecast = race.items.length ? `<div class="time-note"><span>予想入力取得：${e(clock(race.input_fetched_at))}</span><span>予想保存：${e(clock(race.prediction_saved_at))}</span><span>オッズ取得：${e(clock(race.odds?.fetched_at))}</span></div>
-    <div class="table-heading"><h3>予想 / 上位10点</h3><span class="small-note">${e(displayedModel)}</span></div>
+    <div class="table-heading"><h3>予想 / 買い目</h3><span class="small-note">${e(displayedModel)}</span></div>
+    ${scenarios}
     <div class="entry-tabs prediction-tabs" role="tablist" aria-label="予想の並び順"><button id="probability-tab" role="tab" aria-selected="${predictionTab==='probability'}" aria-controls="prediction-panel">推定確率（的中率）上位</button><button id="value-tab" role="tab" aria-selected="${predictionTab==='value'}" aria-controls="prediction-panel">オッズを含めた期待値上位</button></div>
-    <div id="prediction-panel" role="tabpanel" aria-labelledby="${predictionTab==='value'?'value':'probability'}-tab">${forecastItems.length?`<div class="prediction-table">${table(['順位', '買い目', '推定確率', '取得時点オッズ', '期待値（確率 × オッズ）'], forecastItems.map((x,i) => {
-      const odds = oddsMap.get(x.combo);
-      return [`<span class="rank ${i === 0 ? 'first' : ''}">${i+1}</span>`, e(x.combo), pct(x.probability), odds == null ? '—' : `${odds.toFixed(1)}倍${!status.currentOdds ? '（参考）' : ''}`, status.currentOdds && odds != null ? `${(x.probability * odds).toFixed(3)}倍` : '—'];
-    }))}</div>`:`<p class="empty-value" role="status">${e(unavailableReason)}</p>`}</div>
+    <div id="prediction-panel" role="tabpanel" aria-labelledby="${predictionTab==='value'?'value':'probability'}-tab">${forecastItems.length?`<div class="prediction-table">${table(['順位', '買い目', '推定確率', 'オッズ', '期待値'], forecastItems.map((x,i) => {
+      const odds = x.odds;
+      return [`<span class="rank ${i === 0 ? 'first' : ''}">${i+1}</span>`, `<button class="combo-select" data-combo="${e(x.combo)}" aria-pressed="${chosenCombo===x.combo}" aria-label="${e(x.combo)}を選択">${e(x.combo)}</button>`, pct(x.probability), odds == null ? '—' : `${odds.toFixed(1)}倍${!status.currentOdds ? '（参考）' : ''}`, status.currentOdds && odds != null ? `${(x.probability * odds).toFixed(3)}倍` : '—'];
+    }))}</div><div class="prediction-pagination"><span role="status">${forecastItems.length} / ${ranked.length}点を表示</span>${forecastItems.length<ranked.length?'<button id="more-predictions">追加で10点見る</button>':''}</div>`:`<p class="empty-value" role="status">${e(unavailableReason)}</p>`}</div>
+    ${relatedBlock}
     ${race.model_status==='EXPERIMENTAL'?`<p class="small-note">${correctionPending?'履歴は集計済み・予想への補正は未適用です。表示中の予想は固定式で計算しています。':'履歴補正は検証中です。'}</p>`:''}
-    <p class="small-note">各タブは全120通りから上位10点を選びます。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。更新の目安は5分で、処理の遅延が生じる場合があります。</p>`
+    <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目を押すと関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。更新の目安は5分で、処理の遅延が生じる場合があります。</p>`
     : `<div class="empty"><h3>このレースの予想は未取得です</h3><p>${e(race.issue || '必須データが確認できていません。')}</p></div>`;
   $('live-content').innerHTML = `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span></button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3><p>締切予定 ${e(clock(race.deadline_at))}（日本時間）</p></div><span class="status ${status.currentOdds ? '' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${sheetTabs}${forecast}${scores}${market}${race.issue ? `<p class="small-note">更新状況：${e(race.issue)}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`;
   $('entries-tab').addEventListener('click',()=>{entryTab='entries';renderCurrent();});
@@ -208,8 +221,21 @@ function renderCurrent() {
     ids.forEach((id,i)=>{const button=$(id);if(!button)return;button.tabIndex=i===active?0:-1;button.addEventListener('keydown',event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?1:1-i;$(ids[next]).click();$(ids[next]).focus();}});});
   }
   for (const button of document.querySelectorAll('[data-race]')) button.addEventListener('click', () => {selected = Number(button.dataset.race); renderCurrent();});
-  $('probability-tab')?.addEventListener('click',()=>{predictionTab='probability';renderCurrent();$('probability-tab').focus();});
-  $('value-tab')?.addEventListener('click',()=>{predictionTab='value';renderCurrent();$('value-tab').focus();});
+  $('probability-tab')?.addEventListener('click',()=>{predictionTab='probability';predictionLimit=10;renderCurrent();$('probability-tab').focus();});
+  $('value-tab')?.addEventListener('click',()=>{predictionTab='value';predictionLimit=10;renderCurrent();$('value-tab').focus();});
+  for(const button of document.querySelectorAll('[data-scenario]'))button.addEventListener('click',()=>{
+    predictionScenario=button.dataset.scenario;predictionLimit=10;renderCurrent();
+    document.querySelector(`[data-scenario="${predictionScenario}"]`)?.focus({preventScroll:true});
+  });
+  $('more-predictions')?.addEventListener('click',()=>{
+    const previous=predictionLimit;predictionLimit+=10;renderCurrent();
+    const added=document.querySelectorAll('.prediction-table [data-combo]')[previous];added?.focus({preventScroll:true});
+  });
+  for(const button of document.querySelectorAll('[data-combo]'))button.addEventListener('click',()=>{
+    chosenCombo=button.dataset.combo;renderCurrent();
+    document.querySelector(`[data-combo="${chosenCombo}"]`)?.focus({preventScroll:true});
+  });
+
 }
 
 function renderArchive() {

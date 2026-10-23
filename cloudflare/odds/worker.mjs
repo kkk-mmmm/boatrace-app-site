@@ -208,14 +208,14 @@ export class OddsCoordinator {
   }
   async loadAnnualModel(feed,date,now){
     if(!this.env.PLAYER_MODEL_URL)return;
-    if(this.annualModel && this.annualModel.trained_through<date && this.modelCheckedDate===date && (!feed.annual_model_id || this.annualModel.id===feed.annual_model_id))return;
+    if(this.annualModel && this.annualModel.trained_through<date && this.modelCheckedDate===date && (!feed.annual_model_id || this.annualModel.id===feed.annual_model_id) && (!feed.exhibition_st_through || this.annualModel.exhibition_st_profiles?.through===feed.exhibition_st_through))return;
     try{
       const model=validateAnnualModel(JSON.parse(await fetchText(this.env.PLAYER_MODEL_URL,fetch,5*1024*1024)),date);
       if(Date.parse(model.created_at)>now+60000)throw Error('未来の履歴モデルです');
       this.annualModel=model;this.modelCheckedDate=date;
       const cached=await this.ctx.storage.list({prefix:'program:'});
-      for(const [key,program] of cached)if(program.date===date&&program.entries?.length===6&&program.history_model_id!==model.id)await this.ctx.storage.put(key,annualEntryData(program,model));
-      await this.ctx.storage.put('annual-model-status',{status:'OK',model_id:model.id,coverage:model.coverage,checked_at:iso(now)});
+      for(const [key,program] of cached)if(program.date===date&&program.entries?.length===6&&(program.history_model_id!==model.id || program.history_exhibition_st_through!==(model.exhibition_st_profiles?.through||null)))await this.ctx.storage.put(key,annualEntryData(program,model));
+      await this.ctx.storage.put('annual-model-status',{status:'OK',model_id:model.id,coverage:model.coverage,exhibition_st:{through:model.exhibition_st_profiles?.through||null,paired_starts:model.exhibition_st_profiles?.paired_starts||0,players:Object.keys(model.exhibition_st_profiles?.players||{}).length},checked_at:iso(now)});
     }catch(error){await this.ctx.storage.put('annual-model-status',{status:'FAILED',message:String(error.message).slice(0,200),checked_at:iso(now)});}
   }
   async bootstrapPrograms(calendar,date,robots,now){
@@ -254,18 +254,19 @@ export class OddsCoordinator {
     if(actions.entries && (!program?.entries_last_attempt || now-Date.parse(program.entries_last_attempt)>=300000)){
       const url=`${OFFICIAL_ORIGIN}/owpc/pc/race/racelist?hd=${target.date.replaceAll('-','')}&jcd=${target.venue_code}&rno=${target.race_no}`;
       await waitTurn(target.venue_code);program={...identity,...program,entries_last_attempt:iso(Date.now())};dirty=true;
-      try{if(!robotsAllowed(robots,url))throw Error('出走表はrobots.txtで取得対象外です');const page=await parseProgramHtml(await fetchText(url));program={...program,entries:programEntries(page),context:programContext(page,target.context||program.context),entries_fetched_at:iso(Date.now()),input_source_url:url,entries_30m_done:Date.parse(target.deadline_at)-Date.now()<=1800000,entries_issue:null};changed=true;}
+      try{if(!robotsAllowed(robots,url))throw Error('出走表はrobots.txtで取得対象外です');const page=await parseProgramHtml(await fetchText(url));program={...program,entries:programEntries(page).map(e=>({...program?.entries?.find(old=>old.lane===e.lane&&old.racer_id===e.racer_id),...e})),context:programContext(page,target.context||program.context),entries_fetched_at:iso(Date.now()),input_source_url:url,entries_30m_done:Date.parse(target.deadline_at)-Date.now()<=1800000,entries_issue:null};changed=true;}
       catch(error){program.entries_issue=String(error.message).slice(0,200);}
     }
     if(actions.exhibition){
       const url=`${OFFICIAL_ORIGIN}/owpc/pc/race/beforeinfo?hd=${target.date.replaceAll('-','')}&jcd=${target.venue_code}&rno=${target.race_no}`;
-      await waitTurn(target.venue_code);program={...identity,...program};dirty=true;
+      await waitTurn(target.venue_code);program={...identity,...program,exhibition_last_attempt:iso(Date.now())};dirty=true;
       try{if(!robotsAllowed(robots,url))throw Error('展示はrobots.txtで取得対象外です');const display=programExhibition(await parseProgramHtml(await fetchText(url)));
-        program.entries=(program.entries||[]).map(e=>({...e,...display.find(x=>x.lane===e.lane)}));program.exhibition_fetched_at=iso(Date.now());program.exhibition_source_url=url;program.exhibition_available=display.length===6&&display.every(e=>e.exhibition_time!==null);program.exhibition_issue=null;changed=true;
+        program.entries=(program.entries||[]).map(e=>({...e,...display.find(x=>x.lane===e.lane)}));program.exhibition_fetched_at=iso(Date.now());program.exhibition_source_url=url;program.exhibition_available=display.length===6&&display.every(e=>e.participation_status==='WITHDRAWN'||[e.exhibition_time,e.exhibition_st,e.exhibition_course].every(Number.isFinite));program.exhibition_issue=null;changed=true;
+        if(Date.parse(target.deadline_at)-now<=300000)program.exhibition_5m_done=true;else program.exhibition_10m_done=true;
       }catch(error){program.exhibition_issue=String(error.message).slice(0,200);}
-      if(Date.parse(target.deadline_at)-now<=300000)program.exhibition_5m_done=true;else program.exhibition_10m_done=true;
     }
-    if(program?.entries?.length===6 && this.annualModel && (changed||program.history_model_id!==this.annualModel.id)){
+    if(program?.entries?.some(e=>e.participation_status==='WITHDRAWN'))program={...program,issue:'欠場あり：6艇を前提とする予想を停止しています',update_status:'PARTIAL'};
+    if(program?.entries?.length===6 && this.annualModel && (changed||program.history_model_id!==this.annualModel.id||program.history_exhibition_st_through!==(this.annualModel.exhibition_st_profiles?.through||null))){
       try{program=annualEntryData(program,this.annualModel);dirty=true;}catch(error){program.model_issue=String(error.message).slice(0,200);}
     }
     if(program && this.annualModel && (changed||program.model_id!==this.annualModel.id)){

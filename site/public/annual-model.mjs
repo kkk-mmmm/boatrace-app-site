@@ -77,11 +77,18 @@ export function predictAnnual(race,model){
   entries:sorted.map(e=>({...e,annual_lane:annualLaneStats(model,e.racer_id,e.lane)}))};
 }
 
+export function pairedExhibitionGap(model,id,date) {
+ const data=model.exhibition_st_profiles,s=data?.players?.[id];
+ if(data?.schema_version!==1||data.kind!=='EXHIBITION_ST_PAIRED_HISTORY'||!s||!(data.through<date)||!Number.isInteger(s.n)||s.n<1
+  || ![s.sum,s.sum_squares].every(Number.isFinite)||s.sum_squares<0||s.from<data.window_from||s.through>data.through||s.from>s.through)return null;
+ return {n:s.n,mean:s.sum/s.n,sd:s.n>1?Math.sqrt(Math.max(0,(s.sum_squares-s.sum*s.sum/s.n)/(s.n-1))):null,
+  rmse:Math.sqrt(s.sum_squares/s.n),from:s.from,through:s.through,scope:'選手全枠'};
+}
 export function annualHistory(race,model){
  const conditional=s=>({samples:s?.[4]||0,st_mean:s?.[4]?meanST(s):null,st_sd:s?.[4]>1?sdST(s):null});
  return {trained_from:model.trained_from,trained_through:model.trained_through,lanes:race.entries.map(e=>{
   const p=model.profiles.players[e.racer_id]||{},s=p['l'+e.lane];
   return {lane:e.lane,exhibition_rank:exhibitionRank(race.entries,e.lane),day:conditional(p['d'+race.context?.meeting_day]),phase:conditional(p['p'+race.context?.phase]),
-   exhibition_rank_gap:s?.[10]?{n:s[10],mean:s[11]/s[10],rmse:Math.sqrt((s[12]||0)/s[10])}:null,exhibition_st_gap:null,pressure:{status:'UNCONFIRMED'}};
+   exhibition_rank_gap:s?.[10]?{n:s[10],mean:s[11]/s[10],rmse:Math.sqrt((s[12]||0)/s[10])}:null,exhibition_st_gap:pairedExhibitionGap(model,e.racer_id,race.date),pressure:{status:'UNCONFIRMED'}};
  })};
 }

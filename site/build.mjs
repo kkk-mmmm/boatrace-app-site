@@ -36,7 +36,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   const current = {...snapshots[0], opportunities:opportunityList(snapshots,now),featured_races:featuredRaceList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
     meeting_status:s.meeting_status,meeting:s.meeting,update:s.update,race_count:s.races.length, data_url:`./data/venues/${s.venue_code}.json`}))};
   fs.mkdirSync(path.join(outputDirectory, 'data/venues'), {recursive: true});
-  for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs']) {
+  for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs', 'development.mjs']) {
     fs.copyFileSync(path.join(root, 'site/public', file), path.join(outputDirectory, file));
   }
   const indexHtml=path.join(outputDirectory,'index.html');
@@ -48,7 +48,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   fs.writeFileSync(path.join(outputDirectory,'data/odds-config.json'),JSON.stringify({schema_version:1,api_url:oddsApiUrl,interval_seconds:60,far_interval_seconds:300,fast_window_minutes:30}));
   const annualFile=path.join(root,'models/annual/current.json');
   let annual=null;
-  if(fs.existsSync(annualFile)){const candidate=JSON.parse(fs.readFileSync(annualFile,'utf8')),age=Date.parse(japanDate(now))-Date.parse(candidate.trained_through);if(age>0&&age<=3*86400000){annual=validateAnnualModel(candidate,japanDate(now));fs.copyFileSync(annualFile,path.join(outputDirectory,'data/player-model.json'));}}
+  if(fs.existsSync(annualFile)){const candidate=JSON.parse(fs.readFileSync(annualFile,'utf8')),age=Date.parse(japanDate(now))-Date.parse(candidate.trained_through);if(age>0&&age<=3*86400000){annual=validateAnnualModel(candidate,japanDate(now));const gapFile=path.join(root,'models/exhibition-st/current.json');if(fs.existsSync(gapFile))annual.exhibition_st_profiles=JSON.parse(fs.readFileSync(gapFile));fs.writeFileSync(path.join(outputDirectory,'data/player-model.json'),JSON.stringify(annual));}}
   const targets=snapshots.filter(s=>s.meeting_status==='OPEN').flatMap(snapshot=>snapshot.races
     .filter(r=>Number.isFinite(Date.parse(r.deadline_at)) && Date.parse(r.deadline_at)>now)
     .map(r=>({date:r.date,venue_code:snapshot.venue_code,venue:snapshot.venue,race_no:r.race_no,deadline_at:r.deadline_at,
@@ -56,7 +56,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
       model_id:r.model_id || snapshot.model.id,prediction_saved_at:r.prediction_saved_at,input_fetched_at:r.input_fetched_at,
       scores:r.scores || [],model_status:r.model_status,model_validation:r.model_validation,
       update_status:snapshot.update.status,last_success_at:snapshot.update.last_success_at,issue:r.issue || null})));
-  fs.writeFileSync(path.join(outputDirectory,'data/odds-targets.json'),JSON.stringify({schema_version:1,date:japanDate(now),generated_at:new Date(now).toISOString(),annual_model_id:annual?.id||null,races:targets}));
+  fs.writeFileSync(path.join(outputDirectory,'data/odds-targets.json'),JSON.stringify({schema_version:1,date:japanDate(now),generated_at:new Date(now).toISOString(),annual_model_id:annual?.id||null,exhibition_st_through:annual?.exhibition_st_profiles?.through||null,races:targets}));
   fs.writeFileSync(path.join(outputDirectory, '.nojekyll'), '');
   fs.writeFileSync(path.join(outputDirectory, 'data/current.json'), JSON.stringify(current, null, 2) + '\n');
   for (const snapshot of snapshots) {

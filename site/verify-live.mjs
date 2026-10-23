@@ -16,7 +16,7 @@ assert.equal(current.venues.length,24);assert.equal(new Set(current.venues.map(v
 const html=await(await get('')).text();assert.ok(html.includes('BOATRACE NOTE'));
 assert.ok((await get('style.css')).headers.get('content-type').includes('text/css'));
 await get('app.mjs');await get('view.mjs');
-await get('odds-live.mjs');
+await get('odds-live.mjs');await get('development.mjs');
 const oddsConfig=await(await get('data/odds-config.json')).json();
 assert.equal(oddsConfig.interval_seconds,60);
 let workerOdds=null;
@@ -30,6 +30,15 @@ if(oddsConfig.api_url) {
  assert.ok(Array.isArray(workerOdds.featured_races),'全場の厳選候補が必要です');
  assert.notEqual(workerOdds.update.status,'FAILED');assert.equal(workerOdds.interval_seconds,60);
 }
+const deliveredModel=await(await get('data/player-model.json')).json(),gapProfile=deliveredModel.exhibition_st_profiles;
+assert.ok(gapProfile?.paired_starts>0 && gapProfile.through<current.date,'照合済みの過去STが必要です');
+if(workerOdds){assert.ok(workerOdds.annual_model?.exhibition_st?.paired_starts>0,'WorkerのST差プロファイル反映が必要です');}
+const programs=workerOdds?.programs||[],exhibitionPrograms=programs.filter(p=>p.exhibition_fetched_at),pairedPrograms=programs.filter(p=>p.history?.lanes?.some(h=>h.exhibition_st_gap?.n));
+if(programs.length)assert.ok(pairedPrograms.length>0,'選手ごとの展示ST差が必要です');
+const exhibitionReport={checked_at:new Date().toISOString(),profile:{through:gapProfile.through,paired_starts:gapProfile.paired_starts,players:Object.keys(gapProfile.players).length},worker_profile:workerOdds?.annual_model?.exhibition_st,
+ programs_with_exhibition:exhibitionPrograms.length,programs_with_st_gap:pairedPrograms.length,complete_exhibitions:exhibitionPrograms.filter(p=>p.exhibition_available).length,
+ examples:pairedPrograms.slice(0,2).map(p=>({venue_code:p.venue_code,race_no:p.race_no,lanes:p.history.lanes.filter(h=>h.exhibition_st_gap?.n).map(h=>({lane:h.lane,...h.exhibition_st_gap}))}))};
+fs.writeFileSync(path.join(output,'exhibition.json'),JSON.stringify(exhibitionReport,null,2)+'\n');console.log('::notice title=Published exhibition verification::'+JSON.stringify(exhibitionReport));
 const venues=[];
 for(const venue of current.venues){
  const data=await(await get(`data/venues/${venue.code}.json`)).json();
@@ -116,6 +125,29 @@ try{
  await run("document.getElementById('clear-bets').click();document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
+ await run("document.getElementById('development-tab').click()");
+ assert.equal(await run("document.getElementById('development-panel').hidden"),false);
+ assert.equal(await run("document.querySelectorAll('[data-development-boat]').length"),6);
+ const developmentCases=await run("[...document.querySelectorAll('button[data-development-lane]')].map(b=>({lane:Number(b.dataset.developmentLane),probability:Number(b.dataset.firstProbability)}))");
+ assert.ok(developmentCases.length>0);assert.ok(developmentCases.every(c=>c.lane===1||c.probability>=.2-1e-12));
+ const developmentTickets=[];
+ for(const c of developmentCases){
+  await run(`document.querySelector('button[data-development-lane="${c.lane}"]').click()`);
+  const combo=await run("document.querySelector('[data-development-combo]').dataset.developmentCombo");assert.ok(combo.startsWith(c.lane+'-'));developmentTickets.push(combo);
+ }
+ await run("document.getElementById('development-water').setCurrentTime(2);document.getElementById('development-pause').click()");
+ assert.equal(await run("document.getElementById('development-water').animationsPaused()"),true);
+ const animationStart=await run("document.querySelector('[data-development-boat]').getCTM().e");
+ await run("document.getElementById('development-water').setCurrentTime(4)");
+ assert.notEqual(await run("document.querySelector('[data-development-boat]').getCTM().e"),animationStart);
+ await run("document.querySelector('[data-development-combo]').click()");
+ assert.equal(await run('document.activeElement.id'),'related-title');
+ const selectedFromDevelopment=await run("[...document.querySelectorAll('.related-selection [data-combo]')].map(b=>b.dataset.combo)");
+ assert.ok(selectedFromDevelopment.includes(developmentTickets.at(-1)));
+ await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
+ const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
+ fs.writeFileSync(path.join(output,'development.json'),JSON.stringify(developmentReport,null,2)+'\n');console.log('::notice title=Published development verification::'+JSON.stringify(developmentReport));
  await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await run('scrollTo(0,0)');
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);

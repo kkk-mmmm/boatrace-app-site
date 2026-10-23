@@ -153,3 +153,13 @@ test('選択した場のAPIでも厳選候補を全場へ配信し、低期待�
  await storage.put('work',{date:target.date,status:'FAILED',keys});
  assert.deepEqual((await (await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01&venue=01'))).json()).featured_races,[]);
 });
+
+test('展示の通信失敗は10分前の完了にせず、次の1分枠で再試行する',async t=>{
+ t.mock.timers.enable({apis:['Date'],now});const storage=new Storage(),coordinator=new OddsCoordinator({storage},{});
+ await storage.put('robots',{text:'User-agent: *\nAllow: /'});await storage.put('program:06-1',{...target,deadline_at:new Date(now+540000).toISOString(),entries:[{lane:1}],entries_30m_done:true});
+ let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return new Response('failure',{status:503});});
+ const near={...target,deadline_at:new Date(now+540000).toISOString()};await coordinator.refreshProgram(near,async()=>{});
+ assert.equal(calls,1);assert.equal((await storage.get('program:06-1')).exhibition_10m_done,undefined);
+ await coordinator.refreshProgram(near,async()=>{});assert.equal(calls,1);
+ t.mock.timers.tick(60000);await coordinator.refreshProgram(near,async()=>{});assert.equal(calls,2);
+});

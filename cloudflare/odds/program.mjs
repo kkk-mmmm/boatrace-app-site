@@ -2,13 +2,14 @@ import {predictAnnual,validateAnnualModel,annualHistory,annualLaneStats} from '.
 export const norm=value=>String(value||'').normalize('NFKC').replace(/&nbsp;|&#160;/g,' ').trim();
 const requireValue=(ok,message)=>{if(!ok)throw Error(message);};
 const num=value=>/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(norm(value).replaceAll(',',''))?Number(norm(value).replaceAll(',','')):null;
-const tokens=cell=>cell.text.split(/\r?\n/).map(norm).filter(Boolean);
+const tokens=cell=>String(cell?.text||'').split(/\r?\n/).map(norm).filter(Boolean);
 export async function parseProgramHtml(html){
- const tables=[],stack=[];let row=null,cell=null,detail='',day='',body='',link=null,dayIndex=0,activeDay=null;
+ const tables=[],stack=[];let row=null,cell=null,detail='',day='',body='',link=null,dayIndex=0,activeDay=null,bodyClass='';
  const response=new HTMLRewriter()
  .on('table',{element(e){const t={rows:[]};tables.push(t);stack.push(t);e.onEndTag(()=>stack.pop());}})
+ .on('tbody',{element(e){bodyClass=e.getAttribute('class')||'';e.onEndTag(()=>bodyClass='');}})
  .on('tr',{element(e){if(stack.length){row=[];stack.at(-1).rows.push(row);e.onEndTag(()=>row=null);}}})
- .on('td, th',{element(e){if(row){cell={attrs:Object.fromEntries(e.attributes),text:''};row.push(cell);e.onEndTag(()=>cell=null);}},text(c){if(cell)cell.text+=c.text;}})
+ .on('td, th',{element(e){if(row){cell={attrs:{...Object.fromEntries(e.attributes),tbody_class:bodyClass},text:''};row.push(cell);e.onEndTag(()=>cell=null);}},text(c){if(cell)cell.text+=c.text;}})
  .on('a[href]',{element(e){if(row){link={href:e.getAttribute('href'),text:''};(row.links||=[]).push(link);e.onEndTag(()=>link=null);}},text(c){if(link)link.text+=c.text;}})
  .on('body',{text(c){body+=c.text;}})
  .on('br, div, p',{element(){if(cell)cell.text+='\n';}})
@@ -19,17 +20,18 @@ export async function parseProgramHtml(html){
  await response.arrayBuffer();return {tables,detail:norm(detail),day:norm(day),activeDay,body};
 }
 export function programEntries(page){
- const rows=page.tables.flatMap(t=>t.rows).filter(r=>r[0]?.attrs.rowspan==='4'&&/\bis-boatColor[1-6]\b/.test(r[0].attrs.class||''));
+ const rows=page.tables.flatMap(t=>t.rows).filter(r=>r[0]?.attrs?.rowspan==='4'&&/\bis-boatColor[1-6]\b/.test(r[0].attrs.class||''));
  requireValue(rows.length===6,'6艇分の出走表を確認できません');
  const entries=rows.map(row=>{
-  requireValue(row.length>=8,'出走表の列数が変わっています');
+  const withdrawn=/\bis-miss\b/.test(row[0].attrs.tbody_class||'')||row.some(c=>/欠場|欠艇/.test(norm(c.text)));
+  requireValue(row.length>=8||withdrawn,'出走表の列数が変わっています');
   const identity=tokens(row[2]),match=/(\d{4})\s*\/\s*(A1|A2|B1|B2)/.exec(identity.join(' '));
   const classAt=identity.findIndex(x=>/\/\s*(A1|A2|B1|B2)$/.test(x));
   requireValue(match&&classAt>=0&&identity[classAt+1],'登録番号・選手名を確認できません');
   const start=tokens(row[3]),national=tokens(row[4]),local=tokens(row[5]),motor=tokens(row[6]),boat=tokens(row[7]);
-  requireValue(/^F\d+$/.test(start[0])&&/^L\d+$/.test(start[1]),'平均STの構造が変わっています');
+  requireValue(withdrawn||/^F\d+$/.test(start[0])&&/^L\d+$/.test(start[1]),'平均STの構造が変わっています');
   return {lane:Number(norm(row[0].text)),racer_id:match[1],name:identity[classAt+1].split(/\s+/).join(' '),class:match[2],
-   national_win_rate:num(national[0]),local_win_rate:num(local[0]),motor_2rate:num(motor[1]),boat_2rate:num(boat[1]),avg_st:num(start[2])};
+   participation_status:withdrawn?'WITHDRAWN':'ENTERED',national_win_rate:num(national[0]),local_win_rate:num(local[0]),motor_2rate:num(motor[1]),boat_2rate:num(boat[1]),avg_st:num(start[2])};
  });
  requireValue(new Set(entries.map(e=>e.lane)).size===6&&entries.every(e=>e.lane>=1&&e.lane<=6),'出走表の枠が不正です');return entries.sort((a,b)=>a.lane-b.lane);
 }
@@ -44,23 +46,26 @@ export function programContext(page,previous={}){
   phase:label.includes('準優')?'SEMI_FINAL':label.includes('優勝戦')?'FINAL':label.includes('予選')?'QUALIFYING':label?'OTHER':previous.phase||'UNKNOWN'};
 }
 export function programExhibition(page){
- const rows=page.tables.flatMap(t=>t.rows).filter(r=>r[0]?.attrs.rowspan==='4'&&/\bis-boatColor[1-6]\b/.test(r[0].attrs.class||''));
+ const rows=page.tables.flatMap(t=>t.rows).filter(r=>r[0]?.attrs?.rowspan==='4'&&/\bis-boatColor[1-6]\b/.test(r[0].attrs.class||''));
  if(!rows.length)return [];
  requireValue(rows.length===6,'展示の出走表が6艇分ありません');
  const startTable=page.tables.find(t=>norm(t.rows[0]?.[0]?.text)==='スタート展示'),starts=new Map();
  if(startTable)for(const [i,row] of startTable.rows.slice(2).entries()){
-  const m=/^([1-6])\s+([FL]?)(\d?\.\d{2})/.exec(norm(row.map(c=>c.text).join(' ')));
-  if(m)starts.set(Number(m[1]),{exhibition_st:Number(m[3])*(m[2]==='F'?-1:1),exhibition_course:i+1,exhibition_st_status:m[2]||'NORMAL'});
+  const text=norm(row.map(c=>c.text).join(' ')).replace(/\s+/g,' '),m=/^([1-6])\s*([FL]?)(\d?\.\d{2})(?:\s|$)/.exec(text);
+  if(m){const lane=Number(m[1]);requireValue(!starts.has(lane)&&i<6,'展示STの艇番が重複・範囲外です');starts.set(lane,{exhibition_st:Number(m[3])*(m[2]==='F'?-1:1),exhibition_course:i+1,exhibition_st_status:m[2]||'NORMAL'});}
  }
- return rows.map(row=>{const lane=Number(norm(row[0].text)),time=num(row[4].text);requireValue(time===null||time>=5&&time<=9,'展示タイムが範囲外です');return {lane,exhibition_time:time,...starts.get(lane)};});
+ const result=rows.map(row=>{const lane=Number(norm(row[0].text)),time=num(row[4]?.text),withdrawn=/\bis-miss\b/.test(row[0].attrs.tbody_class||'')||row.some(c=>/欠場|欠艇/.test(norm(c.text)));
+  requireValue(time===null||time>=5&&time<=9,'展示タイムが範囲外です');
+  return {lane,participation_status:withdrawn?'WITHDRAWN':'ENTERED',exhibition_time:withdrawn?null:time,exhibition_st:null,exhibition_course:null,exhibition_st_status:null,...(withdrawn?{}:starts.get(lane))};});
+ requireValue(new Set(result.map(e=>e.lane)).size===6&&result.every(e=>e.lane>=1&&e.lane<=6),'展示の艇番が不正です');return result;
 }
 export function dataActions(program,deadline,now){
  const left=Date.parse(deadline)-now;if(!(left>0))return {entries:false,exhibition:false};
  return {entries:!program?.entries?.length||left<=30*60000&&!program.entries_30m_done,
-  exhibition:left<=10*60000&&!program?.exhibition_10m_done || left<=5*60000&&!program?.exhibition_available&&!program?.exhibition_5m_done};
+  exhibition:(left<=10*60000&&!program?.exhibition_10m_done || left<=5*60000&&!program?.exhibition_available&&!program?.exhibition_5m_done) && (!program?.exhibition_last_attempt || now-Date.parse(program.exhibition_last_attempt)>=60000)};
 }
 export function annualForecast(program,model,now){
- if(!model||!program.entries?.length||now>=Date.parse(program.deadline_at)-180000)return null;
+ if(!model||!program.entries?.length||program.entries.some(e=>e.participation_status==='WITHDRAWN')||now>=Date.parse(program.deadline_at)-180000)return null;
  validateAnnualModel(model,program.date);
  const result=predictAnnual(program,model),saved=new Date(now).toISOString();
  return {...program,entries:result.entries,probabilities:result.items,items:result.items.slice(0,10),scores:result.scores,
@@ -88,5 +93,5 @@ export function programCalendar(page,date){
 export function annualEntryData(program,model){
  if(!model||program.entries?.length!==6)return program;
  validateAnnualModel(model,program.date);
- return {...program,history_model_id:model.id,history_window:model.coverage,history:annualHistory(program,model),entries:program.entries.map(e=>({...e,annual_lane:annualLaneStats(model,e.racer_id,e.lane)}))};
+ return {...program,history_model_id:model.id,history_exhibition_st_through:model.exhibition_st_profiles?.through||null,history_window:model.coverage,history:annualHistory(program,model),entries:program.entries.map(e=>({...e,annual_lane:annualLaneStats(model,e.racer_id,e.lane)}))};
 }

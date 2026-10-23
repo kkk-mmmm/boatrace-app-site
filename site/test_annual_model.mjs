@@ -15,3 +15,10 @@ test('120通りが重複せず、全確率の合計1を保ち、未知選手も�
  const rows=annualTriples([2,1,.4,.3,.2,-1]);assert.equal(rows.length,120);assert.equal(new Set(rows.map(r=>r.combo)).size,120);assert.ok(Math.abs(rows.reduce((s,r)=>s+r.probability,0)-1)<1e-10);
  assert.ok(annualFeatures(race,emptyAnnualProfiles()).flat().every(Number.isFinite));
 });
+
+test('展示ST差は正常な照合ペアの平均・RMSE・件数を表示し、当日・未来の資料は使用しない',async()=>{
+ const {pairedExhibitionGap}=await import('./public/annual-model.mjs');
+ const model={exhibition_st_profiles:{schema_version:1,kind:'EXHIBITION_ST_PAIRED_HISTORY',window_from:'2025-10-23',through:'2026-10-22',players:{'1234':{n:2,sum:.2,sum_squares:.025,from:'2026-10-01',through:'2026-10-20'}}}};
+ const gap=pairedExhibitionGap(model,'1234','2026-10-23');assert.equal(gap.n,2);assert.equal(gap.mean,.1);assert.ok(Math.abs(gap.rmse-Math.sqrt(.0125))<1e-12);
+ assert.equal(pairedExhibitionGap(model,'9999','2026-10-23'),null);assert.equal(pairedExhibitionGap(model,'1234','2026-10-22'),null);
+});

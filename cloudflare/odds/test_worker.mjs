@@ -134,3 +134,22 @@ test('取得対象が同じ配信版なら毎分の全件書き込みを省き�
   t.mock.timers.tick(60000);await coordinator.start(now+60000);
   assert.equal(requests,3);assert.equal(targetWrites,1);assert.deepEqual(await storage.get('target:06-1'),target);
 });
+
+test('選択した場のAPIでも厳選候補を全場へ配信し、低期待値の高率・低率を落とさず公式へ追加取得しない',async t=>{
+ t.mock.timers.enable({apis:['Date'],now});
+ t.mock.method(globalThis,'fetch',async()=>{throw Error('閲覧で公式へ取得してはいけません');});
+ const storage=new Storage(),coordinator=new OddsCoordinator({storage},{}),keys=[];
+ for(const [venue_code,inRate,value] of [['01',.8,.8],['02',.2,.9],['03',.5,2]]){
+  const probabilities=[];
+  for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)for(let c=1;c<=6;c++)if(new Set([a,b,c]).size===3)probabilities.push({combo:`${a}-${b}-${c}`,probability:a===1?inRate/20:(1-inRate)/100,rank:probabilities.length+1});
+  const p={...target,venue_code,probabilities},key=`${venue_code}-1`;keys.push(key);await storage.put('target:'+key,p);
+  await storage.put('race:'+key,{...p,status:'OK',attempted_at:new Date(now).toISOString(),fetched_at:new Date(now).toISOString(),items:[{combo:'6-5-4',odds:value/((1-inRate)/100)}]});
+ }
+ await storage.put('work',{date:target.date,status:'COMPLETE',keys});
+ const data=await (await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01&venue=01'))).json();
+ assert.deepEqual(data.races.map(r=>r.venue_code),['01']);assert.deepEqual(data.featured_races.map(r=>r.venue_code),['03','02','01']);
+ for(const r of data.featured_races)assert.ok(Math.abs(r.scenario_probabilities.in+r.scenario_probabilities.other-1)<1e-6);
+ assert.deepEqual(data.opportunities.map(r=>r.venue_code),['03']);
+ await storage.put('work',{date:target.date,status:'FAILED',keys});
+ assert.deepEqual((await (await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01&venue=01'))).json()).featured_races,[]);
+});

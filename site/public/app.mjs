@@ -1,11 +1,11 @@
-import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates} from './view.mjs';
-import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveOpportunities, proposalRace, PROPOSAL_LEAD_MS} from './odds-live.mjs';
+import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups} from './view.mjs';
+import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveFeaturedRaces, proposalRace, PROPOSAL_LEAD_MS} from './odds-live.mjs';
 const $ = id => document.getElementById(id);
 const yen = n => `${n.toLocaleString('ja-JP')}円`;
 const pct = n => n == null ? '—' : `${(n * 100).toFixed(1)}%`;
 const clock = value => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}).format(new Date(value)) : '未確認';
 let current = null, archive = null, catalog = null, selected = null, selectedVenue = null, predictionTab = 'probability', view = 'live', entryTab = 'entries', loadVersion = 0;
-let predictionScenario='all', predictionLimit=10, chosenCombo=null, predictionRaceKey=null;
+let predictionScenario='all', predictionLimit=10, chosenCombos=new Set(), predictionRaceKey=null, featuredTab='value';
 let oddsConfigPromise=null,liveOdds=null,oddsAttempt=0,oddsRequest=null,oddsFailure=null,oddsVenue=null;
 async function refreshOdds({force=false}={}) {
   if(!oddsConfigPromise)oddsConfigPromise=(async()=>{
@@ -129,11 +129,13 @@ function notify(message) { $('message').textContent = message; $('message').hidd
 
 function renderOpportunities() {
   const now=Date.now();
-  const rows=(oddsFailure?[]:liveOdds?liveOpportunities(liveOdds,now):catalog?.opportunities || []).filter(x=>x.date===japanDate(now) && Date.parse(x.deadline_at)>now && Date.parse(x.deadline_at)<=now+3600000
-    && ['OK','PARTIAL'].includes(x.update_status) && x.classification==='PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED'
-    && [x.fetched_at,x.recorded_at,x.last_success_at].every(t=>Number.isFinite(Date.parse(t)) && Date.parse(t)<=now+60000 && now-Date.parse(t)<=10*60000));
-  $('opportunities-content').innerHTML=rows.length?`<div class="opportunity-grid">${rows.slice(0,3).map((x,i)=>`<button class="opportunity-card" data-opportunity-venue="${e(x.venue_code)}" data-opportunity-race="${x.race_no}" title="${e(x.model_name)} / オッズ取得 ${e(clock(x.fetched_at))}"><span class="opportunity-top"><span class="eyebrow">${i+1} / ${e(catalog?.venues.find(v=>v.code===x.venue_code)?.name || x.venue)} ${x.race_no}R</span><span>締切 ${e(shortClock(x.deadline_at))}</span></span><span class="opportunity-main"><strong>${e(x.combo)}</strong><span class="opportunity-value"><b>${x.value.toFixed(3)}</b>倍<small>期待値</small></span></span><span class="opportunity-bottom"><span>${pct(x.probability)} × ${x.odds.toFixed(1)}倍</span><span>${x.model_name?.includes('検証中')?'検証中 / ':''}取得 ${e(shortClock(x.fetched_at))}</span></span></button>`).join('')}</div>`
-    : '<div class="opportunity-empty">締切まで1時間以内で、表示条件を満たすレースはありません。新鮮なオッズで期待値1.0超を確認できないためです。オッズ未提供・更新待ち・締切済みのレースも対象から除外します。</div>';
+  const groups=featuredRaceGroups(oddsFailure?[]:liveOdds?liveFeaturedRaces(liveOdds,now):catalog?.featured_races || [],now);
+  const rows=groups[featuredTab];
+  for(const button of document.querySelectorAll('[data-featured-tab]'))button.setAttribute('aria-pressed',String(button.dataset.featuredTab===featuredTab));
+  const conditions={value:'高率・低率に分類されないレースから、期待値1.0超を高い順に表示します。',high:'イン逃げ想定70%以上を、確率が高い順に表示します。期待値1.0未満も含みます。',low:'イン逃げ想定30%以下を、確率が低い順に表示します。期待値1.0未満も含みます。'};
+  $('featured-condition').textContent=conditions[featuredTab];
+  $('opportunities-content').innerHTML=rows.length?`<div class="opportunity-grid">${rows.map((x,i)=>`<button class="opportunity-card" data-opportunity-venue="${e(x.venue_code)}" data-opportunity-race="${x.race_no}" data-in-probability="${x.scenario_probabilities.in}" data-other-probability="${x.scenario_probabilities.other}" data-expected-value="${x.value}" title="${e(x.model_name)} / オッズ取得 ${e(clock(x.fetched_at))}"><span class="opportunity-top"><span class="eyebrow">${i+1} / ${e(catalog?.venues.find(v=>v.code===x.venue_code)?.name || x.venue)} ${x.race_no}R</span><span>締切 ${e(shortClock(x.deadline_at))}</span></span><span class="opportunity-main"><strong>${e(x.combo)}</strong><span class="opportunity-value"><b>${x.value.toFixed(3)}</b>倍<small>期待値</small></span></span><span class="opportunity-probabilities"><span>イン逃げ想定 <b>${pct(x.scenario_probabilities.in)}</b></span><span>それ以外 <b>${pct(x.scenario_probabilities.other)}</b></span></span><span class="opportunity-bottom"><span>${pct(x.probability)} × ${x.odds.toFixed(1)}倍</span><span>取得 ${e(shortClock(x.fetched_at))}</span></span></button>`).join('')}</div>`
+    : `<div class="opportunity-empty">締切まで1時間以内で、この条件に合うレースはありません。${featuredTab==='value'?'期待値1.0超のレースがない、または高率・低率へ分類済みのためです。':`イン逃げ想定${featuredTab==='high'?'70%以上':'30%以下'}のレースを確認できません。`}オッズ・全120通りの予想が未取得、更新待ち、締切済みの場合も対象外です。</div>`;
   for(const button of document.querySelectorAll('[data-opportunity-venue]'))button.addEventListener('click',async()=>{
     const code=button.dataset.opportunityVenue,number=Number(button.dataset.opportunityRace);
     showView('live');selectedVenue=code;clearCurrent();await load();
@@ -187,12 +189,12 @@ function renderCurrent() {
   const cutoffReached=now>=Date.parse(race.deadline_at)-PROPOSAL_LEAD_MS;
   const canRank=!!savedProposal || status.currentOdds && !cutoffReached;
   const raceKey = `${race.date}/${race.venue_code}/${race.race_no}/${race.prediction_saved_at}`;
-  if (predictionRaceKey !== raceKey) {predictionRaceKey=raceKey;predictionLimit=10;chosenCombo=null;}
+  if (predictionRaceKey !== raceKey) {predictionRaceKey=raceKey;predictionLimit=10;chosenCombos.clear();}
   const pool = race.items.length ? predictionPool(race) : [];
   const scenarioMass = scenarioProbabilities(pool);
   const ranked = predictionRanking(pool, race.odds?.items || [], {scenario:predictionScenario,tab:predictionTab,currentOdds:canRank});
   const forecastItems = ranked.slice(0,predictionLimit);
-  if (!pool.some(row=>row.combo===chosenCombo && matchesPredictionScenario(row.combo,predictionScenario))) chosenCombo=null;
+  chosenCombos=new Set([...chosenCombos].filter(combo=>pool.some(row=>row.combo===combo)));
   const correctionPending=race.model_validation?.selected_lambda===null;
   const displayedModel=correctionPending?'固定式 / 履歴補正は未適用':race.model_name || '固定スコアモデル v1';
   $('model-label').textContent = displayedModel;
@@ -216,9 +218,9 @@ function renderCurrent() {
   const market = marketItems.length ? `<details class="market-odds"><summary>3連単オッズ一覧（${marketItems.length}通り / ${predictionScenario==='in'?'1号艇1着':predictionScenario==='other'?'1号艇以外が1着':'すべて'}）</summary><p class="small-note">取得 ${e(clock(originalRace.odds.fetched_at))} / ${status.currentOdds ? '締切前・取得時点のオッズ' : '参考オッズ。取得時刻・締切・更新状態を確認してください。'}${savedProposal?' / 保存提案の期待値には上の保存オッズを使います。この一覧は最新取得値です。':''}</p>${table(['買い目','取得時点オッズ'],marketItems.map(x=>[e(x.combo),`${x.odds.toFixed(1)}倍`]))}</details>` : '<p class="small-note">この条件の3連単オッズは未取得・未提供です。</p>';
   const scenarios=`<div class="prediction-scenarios" role="group" aria-label="1着の傾向で絞り込み"><button data-scenario="all" aria-pressed="${predictionScenario==='all'}"><span>すべて</span><strong>${scenarioMass?'100%':'—'}</strong></button>${[['in','イン逃げ想定','1号艇が1着'],['other','それ以外','1号艇以外が1着']].map(([key,label,detail])=>`<button data-scenario="${key}" aria-pressed="${predictionScenario===key}"><span>${label}</span><strong>${pct(scenarioMass?.[key])}</strong><small>${detail}</small></button>`).join('')}</div><p class="small-note scenario-note">${scenarioMass?'全120通りの推定確率を集計。イン逃げ想定は1号艇1着として分類し、実際の進入・決まり手の確率を示すものではありません。':'全120通りの確率を確認できないため、傾向別の確率は表示できません。'}</p>`;
   const unavailableReason=!canRank?`期待値上位は表示できません：${status.text}。${cutoffReached?'締切3分前以前の保存記録を確認できません。':'締切前で新鮮なオッズの取得をお待ちください。'}`:'期待値を計算できる買い目がありません。';
-  const chosen = pool.find(row=>row.combo===chosenCombo);
-  const related=sujiCandidates(pool,race.odds?.items || [],chosenCombo,{scenario:predictionScenario,currentOdds:canRank});
-  const relatedBlock=`<section class="related-bets" aria-labelledby="related-title"><h4 id="related-title">選んだ買い目から、スジの候補</h4>${chosen?`<p class="related-selection">選択中 <strong>${e(chosen.combo)}</strong> <span>推定確率 ${pct(chosen.probability)} / 期待値 ${canRank && oddsMap.has(chosen.combo)?(chosen.probability*oddsMap.get(chosen.combo)).toFixed(3)+'倍':'—'}</span></p>${related.length?table(['買い目 / スジ','推定確率','オッズ','期待値'],related.map(row=>[`<button class="combo-select" data-combo="${e(row.combo)}" aria-label="${e(row.combo)}を選択">${e(row.combo)}</button><small class="suji-reason">${e(row.reason)}</small>`,pct(row.probability),`${row.odds.toFixed(1)}倍`,`${row.value.toFixed(3)}倍`])):`<p class="related-empty" role="status">${canRank?'このスジでオッズを確認できる追加候補はありません。':`現在は候補の提案を休止しています：${e(status.text)}。締切前の新鮮なオッズが必要です。`}</p>`}<p class="small-note">同じ1着を軸に、2・3着の入れ替え、または選んだ相手を1艇以上残した相手替えから期待値上位5点を表示します。決まり手を推定したスジではありません。期待値は各1点の値で、1.0倍未満なら推定払戻が購入額を下回ります。複数の買い目が同時に的中するものではありません。</p>`:'<p class="related-empty">上の買い目を1つ押すと、同じ1着を軸にしたスジ候補を期待値順に表示します。</p>'}</section>`;
+  const chosen = pool.filter(row=>chosenCombos.has(row.combo));
+  const related=sujiCandidates(pool,race.odds?.items || [],[...chosenCombos],{scenario:predictionScenario,currentOdds:canRank});
+  const relatedBlock=`<section class="related-bets" aria-labelledby="related-title"><h4 id="related-title">選んだ買い目から、スジの候補（最大10点）</h4>${chosen.length?`<div class="related-selection"><span>選択中 ${chosen.length}点</span>${chosen.map(row=>`<button class="combo-select" data-combo="${e(row.combo)}" aria-pressed="true" aria-label="${e(row.combo)}の選択を解除"><strong>${e(row.combo)}</strong><small>確率 ${pct(row.probability)} / 期待値 ${canRank && oddsMap.has(row.combo)?(row.probability*oddsMap.get(row.combo)).toFixed(3)+'倍':'—'}</small></button>`).join('')}<button id="clear-bets" class="text-button">選択をクリア</button></div>${related.length?table(['買い目 / スジ','推定確率','オッズ','期待値'],related.map(row=>[`<button class="combo-select" data-combo="${e(row.combo)}" aria-pressed="false" aria-label="${e(row.combo)}を追加選択">${e(row.combo)}</button><small class="suji-reason">${e(row.reason)}<br>軸：${row.based_on.slice(0,2).map(e).join('、')}${row.based_on.length>2?' ほか'+(row.based_on.length-2)+'点':''}</small>`,pct(row.probability),`${row.odds.toFixed(1)}倍`,`${row.value.toFixed(3)}倍`])):`<p class="related-empty" role="status">${canRank?'選択中の傾向で、未選択かつオッズを確認できるスジ候補はありません。':`現在は候補の提案を休止しています：${e(status.text)}。締切前の新鮮なオッズが必要です。`}</p>`}<p class="small-note">複数の選択買い目から、同じ1着を軸に2・3着の入れ替え、または相手を1艇以上残した相手替えを集め、選択済みと重複を除いた期待値上位10点を提案します。表示中の傾向で絞り込みます。決まり手を推定したスジではありません。期待値は各1点の値で、1.0倍未満なら推定払戻が購入額を下回ります。複数の買い目が同時に的中するものではありません。</p>`:'<p class="related-empty">買い目を複数押して選択してください。同じ買い目をもう一度押すと解除でき、選択済みを除くスジ候補を重複なし・最大10点で提案します。</p>'}</section>`;
   const forecast = race.items.length ? `<div class="time-note"><span>予想入力取得：${e(clock(race.input_fetched_at))}</span><span>予想保存：${e(clock(race.prediction_saved_at))}</span><span>オッズ取得：${e(clock(race.odds?.fetched_at))}</span></div>
     ${savedProposal?`<div class="proposal-notice" role="status"><strong>締切3分前の保存提案${status.code==='CLOSED'?' / 締切済み':''}</strong><span>基準 ${e(clock(savedProposal.cutoff_at))} / オッズ取得 ${e(clock(savedProposal.odds.fetched_at))} / 記録 ${e(clock(savedProposal.proposal_saved_at))}</span><span>基準時刻以前の最新成功記録です。この提案の確率・オッズ・期待値は以後更新しません。</span></div>`:cutoffReached?'<p class="small-note proposal-missing">締切3分前以前の提案は未保存です。後から取得したオッズで当時の提案を作り直しません。</p>':''}
     <div class="table-heading"><h3>予想 / 買い目</h3><span class="small-note">${e(displayedModel)}</span></div>
@@ -226,11 +228,11 @@ function renderCurrent() {
     <div class="entry-tabs prediction-tabs" role="tablist" aria-label="予想の並び順"><button id="probability-tab" role="tab" aria-selected="${predictionTab==='probability'}" aria-controls="prediction-panel">推定確率（的中率）上位</button><button id="value-tab" role="tab" aria-selected="${predictionTab==='value'}" aria-controls="prediction-panel">オッズを含めた期待値上位</button></div>
     <div id="prediction-panel" role="tabpanel" aria-labelledby="${predictionTab==='value'?'value':'probability'}-tab">${forecastItems.length?`<div class="prediction-table">${table(['順位', '買い目', '推定確率', 'オッズ', '期待値'], forecastItems.map((x,i) => {
       const odds = x.odds;
-      return [`<span class="rank ${i === 0 ? 'first' : ''}">${i+1}</span>`, `<button class="combo-select" data-combo="${e(x.combo)}" aria-pressed="${chosenCombo===x.combo}" aria-label="${e(x.combo)}を選択">${e(x.combo)}</button>`, pct(x.probability), odds == null ? '—' : `${odds.toFixed(1)}倍${!canRank ? '（参考）' : ''}`, canRank && odds != null ? `${(x.probability * odds).toFixed(3)}倍` : '—'];
+      return [`<span class="rank ${i === 0 ? 'first' : ''}">${i+1}</span>`, `<button class="combo-select" data-combo="${e(x.combo)}" aria-pressed="${chosenCombos.has(x.combo)}" aria-label="${e(x.combo)}${chosenCombos.has(x.combo)?'の選択を解除':'を追加選択'}">${e(x.combo)}</button>`, pct(x.probability), odds == null ? '—' : `${odds.toFixed(1)}倍${!canRank ? '（参考）' : ''}`, canRank && odds != null ? `${(x.probability * odds).toFixed(3)}倍` : '—'];
     }))}</div><div class="prediction-pagination"><span role="status">${forecastItems.length} / ${ranked.length}点を表示</span>${forecastItems.length<ranked.length?'<button id="more-predictions">追加で10点見る</button>':''}</div>`:`<p class="empty-value" role="status">${e(unavailableReason)}</p>`}</div>
     ${relatedBlock}
     ${race.model_status==='EXPERIMENTAL'?`<p class="small-note">${correctionPending?'履歴は集計済み・予想への補正は未適用です。表示中の予想は固定式で計算しています。':'履歴補正は検証中です。'}</p>`:''}
-    <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目を押すと関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。オッズ更新の目安は締切30分以内が1分、それより先が5分です。提案は締切3分前以前の最新成功記録を当日中保持します。処理の遅延や保存欠損が生じる場合があります。</p>`
+    <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目は複数選択・解除でき、選択内容から関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。オッズ更新の目安は締切30分以内が1分、それより先が5分です。提案は締切3分前以前の最新成功記録を当日中保持します。処理の遅延や保存欠損が生じる場合があります。</p>`
     : `<div class="empty"><h3>このレースの予想は未取得です</h3><p>${e(race.issue || '必須データが確認できていません。')}</p></div>`;
   $('live-content').innerHTML = `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span></button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3><p>締切予定 ${e(clock(race.deadline_at))}（日本時間）</p></div><span class="status ${status.currentOdds ? '' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${sheetTabs}${forecast}${scores}${market}${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`;
   $('entries-tab').addEventListener('click',()=>{entryTab='entries';renderCurrent();});
@@ -245,13 +247,15 @@ function renderCurrent() {
     predictionScenario=button.dataset.scenario;predictionLimit=10;renderCurrent();
     document.querySelector(`[data-scenario="${predictionScenario}"]`)?.focus({preventScroll:true});
   });
+  $('clear-bets')?.addEventListener('click',()=>{chosenCombos.clear();renderCurrent();});
   $('more-predictions')?.addEventListener('click',()=>{
     const previous=predictionLimit;predictionLimit+=10;renderCurrent();
     const added=document.querySelectorAll('.prediction-table [data-combo]')[previous];added?.focus({preventScroll:true});
   });
   for(const button of document.querySelectorAll('[data-combo]'))button.addEventListener('click',()=>{
-    chosenCombo=button.dataset.combo;renderCurrent();
-    document.querySelector(`[data-combo="${chosenCombo}"]`)?.focus({preventScroll:true});
+    const combo=button.dataset.combo;
+    if(chosenCombos.has(combo))chosenCombos.delete(combo);else chosenCombos.add(combo);
+    renderCurrent();document.querySelector(`[data-combo="${combo}"]`)?.focus({preventScroll:true});
   });
 
 }
@@ -336,6 +340,7 @@ async function load({forceOdds=false}={}) {
     $('refresh-button').innerHTML='表示を更新 <span>↻</span>';
   } }
 }
+for(const button of document.querySelectorAll('[data-featured-tab]'))button.addEventListener('click',()=>{featuredTab=button.dataset.featuredTab;renderOpportunities();});
 $('clear-venue-filters').addEventListener('click',()=>{for(const key of Object.keys(venueFilters))venueFilters[key]=null;renderVenueFilters();});
 $('venue-select').addEventListener('change', () => {
   selectedVenue = $('venue-select').value;

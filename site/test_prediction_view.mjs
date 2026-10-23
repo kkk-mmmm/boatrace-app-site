@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates} from './public/view.mjs';
+import {predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups} from './public/view.mjs';
 const rows=[];
 for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)for(let c=1;c<=6;c++)if(new Set([a,b,c]).size===3)rows.push({combo:`${a}-${b}-${c}`,probability:a===1?.025:.005});
 const quotes=rows.map((row,i)=>({combo:row.combo,odds:i+1}));
@@ -32,16 +32,33 @@ test('期待値順位は全120点から作り、未提供・無効オッズと�
 });
 test('スジは1着を固定し相手を1艇以上残す候補に限定して、選択買い目を除き期待値順にする',()=>{
   const candidates=sujiCandidates(rows,quotes,'1-2-3',{scenario:'in',currentOdds:true,limit:100});
-  assert.equal(candidates.length,13);
+  assert.equal(candidates.length,10);
   assert.ok(candidates.every(row=>row.combo.startsWith('1-')&&row.combo!=='1-2-3'&&/[23]/.test(row.combo.slice(2))));
-  assert.equal(candidates.find(row=>row.combo==='1-3-2').reason,'2・3着入れ替え');
-  assert.equal(candidates.find(row=>row.combo==='1-2-4').reason,'2着固定・3着替え');
-  assert.equal(candidates.find(row=>row.combo==='1-4-3').reason,'3着固定・2着替え');
+  const reasons=sujiCandidates(rows,quotes.filter(x=>['1-3-2','1-2-4','1-4-3'].includes(x.combo)),'1-2-3',{currentOdds:true});
+  assert.equal(reasons.find(row=>row.combo==='1-3-2').reason,'2・3着入れ替え');
+  assert.equal(reasons.find(row=>row.combo==='1-2-4').reason,'2着固定・3着替え');
+  assert.equal(reasons.find(row=>row.combo==='1-4-3').reason,'3着固定・2着替え');
   assert.ok(!candidates.some(row=>row.combo==='1-4-5'));
   for(let i=1;i<candidates.length;i++)assert.ok(candidates[i-1].value>=candidates[i].value);
-  assert.equal(sujiCandidates(rows,quotes,'1-2-3',{currentOdds:true}).length,5);
+  assert.equal(sujiCandidates(rows,quotes,'1-2-3',{currentOdds:true}).length,10);
   assert.deepEqual(sujiCandidates(rows,quotes,null,{currentOdds:true}),[]);
   assert.deepEqual(sujiCandidates(rows,quotes,'1-2-3',{currentOdds:false}),[]);
   assert.deepEqual(sujiCandidates(rows,quotes,'1-2-3',{scenario:'other',currentOdds:true}),[]);
   assert.ok(sujiCandidates(rows,quotes,'3-2-1',{scenario:'other',currentOdds:true}).every(row=>row.combo.startsWith('3-')));
+});
+
+test('複数選択のスジを統合し、選択済み・重複を除いて全体の期待値上位10点を提案する',()=>{
+ const selected=['1-2-3','1-3-2','3-2-1','1-2-3'];
+ const result=sujiCandidates([...rows,rows[0]],quotes,selected,{currentOdds:true});
+ assert.equal(result.length,10);assert.equal(new Set(result.map(r=>r.combo)).size,10);
+ const individual=new Map(selected.flatMap(combo=>sujiCandidates(rows,quotes,combo,{currentOdds:true})).filter(r=>!selected.includes(r.combo)).map(r=>[r.combo,r]));
+ const expected=[...individual.values()].sort((a,b)=>b.value-a.value||a.combo.localeCompare(b.combo)).slice(0,10);
+ assert.deepEqual(result.map(r=>r.combo),expected.map(r=>r.combo));
+ for(const r of result){assert.ok(!selected.includes(r.combo));assert.ok(r.based_on.length);assert.ok(r.based_on.every(c=>selected.includes(c)&&c[0]===r.combo[0]));}
+ const overlapping=sujiCandidates(rows,quotes.filter(x=>x.combo==='1-2-4'),selected,{currentOdds:true});
+ assert.equal(overlapping.length,1);assert.deepEqual(overlapping[0].based_on,['1-2-3','1-3-2']);
+ assert.deepEqual(sujiCandidates(rows,quotes,selected,{currentOdds:false}),[]);
+ assert.deepEqual(sujiCandidates(rows,quotes,rows.map(r=>r.combo),{currentOdds:true}),[]);
+ assert.equal(sujiCandidates(rows,quotes,selected,{currentOdds:true,limit:999}).length,10);
+ assert.ok(sujiCandidates(rows,quotes,selected,{scenario:'in',currentOdds:true}).every(r=>r.combo.startsWith('1-')));
 });

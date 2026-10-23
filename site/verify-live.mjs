@@ -27,6 +27,7 @@ if(oddsConfig.api_url) {
  const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:'https://kkk-mmmm.github.io'}});
  assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'https://kkk-mmmm.github.io');
  workerOdds=validateLiveOdds(await response.json(),current.date);
+ assert.ok(Array.isArray(workerOdds.featured_races),'全場の厳選候補が必要です');
  assert.notEqual(workerOdds.update.status,'FAILED');assert.equal(workerOdds.interval_seconds,60);
 }
 const venues=[];
@@ -106,12 +107,13 @@ try{
  assert.equal(await run("[...document.querySelectorAll('.prediction-table [data-combo]')].every(x=>!x.dataset.combo.startsWith('1-'))"),true);
  assert.equal(await run("new Set([...document.querySelectorAll('.prediction-table [data-combo]')].map(x=>x.dataset.combo)).size"),100);
  await run("document.querySelector('.prediction-table [data-combo]').click()");
- const selectedCombo=await run("document.querySelector('.related-selection strong').textContent");
+ await run("document.querySelectorAll('.prediction-table [data-combo]')[1].click()");
+ const selectedCombos=await run("[...document.querySelectorAll('.related-selection [data-combo]')].map(x=>x.dataset.combo)");assert.equal(selectedCombos.length,2);
  const relatedRows=await run("[...document.querySelectorAll('.related-bets tbody tr')].map(tr=>({combo:tr.querySelector('[data-combo]').dataset.combo,value:parseFloat(tr.children[3].textContent)}))");
- assert.ok(relatedRows.length<=5);
- for(const row of relatedRows){assert.notEqual(row.combo,selectedCombo);assert.equal(row.combo[0],selectedCombo[0]);assert.ok(Number.isFinite(row.value));}
+ assert.ok(relatedRows.length<=10);assert.equal(new Set(relatedRows.map(r=>r.combo)).size,relatedRows.length);
+ for(const row of relatedRows){assert.ok(!selectedCombos.includes(row.combo));assert.ok(selectedCombos.some(c=>c[0]===row.combo[0]));assert.ok(Number.isFinite(row.value));}
  for(let n=1;n<relatedRows.length;n++)assert.ok(relatedRows[n-1].value>=relatedRows[n].value);
- await run("document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
+ await run("document.getElementById('clear-bets').click();document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
  await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
@@ -129,6 +131,27 @@ try{
   browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,saved_proposal:savedProposal,saved_proposal_count:workerOdds?.proposals?.length || 0,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
  }
+ const featuredGroups={};
+ assert.equal(await run("document.querySelector('#opportunities-section h1').textContent"),'厳選レース');
+ for(const tab of ['value','high','low']){
+  await run(`document.querySelector('[data-featured-tab="${tab}"]').click()`);
+  assert.equal(await run(`document.querySelector('[data-featured-tab="${tab}"]').getAttribute('aria-pressed')`),'true');
+  const cards=await run("[...document.querySelectorAll('.opportunity-card')].map(x=>({key:x.dataset.opportunityVenue+'/'+x.dataset.opportunityRace,in:Number(x.dataset.inProbability),other:Number(x.dataset.otherProbability),value:Number(x.dataset.expectedValue),probability_text:x.querySelector('.opportunity-probabilities').textContent,height:x.getBoundingClientRect().height}))");
+  assert.ok(cards.length<=3);
+  for(const card of cards){
+   assert.ok(Number.isFinite(card.in)&&Number.isFinite(card.other)&&Math.abs(card.in+card.other-1)<1e-6);
+   assert.ok(card.probability_text.includes('イン逃げ想定')&&card.probability_text.includes('それ以外'));
+   assert.ok(tab==='high'?card.in>=.7-1e-12:tab==='low'?card.in<=.3+1e-12:card.in>.3&&card.in<.7&&card.value>1);
+   assert.ok(card.height<=115);
+  }
+  if(!cards.length)assert.ok((await run("document.getElementById('opportunities-content').textContent")).includes('この条件に合うレースはありません'));
+  featuredGroups[tab]=cards;
+ }
+ const featuredKeys=Object.values(featuredGroups).flat().map(r=>r.key);assert.equal(new Set(featuredKeys).size,featuredKeys.length);
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
+ const featuredReport={checked_at:new Date().toISOString(),site_url:base,groups:featuredGroups,duplicates:0,errors};
+ fs.writeFileSync(path.join(output,'featured-races.json'),JSON.stringify(featuredReport,null,2)+'\n');console.log('::notice title=Published featured races verification::'+JSON.stringify(featuredReport));
+ await run("document.querySelector('[data-featured-tab=value]').click()");
  if(workerOdds){
   await wait("!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length>0");
   const before=await run('window.__cloudflareReads.length');

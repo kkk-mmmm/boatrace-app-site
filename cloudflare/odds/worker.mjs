@@ -1,3 +1,4 @@
+import {scenarioProbabilities} from '../../site/public/view.mjs';
 import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,dataActions,annualForecast,programCalendar,annualEntryData} from './program.mjs';
 import {validateAnnualModel} from '../../site/public/annual-model.mjs';
 import {fetchText,officialUrl,robotsAllowed,parseOfficialHtml,OFFICIAL_ORIGIN} from './official.mjs';
@@ -25,7 +26,7 @@ export function validateTargets(feed, now) {
   return feed.races.filter(race=>Date.parse(race.deadline_at)>now);
 }
 
-export function opportunityRows(targets, records, now) {
+export function opportunityRows(targets, records, now, {featured=false}={}) {
   const rows=[];
   for(const target of targets) {
     const record=records.get(oddsKey(target));
@@ -35,12 +36,12 @@ export function opportunityRows(targets, records, now) {
       || !Number.isFinite(Date.parse(target.last_success_at)) || target.source_kind!=='CLOUDFLARE_SCHEDULED_PROGRAM' && now-Date.parse(target.last_success_at)>ODDS_MAX_AGE_MS
       || Date.parse(target.last_success_at)>now+60000 || target.issue)continue;
     const best=rankExpectedValue(target.probabilities,record.items)[0];
-    if(best?.value>1)rows.push({...best,date:target.date,venue_code:target.venue_code,venue:target.venue,race_no:target.race_no,
-      deadline_at:target.deadline_at,model_name:target.model_name,prediction_key:target.prediction_key,
+    if(best && (featured || best.value>1))rows.push({...best,date:target.date,venue_code:target.venue_code,venue:target.venue,race_no:target.race_no,
+      scenario_probabilities:scenarioProbabilities(target.probabilities),deadline_at:target.deadline_at,model_name:target.model_name,prediction_key:target.prediction_key,
       fetched_at:record.fetched_at,recorded_at:record.fetched_at,classification:'PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED',
       update_status:target.update_status,last_success_at:target.source_kind==='CLOUDFLARE_SCHEDULED_PROGRAM'?record.fetched_at:target.last_success_at});
   }
-  return rows.sort((a,b)=>b.value-a.value || a.deadline_at.localeCompare(b.deadline_at) || a.venue_code.localeCompare(b.venue_code)).slice(0,6);
+  return rows.sort((a,b)=>b.value-a.value || a.deadline_at.localeCompare(b.deadline_at) || a.venue_code.localeCompare(b.venue_code)).slice(0,featured?288:6);
 }
 
 export default {
@@ -297,6 +298,6 @@ export class OddsCoordinator {
       update:{status:work?.date===date?work.status:'UNAVAILABLE',started_at:work?.date===date?work.started_at:null,
         completed_at:work?.date===date?work.completed_at:null,message:work?.date===date?work.message:'当日のオッズは更新待ちです'},
       calendar:await storage.get('calendar'),annual_model:await storage.get('annual-model-status'),programs:[...programMap.values()].filter(p=>p.entries?.length===6&&p.date===date&&(!venue||p.venue_code===venue)&&(!race||p.race_no===race)),
-      races:rows,proposals,opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
+      races:rows,proposals,featured_races:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now,{featured:true}),opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
   }
 }

@@ -79,17 +79,55 @@ export function predictionRanking(rows, quotes, {scenario = 'all', tab = 'probab
     .sort((a, b) => (tab === 'value' ? b.value - a.value : b.probability - a.probability) || a.combo.localeCompare(b.combo));
 }
 
-// A transparent ticket relationship rule, not a prediction of the winning move.
-export function sujiCandidates(rows, quotes, selectedCombo, {scenario = 'all', currentOdds = false, limit = 5} = {}) {
-  if (!rows.some(row => row.combo === selectedCombo) || !matchesPredictionScenario(selectedCombo, scenario)) return [];
-  const [first, second, third] = selectedCombo.split('-');
-  return predictionRanking(rows, quotes, {scenario, tab: 'value', currentOdds})
-    .filter(row => row.combo !== selectedCombo && row.combo.startsWith(first + '-'))
+// Each selected ticket contributes a relationship; rank the union only once.
+export function sujiCandidates(rows, quotes, selectedCombos, {scenario = 'all', currentOdds = false, limit = 10} = {}) {
+  const selected = new Set(Array.isArray(selectedCombos) ? selectedCombos : selectedCombos ? [selectedCombos] : []);
+  const anchors = predictionPool({probabilities:rows}).filter(row => selected.has(row.combo) && matchesPredictionScenario(row.combo, scenario));
+  if (!anchors.length) return [];
+  return predictionRanking(predictionPool({probabilities:rows}), quotes, {scenario, tab: 'value', currentOdds})
+    .filter(row => !selected.has(row.combo))
     .map(row => {
-      const [, nextSecond, nextThird] = row.combo.split('-');
-      const reason = nextSecond === third && nextThird === second ? '2・3着入れ替え'
-        : nextSecond === second ? '2着固定・3着替え' : nextThird === third ? '3着固定・2着替え'
-        : nextThird === second ? '2着の相手を3着へ' : nextSecond === third ? '3着の相手を2着へ' : null;
-      return {...row, reason};
-    }).filter(row => row.reason).slice(0, limit);
+      const [first, second, third] = row.combo.split('-'), relationships = [];
+      for (const anchor of anchors) {
+        const [a, b, c] = anchor.combo.split('-');
+        if (first !== a) continue;
+        const reason = second === c && third === b ? '2・3着入れ替え'
+          : second === b ? '2着固定・3着替え' : third === c ? '3着固定・2着替え'
+          : third === b ? '2着の相手を3着へ' : second === c ? '3着の相手を2着へ' : null;
+        if (reason) relationships.push({combo:anchor.combo, reason});
+      }
+      return {...row, reason:[...new Set(relationships.map(x=>x.reason))].join(' / '), based_on:relationships.map(x=>x.combo)};
+    }).filter(row => row.based_on.length).slice(0, Math.max(0,Math.min(10,limit)));
+}
+
+export const FEATURED_IN_HIGH = .7;
+export const FEATURED_IN_LOW = .3;
+// Classify before limiting so one race can belong to only one group.
+export function featuredRaceGroups(candidates, now=Date.now()) {
+  const unique=new Map(), groups={value:[],high:[],low:[]};
+  for (const row of candidates || []) {
+    const mass=row?.scenario_probabilities;
+    if (!row || row.date!==japanDate(now) || !/^(0[1-9]|1\d|2[0-4])$/.test(row.venue_code)
+      || !Number.isInteger(row.race_no) || row.race_no<1 || row.race_no>12
+      || !Number.isFinite(Date.parse(row.deadline_at)) || Date.parse(row.deadline_at)<=now || Date.parse(row.deadline_at)>now+3600000
+      || !['OK','PARTIAL'].includes(row.update_status) || row.classification!=='PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED'
+      || ![row.fetched_at,row.recorded_at,row.last_success_at].every(t=>Number.isFinite(Date.parse(t)) && Date.parse(t)<=now+60000 && now-Date.parse(t)<=MAX_ODDS_AGE_MS)
+      || !mass || ![mass.in,mass.other].every(n=>Number.isFinite(n)&&n>=0&&n<=1) || Math.abs(mass.in+mass.other-1)>1e-6
+      || !/^[1-6]-[1-6]-[1-6]$/.test(row.combo) || new Set(row.combo.split('-')).size!==3
+      || !Number.isFinite(row.probability) || row.probability<0 || row.probability>1 || !Number.isFinite(row.odds) || row.odds<=0
+      || !Number.isFinite(row.value) || Math.abs(row.value-row.probability*row.odds)>1e-6) continue;
+    const key=`${row.date}/${row.venue_code}/${row.race_no}`, old=unique.get(key);
+    if (!old || Date.parse(row.fetched_at)>Date.parse(old.fetched_at)) unique.set(key,row);
+  }
+  for (const row of unique.values()) {
+    const probability=row.scenario_probabilities.in;
+    if(probability>=FEATURED_IN_HIGH-1e-12)groups.high.push(row);
+    else if(probability<=FEATURED_IN_LOW+1e-12)groups.low.push(row);
+    else if(row.value>1)groups.value.push(row);
+  }
+  const tie=(a,b)=>a.deadline_at.localeCompare(b.deadline_at)||a.venue_code.localeCompare(b.venue_code)||a.race_no-b.race_no;
+  groups.value.sort((a,b)=>b.value-a.value||tie(a,b));
+  groups.high.sort((a,b)=>b.scenario_probabilities.in-a.scenario_probabilities.in||b.value-a.value||tie(a,b));
+  groups.low.sort((a,b)=>a.scenario_probabilities.in-b.scenario_probabilities.in||b.value-a.value||tie(a,b));
+  return Object.fromEntries(Object.entries(groups).map(([key,rows])=>[key,rows.slice(0,3)]));
 }

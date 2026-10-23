@@ -99,6 +99,7 @@ export function validateLiveOdds(data, date, now=Date.now()) {
       || !Number.isInteger(r.race_no) || r.race_no < 1 || r.race_no > 12
       || !['OK','FAILED','UNAVAILABLE','CLOSED'].includes(r.status) || !validQuotes(r.items)
       || !Number.isFinite(Date.parse(r.attempted_at)))) throw Error('オッズAPIの対象・形式が一致しません');
+  if(data.featured_races && (!Array.isArray(data.featured_races)||data.featured_races.length>288))throw Error('厳選レースの配信形式が不正です');
   if (data.proposals && (!Array.isArray(data.proposals) || data.proposals.length>288 || new Set(data.proposals.map(oddsKey)).size!==data.proposals.length || data.proposals.some(p=>!validProposal(p,date)))) throw Error('保存提案の形式・時刻が不正です');
   if(data.programs && (!Array.isArray(data.programs)||data.programs.length>288||new Set(data.programs.map(oddsKey)).size!==data.programs.length||data.programs.some(p=>!validProgram(p,date,now))))throw Error('出走表・履歴予想の形式または時刻が不正です');
   if(data.calendar && (data.calendar.date!==date||!Array.isArray(data.calendar.venues)||data.calendar.venues.length!==24||new Set(data.calendar.venues.map(v=>v.code)).size!==24||data.calendar.venues.some(v=>!/^(0[1-9]|1\d|2[0-4])$/.test(v.code)||!['OPEN','NO_MEETING','UNKNOWN'].includes(v.meeting_status))))throw Error('開催一覧の形式が不正です');
@@ -141,4 +142,9 @@ export function liveOpportunities(data, now=Date.now()) {
     && [x.fetched_at,x.recorded_at,x.last_success_at].every(t=>Number.isFinite(Date.parse(t))
       && Date.parse(t)<=now+60000 && now-Date.parse(t)<=ODDS_MAX_AGE_MS))
     .sort((a,b)=>b.value-a.value || a.deadline_at.localeCompare(b.deadline_at)).slice(0,6);
+}
+
+export function liveFeaturedRaces(data,now=Date.now()) {
+  if(data.date!==new Date(now+9*3600000).toISOString().slice(0,10) || data.update?.status==='FAILED')return [];
+  return Array.isArray(data.featured_races)?data.featured_races:[];
 }

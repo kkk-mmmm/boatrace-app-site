@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {allLiveData, archiveData, root, modelHash, japanDate, liveData} from './data.mjs';
 import {venues} from '../tools/prerace/venues.mjs';
 import {renderReleases} from './releases.mjs';
-import {opportunityList} from './opportunities.mjs';
+import {opportunityList,featuredRaceList} from './opportunities.mjs';
 import {validateAnnualModel} from './public/annual-model.mjs';
 import {predictionKey} from './public/odds-live.mjs';
 
@@ -33,7 +33,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   if (requireCurrent && !snapshots.some(fresh)) {
     throw Error('最新の公式取得が確認できないため、公開用ビルドを停止しました');
   }
-  const current = {...snapshots[0], opportunities:opportunityList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
+  const current = {...snapshots[0], opportunities:opportunityList(snapshots,now),featured_races:featuredRaceList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
     meeting_status:s.meeting_status,meeting:s.meeting,update:s.update,race_count:s.races.length, data_url:`./data/venues/${s.venue_code}.json`}))};
   fs.mkdirSync(path.join(outputDirectory, 'data/venues'), {recursive: true});
   for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs']) {

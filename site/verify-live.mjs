@@ -128,6 +128,24 @@ try{
  await run("document.getElementById('development-tab').click()");
  assert.equal(await run("document.getElementById('development-panel').hidden"),false);
  assert.equal(await run("document.querySelectorAll('[data-development-boat]').length"),6);
+  assert.equal(await run("document.querySelectorAll('.development-start-pole').length"),2);
+  assert.equal(await run("document.querySelectorAll('.development-boat text, .development-boat circle').length"),0);
+  assert.deepEqual(await run("[...document.querySelectorAll('.development-hull')].map(p=>p.getAttribute('fill'))"),['#fff','#253744','#e34747','#1681ca','#ffd747','#28a76b']);
+  const wakeFrames=await run(`(()=>{
+   const water=document.getElementById('development-water');water.pauseAnimations();
+   const frames=[0,2,4,6].map(time=>{water.setCurrentTime(time);
+    return [...document.querySelectorAll('.development-track')].map((track,i)=>{
+     const point=track.getPointAtLength(track.getTotalLength()*time/6),screen=new DOMPoint(point.x,point.y).matrixTransform(track.getCTM());
+     const boat=document.querySelectorAll('[data-development-boat]')[i].getCTM();
+     return {offset:parseFloat(getComputedStyle(track).strokeDashoffset),distance:Math.hypot(boat.e-screen.x,boat.f-screen.y)};
+    });
+   });water.setCurrentTime(0);water.unpauseAnimations();return frames;
+  })()`);
+  for(let frame=0;frame<4;frame++)for(const wake of wakeFrames[frame]){
+   assert.ok(Math.abs(wake.offset-(100-[0,2,4,6][frame]/6*100))<.1,'航跡が時刻とともに伸びる');
+   assert.ok(wake.distance<1,'航跡の先端と船の位置が一致する');
+  }
+
  const developmentCases=await run("[...document.querySelectorAll('button[data-development-lane]')].map(b=>({lane:Number(b.dataset.developmentLane),probability:Number(b.dataset.firstProbability)}))");
  assert.ok(developmentCases.length>0);assert.ok(developmentCases.every(c=>c.lane===1||c.probability>=.2-1e-12));
  const developmentTickets=[];
@@ -146,7 +164,7 @@ try{
  assert.ok(selectedFromDevelopment.includes(developmentTickets.at(-1)));
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
- const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
+ const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,boat_shapes_verified:true,start_poles:2,progressive_trails_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
  fs.writeFileSync(path.join(output,'development.json'),JSON.stringify(developmentReport,null,2)+'\n');console.log('::notice title=Published development verification::'+JSON.stringify(developmentReport));
  await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await run('scrollTo(0,0)');

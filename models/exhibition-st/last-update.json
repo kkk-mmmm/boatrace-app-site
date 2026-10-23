@@ -1,1 +1,1 @@
-{"through": "2026-10-22", "failures": [], "paired_starts": 3422}
+{"through": "2026-10-22", "failures": [], "paired_starts": 5207, "collection": {"lookback_days": 7, "max_races": 300, "attempted_races": 300, "deferred_races": 648}}

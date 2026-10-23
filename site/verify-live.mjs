@@ -32,7 +32,7 @@ if(oddsConfig.api_url) {
 }
 const deliveredModel=await(await get('data/player-model.json')).json(),gapProfile=deliveredModel.exhibition_st_profiles;
 assert.ok(gapProfile?.paired_starts>0 && gapProfile.through<current.date,'照合済みの過去STが必要です');
-if(workerOdds){assert.ok(workerOdds.annual_model?.exhibition_st?.paired_starts>0,'WorkerのST差プロファイル反映が必要です');}
+if(workerOdds){console.log('::notice title=Live history delivery::'+JSON.stringify({annual_model:workerOdds.annual_model,update:workerOdds.update,served_at:workerOdds.served_at,public_gap_through:gapProfile.through,public_gap_starts:gapProfile.paired_starts}));assert.ok(workerOdds.annual_model?.exhibition_st?.paired_starts>0,'WorkerのST差プロファイル反映が必要です');}
 const programs=workerOdds?.programs||[],exhibitionPrograms=programs.filter(p=>p.exhibition_fetched_at),pairedPrograms=programs.filter(p=>p.history?.lanes?.some(h=>h.exhibition_st_gap?.n));
 if(programs.length)assert.ok(pairedPrograms.length>0,'選手ごとの展示ST差が必要です');
 const exhibitionReport={checked_at:new Date().toISOString(),profile:{through:gapProfile.through,paired_starts:gapProfile.paired_starts,players:Object.keys(gapProfile.players).length},worker_profile:workerOdds?.annual_model?.exhibition_st,

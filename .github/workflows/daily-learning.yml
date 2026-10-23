@@ -1,6 +1,11 @@
-name: Daily rolling-year player profiles and monthly coefficient review
+name: Daily rolling-year player profiles and monthly validated coefficient updates
 on:
   workflow_dispatch:
+    inputs:
+      coefficient_only:
+        description: Evaluate the existing monthly candidate without exhibition backfill
+        type: boolean
+        default: false
   schedule:
     # Japan 02:10. Only completed calendar days enter history.
     - cron: '10 17 * * *'
@@ -35,7 +40,7 @@ jobs:
         run: python tools/site/annual_history.py --end "$(TZ=Asia/Tokyo date --date=yesterday +%F)"
       - name: Pair completed exhibition ST and retry bounded recent gaps
         continue-on-error: true
-        if: steps.approval.outputs.approved == 'true'
+        if: steps.approval.outputs.approved == 'true' && !inputs.coefficient_only
         run: |
           python -B tools/site/test_exhibition_st_history.py
           python tools/site/exhibition_st_history.py --annual-races site/cache/annual-history/races.json --through "$(TZ=Asia/Tokyo date --date=yesterday +%F)"
@@ -45,21 +50,29 @@ jobs:
           node --test site/test_annual_model.mjs site/test_cloudflare_programs.mjs
           node tools/prediction/update_annual.mjs site/cache/annual-history models/annual/current.json
           cp site/cache/annual-history/manifest.json models/annual/coverage.json
-      - name: Fit coefficients once per Japan calendar month, retaining the approved model
+      - name: Fit once per month and adopt only a validated improvement
         if: steps.approval.outputs.approved == 'true'
         run: |
           node --test tools/prediction/test_history_updates.mjs
           node tools/prediction/monthly_candidate.mjs site/cache/annual-history models/monthly-candidates
+          node --test tools/prediction/test_monthly_promotion.mjs
+          node tools/prediction/promote_monthly.mjs site/cache/annual-history models/monthly-candidates models/annual/current.json site/releases.json
       - name: Save data only; publication remains tied to approved code
         if: steps.approval.outputs.approved == 'true'
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add models/annual/current.json models/annual/coverage.json models/exhibition-st/ models/monthly-candidates/
+          git add models/annual/current.json models/annual/validation.json models/annual/coverage.json models/exhibition-st/ models/monthly-candidates/ site/releases.json
           git diff --cached --quiet && exit 0
           git commit -m "Refresh rolling-year player profiles from completed official results"
           git fetch origin main
           git rebase origin/main
+          node site/approve-model-update.mjs
+          if ! git diff --quiet -- .github/publication.json; then
+            git add .github/publication.json
+            git commit -m "Authorize validated monthly coefficient data with unchanged runtime"
+          fi
+          node site/check-approval.mjs | grep -x approved=true
           git push origin HEAD:main
       - name: Publish refreshed data with the approved runtime
         if: steps.approval.outputs.approved == 'true'

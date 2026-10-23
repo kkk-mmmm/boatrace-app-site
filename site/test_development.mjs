@@ -13,7 +13,7 @@ test('全120通りから1着確率を集計し、他艇は20%以上だけを採�
  assert.deepEqual(developmentScenarios({...race,entries:race.entries.slice(0,5)}),[]);
  assert.deepEqual(developmentScenarios(example([0,.2,.2,.2,.2,.2])).map(s=>s.lane),[2,3,4,5,6]);
 });
-test('6艇の経路は入力に再現可能に依存し、描画の着順はケースの買い目と一致、欠損でNaNを描かない',()=>{
+test('6艇の経路は入力に再現可能に依存し、買い目の想定着順を保持、欠損でNaNを描かない',()=>{
  const race=example(),s=developmentScenarios(race)[1],paths=developmentPaths(s);assert.equal(paths.length,6);assert.deepEqual(paths,developmentPaths(s));
  assert.deepEqual(paths.sort((a,b)=>a.finish-b.finish).slice(0,3).map(p=>p.lane),s.combo.split('-').map(Number));
  for(const field of ['win_rate','mean_st','mean_start_rank']){const changed=example();changed.entries[3].annual_lane[field]=field==='win_rate'?.8:field==='mean_st'?.3:5;assert.notDeepEqual(developmentPaths(developmentScenarios(changed)[1]),developmentPaths(s));}
@@ -39,4 +39,23 @@ test('展示の予定・未提供・失敗と進入変更・欠場を区別し�
 test('展示ST補正は過去に照合できた平均差だけを描画へ反映する',()=>{
  const race=example(),before=developmentPaths(developmentScenarios(race)[1]);race.history={lanes:[{lane:4,exhibition_st_gap:{n:10,mean:.08}}]};
  assert.notDeepEqual(developmentPaths(developmentScenarios(race)[1]),before);assert.match(renderDevelopment(race),/\+0.080秒/);
+});
+
+test('全艇の決まり手傾向を反映し、まくり寄りは外・差し寄りは内のターンと出口になる',()=>{
+ const race=example();for(const e of race.entries){e.annual_lane.kimarite={'まくり':20};e.exhibition_time=6.8;}
+ const outside=developmentPaths(developmentScenarios(race)[0]).find(p=>p.lane===4);
+ race.entries[3].annual_lane.kimarite={'差し':20};const inside=developmentPaths(developmentScenarios(race)[0]).find(p=>p.lane===4);
+ assert.ok(outside.turnRadius>inside.turnRadius);assert.ok(outside.backY<inside.backY,'図の上方が外、マーク寄りの下方が内');assert.notEqual(outside.path,inside.path);
+ assert.equal(outside.backX,inside.backX,'決まり手だけで想定の序列を付けない');
+});
+test('ST・スコアの差でバックの前後差を変え、同等入力なら並走し、買い目の順番で等間隔にしない',()=>{
+ const race=example();for(const e of race.entries){e.exhibition_time=6.8;e.exhibition_st=.15;e.annual_lane.mean_st=.15;e.annual_lane.mean_start_rank=3;}
+ race.scores=race.entries.map(e=>({lane:e.lane,total:1}));const equal=developmentPaths(developmentScenarios(race)[0]);
+ assert.equal(new Set(equal.map(p=>p.backX)).size,1);assert.equal(new Set(equal.map(p=>p.backY)).size,6);
+ for(const [i,p] of [...equal].sort((a,b)=>a.backY-b.backY).entries())if(i)assert.ok(p.backY-[...equal].sort((a,b)=>a.backY-b.backY)[i-1].backY>=13.99);
+ const st=structuredClone(race);st.entries[3].annual_lane.mean_st=.08;assert.ok(developmentPaths(developmentScenarios(st)[0])[3].backX<equal[3].backX);
+ const score=structuredClone(race);score.scores[3].total=3;assert.ok(developmentPaths(developmentScenarios(score)[0])[3].backX<equal[3].backX);
+ const tiny=structuredClone(race);tiny.scores[3].total+=.001;assert.equal(new Set(developmentPaths(developmentScenarios(tiny)[0]).map(p=>p.backX)).size,1);
+ const scenario=developmentScenarios(race)[0];assert.deepEqual(developmentPaths({...scenario,combo:'1-6-5'}).map(p=>[p.backX,p.backY]),equal.map(p=>[p.backX,p.backY]));
+ assert.match(renderDevelopment(race),/途中経過/);assert.match(renderDevelopment(race),/総合スコア/);
 });

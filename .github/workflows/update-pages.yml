@@ -98,7 +98,7 @@ jobs:
           path: site/staging
       - name: Validate forecast and freshness behavior
         run: |
-          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs
+          node --test site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs tools/prediction/test_history_updates.mjs tools/prediction/test_prospective.mjs
           python -B tools/site/test_probe.py
           python -B tools/site/test_collect_all.py
       - name: Build current data or explicit failure state
@@ -145,3 +145,11 @@ jobs:
                   if attempt==9: raise
                   time.sleep(5)
           PY
+  preserve-forecasts:
+    needs: [approval, collect]
+    if: needs.approval.outputs.approved == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/verification-data.yml
+    with:
+      mode: capture

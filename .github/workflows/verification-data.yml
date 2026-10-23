@@ -1,0 +1,85 @@
+name: Preserve forecasts and evaluate completed results
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [capture, evaluate]
+        default: capture
+permissions:
+  contents: write
+concurrency:
+  group: verification-data-store
+  cancel-in-progress: false
+jobs:
+  preserve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Check immutable record and payout handling
+        run: |
+          node --test tools/prediction/test_prospective.mjs
+          python -B tools/site/test_verification_results.py
+      - name: Check approved runtime
+        run: node site/check-approval.mjs | grep -x approved=true
+      - name: Open independent durable records branch
+        run: |
+          git fetch origin verification-data
+          git worktree add --detach /tmp/boatrace-verification FETCH_HEAD
+      - uses: actions/download-artifact@v4
+        if: inputs.mode == 'capture' && github.event_name != 'workflow_dispatch'
+        with:
+          name: venues-current
+          path: site/staging
+      - name: Capture current Worker data on explicit manual run
+        if: inputs.mode == 'capture' && github.event_name == 'workflow_dispatch'
+        run: |
+          export BOATRACE_ODDS_API_URL="$(node site/odds-provider.mjs)"
+          node site/collect-cloudflare.mjs
+      - uses: actions/cache/restore@v4
+        if: inputs.mode == 'evaluate'
+        with:
+          path: site/cache/annual-history
+          key: annual-history-verification-${{ github.run_id }}
+          restore-keys: annual-history-
+      - name: Preserve observations or match completed official results
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = capture ]; then
+            node tools/prediction/prospective.mjs capture site/staging /tmp/boatrace-verification
+          elif [ "$MODE" = evaluate ]; then
+            python tools/site/verification_results.py --verification-directory /tmp/boatrace-verification
+            mkdir -p /tmp/boatrace-verification/results
+            node tools/prediction/prospective.mjs evaluate /tmp/boatrace-verification /tmp/boatrace-verification/results
+          else
+            echo 'Unknown evaluation mode'
+            exit 1
+          fi
+      - name: Commit new records without overwriting earlier observations
+        run: |
+          cd /tmp/boatrace-verification
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .
+          git diff --cached --quiet && exit 0
+          git commit -m 'Preserve forecast observations and completed-day evaluation'
+          git push origin HEAD:verification-data
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: operational-review-${{ inputs.mode }}
+          path: /tmp/boatrace-verification/reports/
+          if-no-files-found: ignore
+          retention-days: 30

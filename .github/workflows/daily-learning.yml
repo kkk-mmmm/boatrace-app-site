@@ -33,7 +33,7 @@ jobs:
       - name: Acquire one archive for each missing completed day
         if: steps.approval.outputs.approved == 'true'
         run: python tools/site/annual_history.py --end "$(TZ=Asia/Tokyo date --date=yesterday +%F)"
-      - name: Pair yesterday's exhibition ST with completed official starts
+      - name: Pair completed exhibition ST and retry bounded recent gaps
         continue-on-error: true
         if: steps.approval.outputs.approved == 'true'
         run: |
@@ -45,18 +45,17 @@ jobs:
           node --test site/test_annual_model.mjs site/test_cloudflare_programs.mjs
           node tools/prediction/update_annual.mjs site/cache/annual-history models/annual/current.json
           cp site/cache/annual-history/manifest.json models/annual/coverage.json
-      - name: Produce a monthly coefficient candidate for review
+      - name: Fit coefficients once per Japan calendar month, retaining the approved model
         if: steps.approval.outputs.approved == 'true'
         run: |
-          if [ "$(TZ=Asia/Tokyo date +%d)" = 01 ]; then
-            node tools/prediction/train_annual.mjs site/cache/annual-history site/cache/monthly-candidate/current.json
-          fi
+          node --test tools/prediction/test_history_updates.mjs
+          node tools/prediction/monthly_candidate.mjs site/cache/annual-history models/monthly-candidates
       - name: Save data only; publication remains tied to approved code
         if: steps.approval.outputs.approved == 'true'
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add models/annual/current.json models/annual/coverage.json models/exhibition-st/
+          git add models/annual/current.json models/annual/coverage.json models/exhibition-st/ models/monthly-candidates/
           git diff --cached --quiet && exit 0
           git commit -m "Refresh rolling-year player profiles from completed official results"
           git fetch origin main
@@ -74,5 +73,12 @@ jobs:
           path: |
             models/annual/coverage.json
             models/annual/validation.json
-            site/cache/monthly-candidate/*.json
+            models/monthly-candidates/
           retention-days: 30
+  evaluate-completed:
+    needs: learning
+    permissions:
+      contents: write
+    uses: ./.github/workflows/verification-data.yml
+    with:
+      mode: evaluate

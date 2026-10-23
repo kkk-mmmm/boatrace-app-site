@@ -70,7 +70,7 @@ export function annualForecast(program,model,now){
  validateAnnualModel(model,program.date);
  const result=predictAnnual(program,model),saved=new Date(now).toISOString();
  return {...program,entries:result.entries,probabilities:result.items,items:result.items.slice(0,10),scores:result.scores,
-  model_id:model.id,model_name:model.name,model_status:model.status,model_validation:{...model.validation,selected_lambda:model.validation.lambda},
+  model_id:model.id,model_coefficient_id:model.coefficient_id||null,model_name:model.name,model_status:model.status,model_validation:{...model.validation,selected_lambda:model.validation.lambda},
   prediction_key:`${model.id}:${saved}`,prediction_saved_at:saved,input_fetched_at:[program.entries_fetched_at,program.exhibition_fetched_at].filter(t=>Number.isFinite(Date.parse(t))).sort((a,b)=>Date.parse(b)-Date.parse(a))[0],
   history_window:model.coverage,history:annualHistory(program,model),update_status:'OK',last_success_at:program.entries_fetched_at,issue:null};
 }

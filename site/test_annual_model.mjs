@@ -22,3 +22,21 @@ test('展示ST差は正常な照合ペアの平均・RMSE・件数を表示し�
  const gap=pairedExhibitionGap(model,'1234','2026-10-23');assert.equal(gap.n,2);assert.equal(gap.mean,.1);assert.ok(Math.abs(gap.rmse-Math.sqrt(.0125))<1e-12);
  assert.equal(pairedExhibitionGap(model,'9999','2026-10-23'),null);assert.equal(pairedExhibitionGap(model,'1234','2026-10-22'),null);
 });
+
+test('直近30・90日と実進入別の履歴を枠と区別し、過去だけから集計する',async()=>{
+ const {buildHistoryProfiles}=await import('../tools/prediction/history_profiles.mjs');
+ const {annualDataDetails}=await import('./public/annual-model.mjs');
+ const dates=['2026-01-01','2026-10-01','2026-10-22'];
+ const races=dates.map((date,i)=>({...race,date,venue_code:'01',race_no:1,entries:race.entries.map(e=>({...e,actual_st:.1+i*.03}))}));
+ const profiles=buildHistoryProfiles(races,{from:'2025-10-23',through:'2026-10-22'}),model={profiles,trained_through:'2026-10-22'};
+ const detail=annualDataDetails({...race,date:'2026-10-23'},model,{...race.entries[0],exhibition_course:6});
+ assert.equal(detail.recent[30].all.samples,2);assert.equal(detail.recent[90].lane.samples,2);
+ assert.equal(detail.actual_course.samples,3);assert.equal(detail.actual_course.course,6);assert.equal(detail.actual_course.mean_st,.13);
+ assert.equal(annualDataDetails({...race,date:'2026-10-23'},model,race.entries[0]).actual_course,null);
+ assert.equal(profiles.players['4000'].c1,undefined);assert.equal(profiles.players['4000'].l1[0],3);
+ const ordinary=emptyAnnualProfiles();for(const r of races)observeAnnual(ordinary,r);
+ assert.deepEqual(annualFeatures(race,profiles),annualFeatures(race,ordinary),'追加集計は承認済み確率の入力を変更しない');
+ assert.throws(()=>buildHistoryProfiles([...races,races[0]],{from:'2025-10-23',through:'2026-10-22'}),/重複/);
+ assert.throws(()=>buildHistoryProfiles([{...races[0],date:'2026-10-23'}],{from:'2025-10-23',through:'2026-10-22'}),/当日・未来/);
+ assert.deepEqual(annualDataDetails(race,model,race.entries[0]).recent,{});
+});

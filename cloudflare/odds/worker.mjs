@@ -210,12 +210,12 @@ export class OddsCoordinator {
     if(!this.env.PLAYER_MODEL_URL)return;
     if(this.annualModel && this.annualModel.trained_through<date && this.modelCheckedDate===date && (!feed.annual_model_id || this.annualModel.id===feed.annual_model_id) && (!feed.exhibition_st_through || this.annualModel.exhibition_st_profiles?.through===feed.exhibition_st_through))return;
     try{
-      const model=validateAnnualModel(JSON.parse(await fetchText(this.env.PLAYER_MODEL_URL,fetch,5*1024*1024)),date);
+      const model=validateAnnualModel(JSON.parse(await fetchText(this.env.PLAYER_MODEL_URL,fetch,8*1024*1024)),date);
       if(Date.parse(model.created_at)>now+60000)throw Error('未来の履歴モデルです');
       this.annualModel=model;this.modelCheckedDate=date;
       const cached=await this.ctx.storage.list({prefix:'program:'});
       for(const [key,program] of cached)if(program.date===date&&program.entries?.length===6&&(program.history_model_id!==model.id || program.history_exhibition_st_through!==(model.exhibition_st_profiles?.through||null)))await this.ctx.storage.put(key,annualEntryData(program,model));
-      await this.ctx.storage.put('annual-model-status',{status:'OK',model_id:model.id,coverage:model.coverage,exhibition_st:{through:model.exhibition_st_profiles?.through||null,paired_starts:model.exhibition_st_profiles?.paired_starts||0,players:Object.keys(model.exhibition_st_profiles?.players||{}).length},checked_at:iso(now)});
+      await this.ctx.storage.put('annual-model-status',{status:'OK',model_id:model.id,coverage:model.coverage,history_data:{recent_days:model.profiles.windows?.recent_days||[],through:model.profiles.windows?.through||null,course_profiles:Object.values(model.profiles.players).filter(p=>Object.keys(p).some(k=>/^c[1-6]$/.test(k))).length},exhibition_st:{through:model.exhibition_st_profiles?.through||null,paired_starts:model.exhibition_st_profiles?.paired_starts||0,players:Object.keys(model.exhibition_st_profiles?.players||{}).length},checked_at:iso(now)});
     }catch(error){await this.ctx.storage.put('annual-model-status',{status:'FAILED',message:String(error.message).slice(0,200),checked_at:iso(now)});}
   }
   async bootstrapPrograms(calendar,date,robots,now){

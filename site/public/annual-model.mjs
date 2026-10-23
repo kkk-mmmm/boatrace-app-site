@@ -41,7 +41,7 @@ export function observeAnnual(profiles,race){
   if(!/^\d{4}$/.test(e.racer_id)||!Number.isInteger(e.lane)||e.lane<1||e.lane>6)throw Error('履歴の枠・登録番号が不正です');
   if(String(e.finish_status||'').startsWith('K'))continue;
   const player=profiles.players[e.racer_id]||=( {} );
-  const keys=['all','l'+e.lane];if(race.context?.meeting_day)keys.push('d'+race.context.meeting_day);if(race.context?.phase)keys.push('p'+race.context.phase);
+  const keys=['all','l'+e.lane];if(Number.isInteger(e.actual_course)&&e.actual_course>=1&&e.actual_course<=6)keys.push('c'+e.actual_course);if(race.context?.meeting_day)keys.push('d'+race.context.meeting_day);if(race.context?.phase)keys.push('p'+race.context.phase);
   for(const key of keys){
    const groups=[player[key]||=emptyAnnualStats(),profiles.population[key]||=emptyAnnualStats()];
    for(const s of groups){s[0]++;if(e.finish===1){s[1]++;const k=STYLES.indexOf(race.kimarite);if(k>=0)s[9][k]++;}
@@ -84,11 +84,24 @@ export function pairedExhibitionGap(model,id,date) {
  return {n:s.n,mean:s.sum/s.n,sd:s.n>1?Math.sqrt(Math.max(0,(s.sum_squares-s.sum*s.sum/s.n)/(s.n-1))):null,
   rmse:Math.sqrt(s.sum_squares/s.n),from:s.from,through:s.through,scope:'選手全枠'};
 }
+export function annualDataDetails(race,model,e){
+ const p=model.profiles.players[e.racer_id]||{},summarize=s=>({samples:s?.[0]||0,win_rate:s?.[0]?s[1]/s[0]:null,
+  mean_points:s?.[3]?s[2]/s[3]:null,mean_st:s?.[4]?meanST(s):null,st_sd:s?.[4]>1?sdST(s):null,
+  mean_start_rank:s?.[7]?s[8]/s[7]:null,st_samples:s?.[4]||0,start_rank_samples:s?.[7]||0});
+ const windows=model.profiles.windows,recent={};
+ if(windows?.through===model.trained_through&&windows.through<race.date)for(const days of [30,90])recent[days]={
+  from:new Date(Date.parse(windows.through)-(days-1)*86400000).toISOString().slice(0,10),through:windows.through,
+  all:summarize(p[`r${days}all`]),lane:summarize(p[`r${days}l${e.lane}`])};
+ const course=Number.isInteger(e.exhibition_course)&&e.exhibition_course>=1&&e.exhibition_course<=6?e.exhibition_course:null;
+ return {recent,actual_course:course===null?null:{course,basis:'EXHIBITION_COURSE_NOT_CONFIRMED_RACE_ENTRY',...summarize(p['c'+course])},
+  conditional:{day:{...summarize(p['d'+race.context?.meeting_day])},phase:{...summarize(p['p'+race.context?.phase])}},
+  probability_usage:'NOT_ADDED_TO_APPROVED_14_FEATURES'};
+}
 export function annualHistory(race,model){
  const conditional=s=>({samples:s?.[4]||0,st_mean:s?.[4]?meanST(s):null,st_sd:s?.[4]>1?sdST(s):null});
  return {trained_from:model.trained_from,trained_through:model.trained_through,lanes:race.entries.map(e=>{
   const p=model.profiles.players[e.racer_id]||{},s=p['l'+e.lane];
-  return {lane:e.lane,exhibition_rank:exhibitionRank(race.entries,e.lane),day:conditional(p['d'+race.context?.meeting_day]),phase:conditional(p['p'+race.context?.phase]),
+  return {lane:e.lane,data_details:annualDataDetails(race,model,e),exhibition_rank:exhibitionRank(race.entries,e.lane),day:conditional(p['d'+race.context?.meeting_day]),phase:conditional(p['p'+race.context?.phase]),
    exhibition_rank_gap:s?.[10]?{n:s[10],mean:s[11]/s[10],rmse:Math.sqrt((s[12]||0)/s[10])}:null,exhibition_st_gap:pairedExhibitionGap(model,e.racer_id,race.date),pressure:{status:'UNCONFIRMED'}};
  })};
 }

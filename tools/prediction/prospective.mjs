@@ -24,11 +24,12 @@ export function captureProspective(snapshots,directory,{now=Date.now()}={}){
    const quote={...race.odds,...target,items:race.odds?.items,status:race.odds_update?.status==='OK'?'OK':'FAILED',fetched_at:race.odds?.fetched_at,source_url:race.odds?.source_url};
    proposal=proposalCandidate(target,quote,now);if(proposal)kind='COLLECTOR_PRERACE';
   }
-  if(!proposal){report.skipped++;continue;}
+  if(!proposal||Date.parse(proposal.proposal_saved_at)>now||proposal.frozen_at&&Date.parse(proposal.frozen_at)>now){report.skipped++;continue;}
   const payload={kind,proposal:compactProposal(proposal)},id=hash(payload);
   const destination=path.join(directory,'snapshots',race.date,race.venue_code,`R${race.race_no}`,id+'.json');
   const record={schema_version:1,id,received_at:report.receipt_at,...payload};
   record.integrity_sha256=hash(record);
+  validateRecord(record,now);
   fs.mkdirSync(path.dirname(destination),{recursive:true});
   try{fs.writeFileSync(destination,JSON.stringify(record)+'\n',{flag:'wx'});report.saved++;}
   catch(e){if(e.code!=='EEXIST')throw e;validateRecord(JSON.parse(fs.readFileSync(destination)),now);report.existing++;}

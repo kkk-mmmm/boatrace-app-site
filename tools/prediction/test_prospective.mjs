@@ -48,3 +48,10 @@ test('日次のプロフィールIDが変わっても同じ係数版の評価を
  const summary=evaluateProspective(records,[result(),{...result(),race_no:2},{...result(),race_no:3}],{now:later}).cohorts.RECEIPT_BEFORE_CUTOFF;
  assert.equal(Object.keys(summary.by_model).length,2);assert.equal(summary.by_coefficient['annual-coeff-'+'b'.repeat(64)].races,2);assert.equal(summary.by_coefficient.UNKNOWN.races,1);
 });
+test('配信元の固定時刻が数ms〜60秒先でも無効な受信記録を保存せず、次回に再確認する',t=>{
+ const dir=temp(t),snapshot=example();captureProspective([snapshot],dir,{now});const proposal=load(dir)[0].proposal,cutoff=Date.parse(proposal.cutoff_at);
+ snapshot.races[0].proposal_snapshot={...proposal,frozen_at:new Date(cutoff).toISOString()};
+ for(const skew of [1,100,59000]){const report=captureProspective([snapshot],dir,{now:cutoff-skew});assert.equal(report.saved,0);assert.equal(report.skipped,1);}
+ assert.equal(captureProspective([snapshot],dir,{now:cutoff+1}).saved,1);
+ for(const record of load(dir))validateRecord(record,cutoff+1);
+});

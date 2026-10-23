@@ -1,5 +1,5 @@
 {
-  "source_commit": "936a1e0c34c08535c8e9fdb918e3ecc68dc6d0f3",
+  "source_commit": "27fcd616515fccc9f5469ab6df0d01c4fd0c5ae8",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "models/exhibition-st/current.json": "0aae75df5350243f93bfc5fa936745df1c7ea97ba32077d1768976c76f2d9956",
@@ -9,7 +9,7 @@
     "tools/site/test_exhibition_st_history.py": "8dcfa51224d9669332ba7c68532e4ed11011a37a0fe394b4f701fb809d85e938",
     "AGENTS.md": "edaf48fe52d1f31068ef66205552cedd69fcd7d98173d7444de25cbae12a3120",
     "docs/release-notes.md": "9731d9261850fa1577a1122c07397069069b49d0e2d93c28690a28436b43d75c",
-    "site/releases.json": "1dc65cda4daecb01a876c3432d0b19198c4ec32a4020f1cd56d9f76223c0adc3",
+    "site/releases.json": "9012becd5f7d4c59e2b7343bcbe86f6becfa4f53848bdb1c52d5e75a65e0ac8e",
     "site/releases.mjs": "ce3d98449bebf508f29a600d5033d48b179ce80896dbe4a16de77069327b99bf",
     "site/check-release-notes.mjs": "d3766a59460a43633bb7d163c976708f2dcef903679bdefe8c457a0fdd705fbd",
     "site/test_releases.mjs": "1c5a0bf0dca98713c03a389a2c718ce6eb27633bfa68755776dc03e5a26fe3a9",
@@ -82,8 +82,8 @@
     "tools/prediction/history_profiles.mjs": "ae3f8406692df0ce1d0d793ad260072f192587286b8eaaff33ec820686602335",
     "tools/prediction/monthly_candidate.mjs": "db063958c7d6dc4a4bbe4e18bb16ca5f41725e08f7ba1f8c3f5345b0b4822a50",
     "tools/prediction/test_history_updates.mjs": "0661ec750625539b13b0283472ec857ef665d7444d29d180cbc24d34682814c4",
-    "tools/prediction/prospective.mjs": "7ea6d127287f4572af6f1aa9fa256ac7bdc8e3c7c8d5c4fcd11ed9fd25671ed2",
-    "tools/prediction/test_prospective.mjs": "8e4dbc4a460dc9cf45d6fbc1801b365e4aa19844caa29aa19eb6832fb8d4cf1b",
+    "tools/prediction/prospective.mjs": "e7902f1f787de848a197907e1e2584751d3a145fc9d28ec830083b808b15c78d",
+    "tools/prediction/test_prospective.mjs": "d2c9d75e56485a237c4e4079ddf906d68e222c548840c83f854ce93f218ee3ab",
     "tools/site/fixtures/annual-results.txt": "4d8bf181a352fc21679f7104f408c83e4beb7609db5b0e12b3fea6a7c031f0e1",
     "tools/site/verification_results.py": "3a066efe7a79145cd863df90d0088157227b74e66f6f797c5dcae15f0952b415",
     "tools/site/test_verification_results.py": "6d80bd4b56e5fbafab587ad6c3966eead56dfe76487f887a33a9091af5af5aaa"

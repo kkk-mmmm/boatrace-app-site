@@ -40,3 +40,26 @@ test('直近30・90日と実進入別の履歴を枠と区別し、過去だけ�
  assert.throws(()=>buildHistoryProfiles([{...races[0],date:'2026-10-23'}],{from:'2025-10-23',through:'2026-10-22'}),/当日・未来/);
  assert.deepEqual(annualDataDetails(race,model,race.entries[0]).recent,{});
 });
+
+test('場別の枠・決まり手は全国と別集計し、同じ選手でも場に応じた特徴量になる',async()=>{
+ const {VENUE_ANNUAL_FEATURES,annualVenueSummary}=await import('./public/annual-model.mjs');const p=emptyAnnualProfiles();
+ for(let i=0;i<400;i++){
+  observeAnnual(p,{...race,venue_code:'24',kimarite:'逃げ',entries:race.entries.map(e=>({...e,finish:e.lane}))});
+  observeAnnual(p,{...race,venue_code:'02',kimarite:'まくり',entries:race.entries.map(e=>({...e,finish:e.lane===3?1:e.lane===1?3:e.lane}))});
+ }
+ const omura=annualFeatures({...race,venue_code:'24'},p,VENUE_ANNUAL_FEATURES),toda=annualFeatures({...race,venue_code:'02'},p,VENUE_ANNUAL_FEATURES);
+ assert.equal(omura[0].length,17);assert.ok(omura[0][14]>toda[0][14]);assert.ok(omura[0][15]>toda[0][15]);assert.ok(omura[0][16]>toda[0][16]);
+ assert.deepEqual(omura[0].slice(0,14),toda[0].slice(0,14),'既存の選手能力は同じ');
+ const missing=annualFeatures({...race,venue_code:'01'},p,VENUE_ANNUAL_FEATURES);for(const row of missing)assert.deepEqual(row.slice(14),[0,0,0]);
+ const summary=annualVenueSummary({venue_code:'24'},{profiles:p,trained_from:'2025-10-24',trained_through:'2026-10-23'});assert.equal(summary.lanes[0].win_rate,1);assert.equal(summary.lanes[0].escape_rate,1);assert.equal(summary.lanes[0].starts,400);
+});
+
+test('v3.1は実際の予想確率に場別差を使い、旧14項目モデルも互換性を保つ',async()=>{
+ const {VENUE_ANNUAL_ENGINE,VENUE_ANNUAL_FEATURES,predictAnnual,validateAnnualModel}=await import('./public/annual-model.mjs');const profiles=emptyAnnualProfiles();
+ for(let n=0;n<400;n++)for(const code of ['24','02'])observeAnnual(profiles,{...race,venue_code:code,kimarite:code==='24'?'逃げ':'まくり',entries:race.entries.map(e=>({...e,finish:code==='24'?e.lane:e.lane===1?3:e.lane===3?1:e.lane}))});
+ const model={schema_version:3,engine_version:VENUE_ANNUAL_ENGINE,id:'annual-v3-'+'a'.repeat(64),feature_names:VENUE_ANNUAL_FEATURES,trained_from:'2025-10-24',trained_through:'2026-10-23',coverage:{days:365,failures:0,from:'2025-10-24',through:'2026-10-23'},profiles,coefficients:VENUE_ANNUAL_FEATURES.map((_,i)=>i===14?1:0),means:VENUE_ANNUAL_FEATURES.map(()=>0),scales:VENUE_ANNUAL_FEATURES.map(()=>1),temperature:1};
+ const get=code=>predictAnnual({...race,date:'2026-10-24',venue_code:code},model),omura=get('24'),toda=get('02');
+ const first=rows=>rows.filter(x=>x.combo.startsWith('1-')).reduce((s,x)=>s+x.probability,0);
+ assert.ok(first(omura.items)>first(toda.items));assert.equal(omura.scores[0].history_components[14].label,'場・枠別1着傾向');assert.ok(Math.abs(omura.items.reduce((s,x)=>s+x.probability,0)-1)<1e-10);
+ assert.throws(()=>validateAnnualModel({...model,feature_names:ANNUAL_FEATURES},'2026-10-24'),/特徴量/);
+});

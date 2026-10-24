@@ -1,0 +1,14 @@
+import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
+import {compareMonthly,coefficientId,venueInitializationAllowed} from './compare_monthly.mjs';import {buildHistoryProfiles} from './history_profiles.mjs';
+import {annualVenueSummary,validateAnnualModel} from '../../site/public/annual-model.mjs';
+const [directory,output]=process.argv.slice(2);if(!output)throw Error('履歴と候補フォルダが必要です');
+const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'))),races=JSON.parse(fs.readFileSync(path.join(directory,'races.json'))),file=path.join(output,'current.json'),candidate=JSON.parse(fs.readFileSync(file));
+const response=await fetch('https://kkk-mmmm.github.io/boatrace-app-site/data/player-model.json',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('現行の公開モデルを取得できません');const active=await response.json();
+candidate.profiles=buildHistoryProfiles(races,manifest);candidate.coefficient_id=coefficientId(candidate);
+const comparison=compareMonthly(races,manifest,candidate,active);comparison.venue_initialization_accepted=venueInitializationAllowed(comparison);candidate.validation.venue_comparison=comparison;delete candidate.id;candidate.id='annual-v3-'+crypto.createHash('sha256').update(JSON.stringify(candidate)).digest('hex');
+validateAnnualModel(candidate,new Date(Date.parse(manifest.through)+86400000).toISOString().slice(0,10));fs.writeFileSync(file,JSON.stringify(candidate)+'\n');
+const summaries=Object.keys(candidate.profiles.venues).sort().map(venue_code=>annualVenueSummary({venue_code},candidate));
+fs.writeFileSync(path.join(output,'comparison.json'),JSON.stringify({comparison,venues:summaries},null,2)+'\n');
+fs.writeFileSync(path.join(output,'review.json'),JSON.stringify({kind:'VENUE_MODEL_INITIALIZATION',candidate_sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),active_coefficient_id:coefficientId(active),accepted:comparison.venue_initialization_accepted},null,2)+'\n');
+console.log('::notice title=Venue model comparison::'+JSON.stringify({...comparison,daily:undefined}));
+console.log('::notice title=Venue lane1 history::'+JSON.stringify(summaries.map(v=>({venue_code:v.venue_code,starts:v.lanes[0].starts,win_rate:v.lanes[0].win_rate,escape_rate:v.lanes[0].escape_rate,national_win_rate:v.national_lane1_win_rate}))));

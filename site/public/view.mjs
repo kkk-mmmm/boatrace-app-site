@@ -144,3 +144,10 @@ export function raceEntryAlerts(race,now=Date.now()) {
  return {absent,changes,courseStatus:changes.length?'CHANGED':unique&&known.length===active.length&&active.length>0?'UNCHANGED':'UNKNOWN',state,due,
   retryAt:left>300000?Date.parse(race.deadline_at)-300000:null};
 }
+
+export function renderVenueSummary(race){
+ const h=race.history?.venue,one=h?.lanes?.find(l=>l.lane===1),valid=n=>Number.isFinite(n)&&n>=0&&n<=1;
+ if(!h||h.venue_code!==race.venue_code||!(h.through<race.date)||!Number.isInteger(one?.starts)||one.starts<1||!valid(one.win_rate)||!valid(one.escape_rate))return '';
+ const percent=n=>(n*100).toFixed(1)+'%',used=race.scores?.some(s=>s.history_components?.some(c=>c.label==='場・枠別1着傾向'));
+ return `<details class="venue-history"><summary>この場の過去の傾向${used?'・予想に反映':''}</summary><p class="small-note">${escape(h.from)}〜${escape(h.through)} / 1枠 ${one.starts.toLocaleString('ja-JP')}走</p><p>1枠1着率 <strong>${percent(one.win_rate)}</strong>${valid(h.national_lane1_win_rate)?`（全国の1枠 ${percent(h.national_lane1_win_rate)}）`:''} / 1枠の逃げ率 <strong>${percent(one.escape_rate)}</strong></p><p class="small-note">過去の実績で、今回の予想確率ではありません。1着率と決まり手が逃げの割合は別集計です。場別項目の適用値は各艇のスコア内訳で確認できます。</p></details>`;
+}

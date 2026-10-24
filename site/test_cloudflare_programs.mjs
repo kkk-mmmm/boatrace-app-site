@@ -51,3 +51,10 @@ test('日付変更後の朝の取得待ちは新しい開催日と空の出走�
  const failed=applyLiveOdds(next,{...data,programs:[],races:[],update:{status:'FAILED'}},now);
  assert.equal(failed.update.status,'FAILED');assert.equal(failed.update.reason,null);
 });
+
+test('場別v3.1の17項目・場別集計をCloudflareの予想へ渡せる',async()=>{
+ const {VENUE_ANNUAL_ENGINE,VENUE_ANNUAL_FEATURES}=await import('./public/annual-model.mjs');const {p,model}=example();
+ model.engine_version=VENUE_ANNUAL_ENGINE;model.feature_names=VENUE_ANNUAL_FEATURES;model.coefficients=VENUE_ANNUAL_FEATURES.map((_,i)=>i===14?1:0);model.means=VENUE_ANNUAL_FEATURES.map(()=>0);model.scales=VENUE_ANNUAL_FEATURES.map(()=>1);
+ observeAnnual(model.profiles,{...p,kimarite:'逃げ'});const next=annualForecast(p,model,now);
+ assert.equal(next.scores[0].history_components.length,17);assert.equal(next.history.venue.applied,true);assert.equal(next.history.venue.venue_code,'06');assert.equal(next.history.venue.lanes[0].starts,1);assert.equal(validProgram(next,date,now),true);
+});

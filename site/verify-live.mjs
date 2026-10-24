@@ -34,6 +34,15 @@ const deliveredModel=await(await get('data/player-model.json')).json(),gapProfil
 assert.ok(gapProfile?.paired_starts>0 && gapProfile.through<current.date,'照合済みの過去STが必要です');
 if(workerOdds){console.log('::notice title=Live history delivery::'+JSON.stringify({annual_model:workerOdds.annual_model,update:workerOdds.update,served_at:workerOdds.served_at,public_gap_through:gapProfile.through,public_gap_starts:gapProfile.paired_starts}));assert.ok(workerOdds.annual_model?.exhibition_st?.paired_starts>0,'WorkerのST差プロファイル反映が必要です');}
 const programs=workerOdds?.programs||[],exhibitionPrograms=programs.filter(p=>p.exhibition_fetched_at),pairedPrograms=programs.filter(p=>p.history?.lanes?.some(h=>h.exhibition_st_gap?.n));
+if(deliveredModel.engine_version==='annual-player-v3.1'){
+ assert.equal(workerOdds?.annual_model?.engine_version,'annual-player-v3.1','Workerへの場別モデル反映が必要です');
+ assert.equal(workerOdds.annual_model.venue_profiles,24);
+ const enriched=programs.filter(p=>p.history?.venue?.venue_code===p.venue_code),predicted=enriched.filter(p=>p.scores?.some(s=>s.history_components?.some(c=>c.label==='場・枠別1着傾向')));
+ if(programs.some(p=>Date.parse(p.deadline_at)>Date.now()+180000&&p.probabilities?.length===120))assert.ok(predicted.length>0,'締切前の場別予想が必要です');
+ const report={checked_at:new Date().toISOString(),engine:workerOdds.annual_model.engine_version,venue_profiles:24,enriched_programs:enriched.length,predicted_programs:predicted.length,comparison:deliveredModel.validation?.venue_comparison};
+ console.log('::notice title=Published venue model verification::'+JSON.stringify({...report,comparison:report.comparison?{...report.comparison,daily:undefined}:null}));
+ fs.writeFileSync(path.join(output,'venue-model.json'),JSON.stringify(report,null,2)+'\n');
+}
 if(programs.length)assert.ok(pairedPrograms.length>0,'選手ごとの展示ST差が必要です');
 const exhibitionReport={checked_at:new Date().toISOString(),profile:{through:gapProfile.through,paired_starts:gapProfile.paired_starts,players:Object.keys(gapProfile.players).length},worker_profile:workerOdds?.annual_model?.exhibition_st,
  programs_with_exhibition:exhibitionPrograms.length,programs_with_st_gap:pairedPrograms.length,complete_exhibitions:exhibitionPrograms.filter(p=>p.exhibition_available).length,

@@ -62,3 +62,11 @@ test('複数選択のスジを統合し、選択済み・重複を除いて全�
  assert.equal(sujiCandidates(rows,quotes,selected,{currentOdds:true,limit:999}).length,10);
  assert.ok(sujiCandidates(rows,quotes,selected,{scenario:'in',currentOdds:true}).every(r=>r.combo.startsWith('1-')));
 });
+
+test('場の過去実績は予想確率と区別し、場・日付が合うときだけ表示する',async()=>{
+ const {renderVenueSummary}=await import('./public/view.mjs');
+ const race={date:'2030-01-01',venue_code:'24',scores:[{history_components:[{label:'場・枠別1着傾向'}]}],history:{venue:{venue_code:'24',from:'2029-01-01',through:'2029-12-31',national_lane1_win_rate:.55,lanes:[{lane:1,starts:2000,win_rate:.7,escape_rate:.65}]}}};
+ const html=renderVenueSummary(race);for(const word of ['70.0%','65.0%','55.0%','予想に反映','今回の予想確率ではありません'])assert.ok(html.includes(word));
+ assert.equal(renderVenueSummary({...race,venue_code:'01'}),'');assert.equal(renderVenueSummary({...race,date:'2029-12-31'}),'');
+ race.history.venue.from='<script>';assert.doesNotMatch(renderVenueSummary(race),/<script>/);
+});

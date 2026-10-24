@@ -1,7 +1,7 @@
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-export function monthlyCandidate(directory,output,now=Date.now(),train=(source,target)=>execFileSync(process.execPath,[fileURLToPath(new URL('./train_annual.mjs',import.meta.url)),source,target],{stdio:'inherit'})) {
+export function monthlyCandidate(directory,output,now=Date.now(),train=(source,target)=>execFileSync(process.execPath,[fileURLToPath(new URL('./train_annual.mjs',import.meta.url)),source,target,...(fs.existsSync('models/annual/current.json')&&JSON.parse(fs.readFileSync('models/annual/current.json')).engine_version==='annual-player-v3.1'?['--venue']:[])],{stdio:'inherit'})) {
  const month=new Date(now+9*3600000).toISOString().slice(0,7),destination=path.join(output,month);
  if(fs.existsSync(destination)){
   const record=JSON.parse(fs.readFileSync(path.join(destination,'review.json')));

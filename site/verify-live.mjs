@@ -157,12 +157,16 @@ try{
 
  const developmentCases=await run("[...document.querySelectorAll('button[data-development-lane]')].map(b=>({lane:Number(b.dataset.developmentLane),probability:Number(b.dataset.firstProbability)}))");
  assert.ok(developmentCases.length>0);assert.ok(developmentCases.every(c=>c.lane===1||c.probability>=.2-1e-12));
- const developmentTickets=[];
+ const developmentTickets=[],developmentPathsSeen=[];
  for(const c of developmentCases){
   await run(`document.querySelector('button[data-development-lane="${c.lane}"]').click()`);
+  const paths=await run("[...document.querySelectorAll('.development-boat animateMotion')].map(x=>x.getAttribute('path'))");
+  for(const previous of developmentPathsSeen)assert.notDeepEqual(paths,previous);developmentPathsSeen.push(paths);
+  await run("document.getElementById('development-water').pauseAnimations();document.getElementById('development-water').setCurrentTime(6)");
+  assert.equal(await run("Number([...document.querySelectorAll('[data-development-boat]')].sort((a,b)=>a.getCTM().e-b.getCTM().e)[0].dataset.developmentBoat)"),c.lane);
   const combo=await run("document.querySelector('[data-development-combo]').dataset.developmentCombo");assert.ok(combo.startsWith(c.lane+'-'));developmentTickets.push(combo);
  }
- await run("document.getElementById('development-water').setCurrentTime(2);document.getElementById('development-pause').click()");
+ await run("document.getElementById('development-water').unpauseAnimations();document.getElementById('development-water').setCurrentTime(2);document.getElementById('development-pause').click()");
  assert.equal(await run("document.getElementById('development-water').animationsPaused()"),true);
  const animationStart=await run("document.querySelector('[data-development-boat]').getCTM().e");
  await run("document.getElementById('development-water').setCurrentTime(4)");
@@ -173,7 +177,7 @@ try{
  assert.ok(selectedFromDevelopment.includes(developmentTickets.at(-1)));
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
- const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,boat_shapes_verified:true,start_poles:2,progressive_trails_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
+ const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,winner_positions_verified:true,distinct_scenario_paths_verified:true,boat_shapes_verified:true,start_poles:2,progressive_trails_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
  fs.writeFileSync(path.join(output,'development.json'),JSON.stringify(developmentReport,null,2)+'\n');console.log('::notice title=Published development verification::'+JSON.stringify(developmentReport));
  await run("document.getElementById('result-tab').click()");assert.equal(await run("document.getElementById('result-panel').hidden"),false);
  await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));

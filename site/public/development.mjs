@@ -45,12 +45,18 @@ export function developmentPaths(scenario) {
    desiredBack:developmentClamp(75-bias*27-(course-3.5)*8,32,118)};
  });
  // Group near-equal inputs without arbitrary rounding-boundary separations.
- // These are intermediate backstretch positions, independent of the ticket order.
+ // Intermediate backstretch positions; second/third ticket order does not set spacing.
  const forward=[...geometry].sort((a,b)=>b.power-a.power||a.lane-b.lane),groups=[];
  for(const g of forward){const group=groups.at(-1);if(!group||group[0].power-g.power>.08+1e-12)groups.push([g]);else group.push(g);}
  for(const group of groups){const mean=group.reduce((sum,g)=>sum+g.power,0)/group.length;
   for(const g of group)g.end=210-130*Math.tanh(mean*.85);
  }
+ // Condition this drawing on the selected winner. The statistical strength still
+ // determines the other five boats, including parallel runs for near-equal inputs.
+ // Left is forward on the backstretch; keep a visible hull-length clearance.
+ const winner=geometry.find(g=>g.lane===scenario.lane),rivals=geometry.filter(g=>g!==winner);
+ const leader=Math.min(...rivals.map(g=>g.end));
+ winner.end=Math.min(winner.end,leader-36);
  // Keep parallel hulls visible without using the ticket's finishing order for lateral lanes.
  const lateral=[...geometry].sort((a,b)=>a.desiredBack-b.desiredBack||b.course-a.course);
  for(let i=0;i<lateral.length;i++)lateral[i].back=Math.max(lateral[i].desiredBack,i?lateral[i-1].back+14:32);
@@ -75,8 +81,9 @@ export function renderDevelopment(race,selectedLane=1) {
  const prices=new Map((race.odds?.items||[]).map(r=>[r.combo,r.odds]));
  return `<div class="development"><p class="small-note">1号艇の展開と、1着確率20%以上の他艇の展開を表示。確率は全120通りのモデル予想を集計し、決まり手別の確率ではありません。</p><div class="development-cases" role="group" aria-label="勝つ艇の展開を選ぶ">${scenarios.map(s=>`<button data-development-lane="${s.lane}" data-first-probability="${s.probability}" aria-pressed="${s.lane===scenario.lane}">${s.lane===1?'逃げ想定':`逃げない・${s.lane}号艇が勝つ場合`}<strong>${percent(s.probability)}</strong></button>`).join('')}</div><h4 id="development-heading">${scenario.lane}号艇が勝つ展開例 / ${escape(scenario.style||'決まり手未判定')}</h4>
  <svg id="development-water" data-development-lane="${scenario.lane}" viewBox="0 0 620 320" role="img" aria-labelledby="development-heading development-desc"><desc id="development-desc">6艇のスタートスリット通過から第1ターンマーク、バックストレッチまでの模式的な展開。${escape(scenario.combo)}を着順候補とする途中経過。</desc><rect width="620" height="320" rx="12" fill="#e6f5ff"/><path d="M 62 140 H 470 Q 555 140 555 65 H 90" class="development-guide"/><line x1="170" y1="126" x2="170" y2="306" stroke="#4484a7" stroke-dasharray="5 5"/><path d="M 465 146 L 475 146 L 470 130 Z" fill="#ed6b45"/><g class="development-labels"><text x="95" y="314">スタートスリット</text><text x="435" y="314">第1ターンマーク</text><text x="180" y="25">← バックストレッチ</text></g>${poles}${tracks}${boats}</svg>
+ <p class="small-note development-condition">バック出口：${scenario.lane}号艇が先頭へ抜ける想定です。選択した艇の勝利を条件に描画を調整します。</p>
  <div class="development-controls"><button id="development-replay">もう一度再生</button><button id="development-pause">一時停止</button><span>約6秒 / スタート → 第1ターン → バック</span></div>
  <p class="development-ticket">この展開からの買い目候補 <button class="combo-select" data-development-combo="${escape(scenario.combo)}">${escape(scenario.combo)} → スジ候補へ</button><span>推定確率 ${percent(scenario.ticketProbability)}${Number.isFinite(prices.get(scenario.combo))?` / 保存・取得オッズ ${prices.get(scenario.combo).toFixed(1)}倍`:''}</span></p>
  <details class="development-inputs"><summary>展開に使った各艇のデータ・傾向を見る</summary><div class="table-wrap"><table><thead><tr><th>艇 / 選手</th><th>枠別1着率</th><th>総合スコア</th><th>平均ST</th><th>ST順位</th><th>展示タイム / ST</th><th>展示→本番ST差</th><th>勝利時の傾向</th></tr></thead><tbody>${scenario.boats.map(b=>`<tr><td>${b.lane} / ${escape(b.name)}</td><td>${b.winRate===null?'未集計':percent(b.winRate)}</td><td>${number(b.score)}</td><td>${number(b.st)}<small>${b.stSource}</small></td><td>${number(b.startRank)}</td><td>${number(b.exhibitionTime)} / ${number(b.exhibitionST)}</td><td>${b.stGap===null?'未集計':(b.stGap>=0?'+':'')+b.stGap.toFixed(3)+'秒'}</td><td>${escape(b.style||'未集計')}<small>${b.styleCounts.map(s=>`${s.style} ${s.count}勝`).join(' / ')}</small></td></tr>`).join('')}</tbody></table></div><p class="small-note">総合スコア・枠別1着率・平均ST・ST順位と展示タイム・展示STで描画上の艇間差を調整し、照合済みの展示→本番ST差があれば展示STに平均差を加えて描画を調整し、全艇それぞれの決まり手傾向でターン半径とバックへの出口を分けます。まくり寄りは外、差し寄りは内を回る描画です。展示進入は6艇すべて確認できる場合のみ使用。買い目と確率は表示中の保存予想、図の選手情報は表示中の出走表・展示に基づくため、取得時刻が異なる場合があります。</p></details>
- <p class="small-note development-disclaimer">バックの位置は途中経過で、表示買い目の最終着順を固定する図ではありません。描画上の差が小さい艇は並走させます。選んだ艇が勝つ場合を想定した模式図です。実際の航跡・所要時間・決まり手を予測する物理シミュレーションではありません。展示未提供の項目は「未取得」と表示し、図は中立値で補います。</p></div>`;
+ <p class="small-note development-disclaimer">バックの位置は途中経過で、表示買い目の最終着順を固定する図ではありません。選択した艇をバック出口の先頭に置き、他艇は描画上の差が小さい場合に並走させます。選んだ艇が勝つ場合を想定した模式図です。実際の航跡・所要時間・決まり手を予測する物理シミュレーションではありません。展示未提供の項目は「未取得」と表示し、図は中立値で補います。</p></div>`;
 }

@@ -51,11 +51,27 @@ test('全艇の決まり手傾向を反映し、まくり寄りは外・差し�
 test('ST・スコアの差でバックの前後差を変え、同等入力なら並走し、買い目の順番で等間隔にしない',()=>{
  const race=example();for(const e of race.entries){e.exhibition_time=6.8;e.exhibition_st=.15;e.annual_lane.mean_st=.15;e.annual_lane.mean_start_rank=3;}
  race.scores=race.entries.map(e=>({lane:e.lane,total:1}));const equal=developmentPaths(developmentScenarios(race)[0]);
- assert.equal(new Set(equal.map(p=>p.backX)).size,1);assert.equal(new Set(equal.map(p=>p.backY)).size,6);
+ assert.equal(new Set(equal.filter(p=>p.lane!==1).map(p=>p.backX)).size,1);assert.ok(equal[0].backX<Math.min(...equal.slice(1).map(p=>p.backX)));assert.equal(new Set(equal.map(p=>p.backY)).size,6);
  for(const [i,p] of [...equal].sort((a,b)=>a.backY-b.backY).entries())if(i)assert.ok(p.backY-[...equal].sort((a,b)=>a.backY-b.backY)[i-1].backY>=13.99);
  const st=structuredClone(race);st.entries[3].annual_lane.mean_st=.08;assert.ok(developmentPaths(developmentScenarios(st)[0])[3].backX<equal[3].backX);
  const score=structuredClone(race);score.scores[3].total=3;assert.ok(developmentPaths(developmentScenarios(score)[0])[3].backX<equal[3].backX);
- const tiny=structuredClone(race);tiny.scores[3].total+=.001;assert.equal(new Set(developmentPaths(developmentScenarios(tiny)[0]).map(p=>p.backX)).size,1);
+ const tiny=structuredClone(race);tiny.scores[3].total+=.001;assert.equal(new Set(developmentPaths(developmentScenarios(tiny)[0]).filter(p=>p.lane!==1).map(p=>p.backX)).size,1);
  const scenario=developmentScenarios(race)[0];assert.deepEqual(developmentPaths({...scenario,combo:'1-6-5'}).map(p=>[p.backX,p.backY]),equal.map(p=>[p.backX,p.backY]));
  assert.match(renderDevelopment(race),/途中経過/);assert.match(renderDevelopment(race),/総合スコア/);
+});
+
+test('同じ傾向・同等スコアでも勝つ艇を切り替えると経路と先頭艇が変わる',()=>{
+ const race=example([.2,.2,.2,.2,.1,.1]);for(const e of race.entries){e.exhibition_time=6.8;e.exhibition_st=.15;e.annual_lane={win_rate:.2,mean_st:.15,mean_start_rank:3,kimarite:{'差し':10}};}
+ const original=JSON.stringify(race),cases=developmentScenarios(race),all=cases.map(developmentPaths);
+ assert.equal(cases.length,4);
+ for(let i=0;i<cases.length;i++){
+  const winner=all[i].find(p=>p.lane===cases[i].lane),others=all[i].filter(p=>p!==winner);
+  assert.ok(others.every(p=>p.backX-winner.backX>=35.99));
+  assert.equal(new Set(others.map(p=>p.backX)).size,1,'他艇は同等入力なら並走');
+  for(let j=0;j<i;j++)assert.notDeepEqual(all[i].map(p=>p.path),all[j].map(p=>p.path));
+ }
+ assert.equal(JSON.stringify(race),original,'予想確率と入力は変更しない');
+ race.scores=race.entries.map(e=>({lane:e.lane,total:e.lane===6?20:-20}));const paths=developmentPaths(developmentScenarios(race)[1]);
+ assert.equal([...paths].sort((a,b)=>a.backX-b.backX)[0].lane,2,'強い他艇がいても選択した勝利条件を満たす');
+ for(const p of paths)assert.ok(Number.isFinite(p.backX)&&p.backX>=24&&p.backX<620);
 });

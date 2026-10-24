@@ -1,5 +1,5 @@
 {
-  "source_commit": "5cb9b1bdb301178984d575de67aeb808447c53a2",
+  "source_commit": "f6f5c4437a9ca7f96256a5a26a0ff63b55eb8e43",
   "model": "固定スコア v1 / 履歴補正 v2（検証中）",
   "files": {
     "models/exhibition-st/current.json": "492b444acdaa89801766a04817c48af85fa93d155a35691d435a3f3cbbfbcc8c",
@@ -9,7 +9,7 @@
     "tools/site/test_exhibition_st_history.py": "8dcfa51224d9669332ba7c68532e4ed11011a37a0fe394b4f701fb809d85e938",
     "AGENTS.md": "edaf48fe52d1f31068ef66205552cedd69fcd7d98173d7444de25cbae12a3120",
     "docs/release-notes.md": "9731d9261850fa1577a1122c07397069069b49d0e2d93c28690a28436b43d75c",
-    "site/releases.json": "84502248e8074d89042e2583e39bd740d877e0e1305044e3a92c991e576e1a30",
+    "site/releases.json": "67c83583b653f030c1c2057899c9966117153f5c13037c89249b94cf19420b1a",
     "site/releases.mjs": "ce3d98449bebf508f29a600d5033d48b179ce80896dbe4a16de77069327b99bf",
     "site/check-release-notes.mjs": "d3766a59460a43633bb7d163c976708f2dcef903679bdefe8c457a0fdd705fbd",
     "site/test_releases.mjs": "1c5a0bf0dca98713c03a389a2c718ce6eb27633bfa68755776dc03e5a26fe3a9",

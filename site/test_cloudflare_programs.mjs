@@ -58,3 +58,15 @@ test('場別v3.1の17項目・場別集計をCloudflareの予想へ渡せる',as
  observeAnnual(model.profiles,{...p,kimarite:'逃げ'});const next=annualForecast(p,model,now);
  assert.equal(next.scores[0].history_components.length,17);assert.equal(next.history.venue.applied,true);assert.equal(next.history.venue.venue_code,'06');assert.equal(next.history.venue.lanes[0].starts,1);assert.equal(validProgram(next,date,now),true);
 });
+
+test('結果を別データとして反映し、保存予想は保持。別日・別選手・未来の結果は拒否する',async()=>{
+ const {p,data}=example(),end=Date.parse(p.deadline_at),later=end+600000;
+ const {programResult}=await import('../cloudflare/odds/program.mjs');
+ const fs=await import('node:fs');const parsed=programResult(JSON.parse(fs.readFileSync(new URL('../tools/site/fixtures/official-result-20261023.json',import.meta.url))));
+ const result={...parsed,date,venue_code:'06',race_no:1,deadline_at:p.deadline_at,attempted_at:new Date(later-60000).toISOString(),fetched_at:new Date(later).toISOString(),source_url:'https://www.boatrace.jp/owpc/pc/race/raceresult?hd=20300101&jcd=06&rno=1',entries:parsed.entries.map(e=>({...e,racer_id:p.entries.find(b=>b.lane===e.lane).racer_id}))};
+ const delivery={...data,results:[result],served_at:new Date(later).toISOString()};assert.doesNotThrow(()=>validateLiveOdds(delivery,date,later));
+ const old={date,venue_code:'06',venue:'浜名湖',races:[p],update:{status:'OK'}};
+ const merged=applyLiveOdds(old,delivery,later).races[0];assert.equal(merged.result.status,'CONFIRMED');assert.deepEqual(merged.probabilities,p.probabilities);assert.equal(merged.prediction_saved_at,p.prediction_saved_at);
+ assert.throws(()=>validateLiveOdds({...delivery,results:[{...result,date:'2029-12-31'}]},date,later));assert.throws(()=>validateLiveOdds(delivery,date,end));
+ const mismatch={...result,entries:result.entries.map((e,i)=>({...e,racer_id:String(5000+i)}))};assert.equal(applyLiveOdds(old,{...delivery,results:[mismatch]},later).races[0].result,undefined);
+});

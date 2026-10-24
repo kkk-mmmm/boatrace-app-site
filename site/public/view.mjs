@@ -151,3 +151,13 @@ export function renderVenueSummary(race){
  const percent=n=>(n*100).toFixed(1)+'%',used=race.scores?.some(s=>s.history_components?.some(c=>c.label==='場・枠別1着傾向'));
  return `<details class="venue-history"><summary>この場の過去の傾向${used?'・予想に反映':''}</summary><p class="small-note">${escape(h.from)}〜${escape(h.through)} / 1枠 ${one.starts.toLocaleString('ja-JP')}走</p><p>1枠1着率 <strong>${percent(one.win_rate)}</strong>${valid(h.national_lane1_win_rate)?`（全国の1枠 ${percent(h.national_lane1_win_rate)}）`:''} / 1枠の逃げ率 <strong>${percent(one.escape_rate)}</strong></p><p class="small-note">過去の実績で、今回の予想確率ではありません。1着率と決まり手が逃げの割合は別集計です。場別項目の適用値は各艇のスコア内訳で確認できます。</p></details>`;
 }
+
+export function renderRaceResult(race,now=Date.now()) {
+ const result=race.result,end=Date.parse(race.deadline_at);
+ const source=`https://www.boatrace.jp/owpc/pc/race/raceresult?hd=${encodeURIComponent(race.date.replaceAll('-',''))}&jcd=${encodeURIComponent(race.venue_code)}&rno=${encodeURIComponent(race.race_no)}`;
+ const link=`<a href="${escape(source)}" target="_blank" rel="noopener noreferrer">公式結果を確認 ↗</a> / <a href="https://race.boatcast.jp/?jo=${encodeURIComponent(race.venue_code)}" target="_blank" rel="noopener noreferrer">この場の公式リプレイ ↗</a>`;
+ if(result?.status!=='CONFIRMED')return `<div class="race-result"><p role="status">${now<end?'レース前のため、結果はまだありません。':result?.status==='FAILED'?'結果の取得に失敗しました。次回の定期取得で再試行します。':'結果は未確定・取得待ちです。'}</p><p class="small-note">締切5分後から5分間隔で確定結果を確認します。取得した当日の結果を表示します。</p>${link}</div>`;
+ const time=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(result.fetched_at));
+ const tableRows=[...result.entries].sort((a,b)=>(a.finish??99)-(b.finish??99)||a.lane-b.lane).map(e=>`<tr><td>${escape(e.finish??e.finish_status??'—')}</td><td><span class="lane lane-${e.lane}">${e.lane}</span> ${escape(e.name)}</td><td>${e.course??'—'}</td><td>${e.st===null?escape(e.st_status||'未取得'):(e.st_status==='F'?'F':'')+Math.abs(e.st).toFixed(2)}</td><td>${escape(e.race_time||'—')}</td></tr>`).join('');
+ return `<div class="race-result"><p><strong>確定結果</strong> / 決まり手：${escape(result.kimarite||'未取得')}</p><div class="table-wrap"><table><thead><tr><th>着順</th><th>艇 / 選手</th><th>本番進入</th><th>本番ST</th><th>レースタイム</th></tr></thead><tbody>${tableRows}</tbody></table></div><div class="result-payouts">${result.payouts.length?result.payouts.map(p=>`<p>3連単 <strong>${escape(p.combo)}</strong> / 払戻 <strong>${p.payout_yen_per_100.toLocaleString('ja-JP')}円</strong><small>（100円あたり）</small></p>`).join(''):'<p>3連単の払戻は未取得です。返還・不成立等は公式結果をご確認ください。</p>'}</div><p class="small-note">結果取得 ${time}（日本時間）。締切前に保存した予想・確率は結果で書き換えません。</p>${link}</div>`;
+}

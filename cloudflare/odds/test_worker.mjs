@@ -163,3 +163,11 @@ test('展示の通信失敗は10分前の完了にせず、次の1分枠で再�
  await coordinator.refreshProgram(near,async()=>{});assert.equal(calls,1);
  t.mock.timers.tick(60000);await coordinator.refreshProgram(near,async()=>{});assert.equal(calls,2);
 });
+
+test('締切後の結果キューでもオッズを再取得せず、保存予想を変えない',async t=>{
+ t.mock.timers.enable({apis:['Date'],now});
+ const storage=new Storage(),coordinator=new OddsCoordinator({storage},{PLAYER_MODEL_URL:'https://site.test/model'}),closed={...target,deadline_at:new Date(now-600000).toISOString()};
+ await storage.put('work',{date:target.date,running:true,started_ms:now,keys:['06-1'],cursor:0});await storage.put('target:06-1',closed);await storage.put('proposal:06-1',{keep:true});
+ let calls=0;t.mock.method(coordinator,'refreshResult',async actual=>{calls++;assert.deepEqual(actual,closed);});t.mock.method(globalThis,'fetch',async()=>{throw Error('結果キューからのオッズ取得は禁止');});
+ await coordinator.processBatch();assert.equal(calls,1);assert.deepEqual(await storage.get('proposal:06-1'),{keep:true});assert.equal((await storage.get('work')).status,'COMPLETE');
+});

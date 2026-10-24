@@ -1,5 +1,5 @@
 import {scenarioProbabilities} from '../../site/public/view.mjs';
-import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,dataActions,annualForecast,programCalendar,annualEntryData} from './program.mjs';
+import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,dataActions,annualForecast,programCalendar,annualEntryData,programResult,resultDue} from './program.mjs';
 import {validateAnnualModel} from '../../site/public/annual-model.mjs';
 import {fetchText,officialUrl,robotsAllowed,parseOfficialHtml,OFFICIAL_ORIGIN} from './official.mjs';
 import {ODDS_INTERVAL_MS,ODDS_MAX_AGE_MS,oddsKey,rankExpectedValue,validQuotes,proposalCandidate,validProposal,oddsRefreshInterval,FAR_ODDS_INTERVAL_MS} from '../../site/public/odds-live.mjs';
@@ -116,6 +116,13 @@ export class OddsCoordinator {
         const values={};for(const target of targets.slice(i,i+64)){const key=oddsKey(target);keys.push(key);if(!knownTargets || JSON.stringify(knownTargets.get('target:'+key))!==JSON.stringify(target))values['target:'+key]=target;}
         if(Object.keys(values).length && (work?.date!==date || work.feed_generated_at!==feed.generated_at || knownTargets))await storage.put(values);
       }
+      // Keep closed races in the alarm queue for bounded, shared result collection.
+      if(this.env.PLAYER_MODEL_URL){
+        const agendas=await storage.list({prefix:'agenda:'}),results=await storage.list({prefix:'result:'});
+        for(const agenda of agendas.values())for(const target of agenda)if(target.date===date&&resultDue(target,results.get('result:'+oddsKey(target)),now)){
+          const key=oddsKey(target);if(!keys.includes(key)){keys.push(key);await storage.put('target:'+key,target);}
+        }
+      }
       work={date,scheduled_slot:slot,started_ms:now,started_at:iso(now),feed_generated_at:feed.generated_at,keys,cursor:0,
         running:keys.length>0,status:keys.length?'UPDATING':'IDLE',message:null,completed_at:keys.length?null:iso(now)};
       await storage.put('work',work);
@@ -145,7 +152,8 @@ export class OddsCoordinator {
     for(const item of queue) {
       const attempted=Date.parse(item.previous?.attempted_at);
       // A retried alarm must not repeat attempts made by this same cycle.
-      item.skip=!item.target || Date.parse(item.target.deadline_at)<=Date.now() || attempted>=work.started_ms;
+      item.closed=!!item.target&&Date.parse(item.target.deadline_at)<=Date.now();
+      item.skip=!item.target || (!item.closed&&attempted>=work.started_ms) || (item.closed&&!this.env.PLAYER_MODEL_URL);
       item.interval=oddsRefreshInterval(item.target || {},now);
       item.due=Number.isFinite(attempted)?attempted+item.interval:Date.now();
       item.oddsDue=!(item.interval===FAR_ODDS_INTERVAL_MS && item.due-now>1000);
@@ -163,6 +171,7 @@ export class OddsCoordinator {
       while(queue.length) {
         const item=queue.shift();if(item.skip)continue;
         let target=item.target;
+        if(item.closed){await this.refreshResult(target,waitTurn);continue;}
         if(this.env.PLAYER_MODEL_URL){target=await this.refreshProgram(target,waitTurn);item.target=target;}
         if(!item.oddsDue)continue;
         if(item.due>=Date.parse(target.deadline_at))continue;
@@ -246,6 +255,21 @@ export class OddsCoordinator {
     if(calendarChanged)await storage.put('calendar',calendar);
     return targets;
   }
+  async refreshResult(target,waitTurn){
+    const storage=this.ctx.storage,key='result:'+oddsKey(target),now=Date.now(),previous=await storage.get(key);
+    if(!resultDue(target,previous,now))return;
+    const source_url=`${OFFICIAL_ORIGIN}/owpc/pc/race/raceresult?hd=${target.date.replaceAll('-','')}&jcd=${target.venue_code}&rno=${target.race_no}`;
+    const base={date:target.date,venue_code:target.venue_code,race_no:target.race_no,deadline_at:target.deadline_at,source_url,attempted_at:iso(now)};
+    await storage.put(key,{...base,status:'PENDING'});
+    try{
+      const robots=(await storage.get('robots'))?.text;if(!robotsAllowed(robots,source_url))throw Error('結果はrobots.txtで取得対象外です');
+      await waitTurn(target.venue_code);
+      const result=programResult(await parseProgramHtml(await fetchText(source_url)));
+      const program=await storage.get('program:'+oddsKey(target));
+      if(result&&program?.entries?.some(e=>result.entries.find(r=>r.lane===e.lane)?.racer_id!==e.racer_id))throw Error('結果と出走表の選手が一致しません');
+      await storage.put(key,{...base,...(result||{status:'PENDING'}),fetched_at:iso(Date.now())});
+    }catch(error){await storage.put(key,{...base,status:'FAILED',message:String(error.message).slice(0,200)});}
+  }
   async refreshProgram(target,waitTurn){
     const storage=this.ctx.storage,key=oddsKey(target),now=Date.now();let program=await storage.get('program:'+key);
     const identity={date:target.date,venue_code:target.venue_code,venue:target.venue,race_no:target.race_no,deadline_at:target.deadline_at,context:target.context};
@@ -299,6 +323,7 @@ export class OddsCoordinator {
       update:{status:work?.date===date?work.status:'UNAVAILABLE',started_at:work?.date===date?work.started_at:null,
         completed_at:work?.date===date?work.completed_at:null,message:work?.date===date?work.message:'当日のオッズは更新待ちです'},
       calendar:await storage.get('calendar'),annual_model:await storage.get('annual-model-status'),programs:[...programMap.values()].filter(p=>p.entries?.length===6&&p.date===date&&(!venue||p.venue_code===venue)&&(!race||p.race_no===race)),
+      results:[...(await storage.list({prefix:'result:'})).values()].filter(r=>r.date===date&&(!venue||r.venue_code===venue)&&(!race||r.race_no===race)),
       races:rows,proposals,featured_races:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now,{featured:true}),opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
   }
 }

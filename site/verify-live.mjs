@@ -175,6 +175,7 @@ try{
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
  const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,boat_shapes_verified:true,start_poles:2,progressive_trails_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
  fs.writeFileSync(path.join(output,'development.json'),JSON.stringify(developmentReport,null,2)+'\n');console.log('::notice title=Published development verification::'+JSON.stringify(developmentReport));
+ await run("document.getElementById('result-tab').click()");assert.equal(await run("document.getElementById('result-panel').hidden"),false);
  await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await run('scrollTo(0,0)');
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
@@ -189,6 +190,17 @@ try{
   races_with_odds:venues.flatMap(v=>v.races).filter(r=>r.odds?.items?.length).length,
   browser:{venue_code:candidate.venue_code,race_no:race.race_no,model:label,probability_rows:probabilityRows,value_rows:valueRows,saved_proposal:savedProposal,saved_proposal_count:workerOdds?.proposals?.length || 0,scenario_in:scenarioIn,scenario_other:scenarioOther,in_rows:inRows,other_rows:otherRows,suji_rows:relatedRows.length,mobile_overflow:false,opportunity_card_heights:heights,errors}};
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
+ }
+ const confirmed=venues.flatMap(v=>v.races.filter(r=>r.result?.status==='CONFIRMED').map(r=>({venue:v,race:r})));
+ if(confirmed.length){
+  const sample=confirmed[0];await send('Page.navigate',{url:base+'?venue='+sample.venue.venue_code});
+  await wait("document.querySelectorAll('[data-race]').length>0");await run(`document.querySelector('[data-race="${sample.race.race_no}"]').click();document.getElementById('result-tab').click()`);
+  await wait("document.querySelectorAll('#result-panel tbody tr').length===6");
+  const text=await run("document.getElementById('result-panel').textContent");assert.ok(text.includes('確定結果'));assert.ok(text.includes('本番ST'));assert.ok(text.includes('3連単'));
+  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
+  fs.writeFileSync(path.join(output,'results.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+  const report={checked_at:new Date().toISOString(),confirmed_races:confirmed.length,venue_code:sample.venue.venue_code,race_no:sample.race.race_no,kimarite:sample.race.result.kimarite,payouts:sample.race.result.payouts,source_url:sample.race.result.source_url,mobile_overflow:false};
+  fs.writeFileSync(path.join(output,'results.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published race results verification::'+JSON.stringify(report));
  }
  const featuredGroups={};
  assert.equal(await run("document.querySelector('#opportunities-section h1').textContent"),'厳選レース');

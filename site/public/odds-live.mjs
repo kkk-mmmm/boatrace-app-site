@@ -103,7 +103,21 @@ export function validateLiveOdds(data, date, now=Date.now()) {
   if (data.proposals && (!Array.isArray(data.proposals) || data.proposals.length>288 || new Set(data.proposals.map(oddsKey)).size!==data.proposals.length || data.proposals.some(p=>!validProposal(p,date)))) throw Error('保存提案の形式・時刻が不正です');
   if(data.programs && (!Array.isArray(data.programs)||data.programs.length>288||new Set(data.programs.map(oddsKey)).size!==data.programs.length||data.programs.some(p=>!validProgram(p,date,now))))throw Error('出走表・履歴予想の形式または時刻が不正です');
   if(data.calendar && (data.calendar.date!==date||!Array.isArray(data.calendar.venues)||data.calendar.venues.length!==24||new Set(data.calendar.venues.map(v=>v.code)).size!==24||data.calendar.venues.some(v=>!/^(0[1-9]|1\d|2[0-4])$/.test(v.code)||!['OPEN','NO_MEETING','UNKNOWN'].includes(v.meeting_status))))throw Error('開催一覧の形式が不正です');
+  if(data.results&&(!Array.isArray(data.results)||data.results.length>288||new Set(data.results.map(oddsKey)).size!==data.results.length||data.results.some(r=>!validResult(r,date,now))))throw Error('結果データの対象・形式・時刻が不正です');
   return data;
+}
+
+export function validResult(result,date,now=Date.now()) {
+ if(!result||result.date!==date||!/^(0[1-9]|1\d|2[0-4])$/.test(result.venue_code)||!Number.isInteger(result.race_no)||result.race_no<1||result.race_no>12||!['CONFIRMED','PENDING','FAILED'].includes(result.status))return false;
+ const end=Date.parse(result.deadline_at),attempt=Date.parse(result.attempted_at),fetched=Date.parse(result.fetched_at);
+ const url=`https://www.boatrace.jp/owpc/pc/race/raceresult?hd=${date.replaceAll('-','')}&jcd=${result.venue_code}&rno=${result.race_no}`;
+ if(result.source_url!==url||!Number.isFinite(end)||new Date(end+9*3600000).toISOString().slice(0,10)!==date||!Number.isFinite(attempt)||attempt<end+300000||attempt>now+60000)return false;
+ if(result.status!=='CONFIRMED')return true;
+ return Number.isFinite(fetched)&&fetched>=attempt&&fetched<=now+60000&&Array.isArray(result.entries)&&result.entries.length===6
+  &&new Set(result.entries.map(e=>e.lane)).size===6&&new Set(result.entries.map(e=>e.racer_id)).size===6
+  &&result.entries.every(e=>Number.isInteger(e.lane)&&e.lane>=1&&e.lane<=6&&/^\d{4}$/.test(e.racer_id)&&typeof e.name==='string'&&(e.finish===null||Number.isInteger(e.finish)&&e.finish>=1&&e.finish<=6)&&(e.course===null||Number.isInteger(e.course)&&e.course>=1&&e.course<=6)&&(e.st===null||Number.isFinite(e.st)&&Math.abs(e.st)<=1))
+  &&Array.isArray(result.payouts)&&result.payouts.length<=120&&new Set(result.payouts.map(p=>p.combo)).size===result.payouts.length
+  &&result.payouts.every(p=>/^[1-6]-[1-6]-[1-6]$/.test(p.combo)&&new Set(p.combo.split('-')).size===3&&Number.isInteger(p.payout_yen_per_100)&&p.payout_yen_per_100>0);
 }
 
 export function applyLiveOdds(snapshot, data, now=Date.now()) {
@@ -114,7 +128,10 @@ export function applyLiveOdds(snapshot, data, now=Date.now()) {
   return {...snapshot,races:snapshot.races.map(race => {
     const saved=validProposal(race.proposal_snapshot,race.date,now)?race.proposal_snapshot:proposals.get(oddsKey(race));
     const proposal_snapshot=validProposal(saved,race.date,now) && saved.deadline_at===race.deadline_at && saved.venue_code===race.venue_code && saved.race_no===race.race_no?saved:null;
-    const attached={...race,proposal_snapshot};
+    const delivered=(data.results||[]).find(r=>oddsKey(r)===oddsKey(race)&&validResult(r,data.date,now)&&r.deadline_at===race.deadline_at);
+    const identitiesMatch=delivered?.status!=='CONFIRMED'||race.entries?.every(e=>delivered.entries.find(r=>r.lane===e.lane)?.racer_id===e.racer_id);
+    const result=delivered&&identitiesMatch&&(race.result?.status!=='CONFIRMED'||Date.parse(delivered.fetched_at)>=Date.parse(race.result.fetched_at))?delivered:race.result;
+    const attached={...race,proposal_snapshot,result};
     const quote=records.get(oddsKey(race));
     if (!quote) return attached;
     const source=new URL('https://www.boatrace.jp/owpc/pc/race/odds3t');

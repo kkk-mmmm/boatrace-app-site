@@ -96,3 +96,33 @@ export function annualEntryData(program,model){
  validateAnnualModel(model,program.date);
  return {...program,history_model_id:model.id,history_exhibition_st_through:model.exhibition_st_profiles?.through||null,history_window:model.coverage,history:annualHistory(program,model),entries:program.entries.map(e=>({...e,annual_lane:annualLaneStats(model,e.racer_id,e.lane)}))};
 }
+
+// Results are independent of prediction inputs and are never fed back into a saved forecast.
+export function programResult(page){
+ const table=page.tables.find(t=>norm(t.rows[0]?.[0]?.text)==='着'&&norm(t.rows[0]?.[1]?.text)==='枠');
+ if(!table)return null;
+ const rows=table.rows.slice(1).filter(r=>r.length>=3&&/^[1-6]$/.test(norm(r[1]?.text)));
+ if(!rows.length||rows.every(r=>!norm(r[0]?.text)))return null;
+ requireValue(rows.length===6,'結果の6艇を確認できません');
+ const starts=new Map(),startTable=page.tables.find(t=>norm(t.rows[0]?.[0]?.text)==='スタート情報');
+ for(const [i,row] of (startTable?.rows.slice(1)||[]).entries()){
+  const text=norm(row.map(c=>c.text).join(' ')).replace(/\s+/g,' '),m=/^([1-6])\s*([FL]?)(\d?\.\d{2})(?:\s|$)/.exec(text);
+  if(m){requireValue(!starts.has(Number(m[1]))&&i<6,'結果の進入が不正です');starts.set(Number(m[1]),{course:i+1,st:m[2]==='L'?null:Number(m[3])*(m[2]==='F'?-1:1),st_status:m[2]||'NORMAL'});}
+ }
+ const entries=rows.map(r=>{const identity=norm(r[2].text).replace(/\s+/g,' '),id=/^(\d{4})\s*(.+)$/.exec(identity),finish=norm(r[0].text);
+  requireValue(id,'結果の登録番号を確認できません');return {lane:Number(norm(r[1].text)),racer_id:id[1],name:id[2].trim(),finish:/^[1-6]$/.test(finish)?Number(finish):null,finish_status:finish,race_time:norm(r[3]?.text)||null,course:null,st:null,st_status:null,...starts.get(Number(norm(r[1].text)))};});
+ requireValue(new Set(entries.map(e=>e.lane)).size===6&&new Set(entries.map(e=>e.racer_id)).size===6,'結果の艇・登録番号が重複しています');
+ const payouts=[];
+ for(const t of page.tables){let triple=false;for(const row of t.rows){const label=norm(row[0]?.text);if(label==='3連単')triple=true;else if(/連複|連単|拡連複|単勝|複勝/.test(label))triple=false;if(!triple)continue;
+  const cells=label==='3連単'?row.slice(1):row,combo=norm(cells[0]?.text).replace(/\s+/g,''),amount=norm(cells[1]?.text).replace(/[¥￥,\s]|&yen;/g,'');
+  if(/^[1-6]-[1-6]-[1-6]$/.test(combo)&&new Set(combo.split('-')).size===3&&/^\d+$/.test(amount)&&Number(amount)>0)payouts.push({combo,payout_yen_per_100:Number(amount)});
+ }}
+ requireValue(new Set(payouts.map(p=>p.combo)).size===payouts.length,'払戻が重複しています');
+ if(!payouts.length&&entries.every(e=>e.finish!==null))return null;
+ const kimarite=page.tables.find(t=>norm(t.rows[0]?.[0]?.text)==='決まり手');
+ return {status:'CONFIRMED',entries,payouts,kimarite:norm(kimarite?.rows[1]?.[0]?.text)||null};
+}
+export function resultDue(target,previous,now){
+ const end=Date.parse(target.deadline_at);
+ return Number.isFinite(end)&&now>=end+5*60000&&previous?.status!=='CONFIRMED'&&(!previous?.attempted_at||now-Date.parse(previous.attempted_at)>=5*60000);
+}

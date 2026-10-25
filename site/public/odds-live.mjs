@@ -165,3 +165,19 @@ export function liveFeaturedRaces(data,now=Date.now()) {
   if(data.date!==new Date(now+9*3600000).toISOString().slice(0,10) || data.update?.status==='FAILED')return [];
   return Array.isArray(data.featured_races)?data.featured_races:[];
 }
+
+export function resultComparison(race,now=Date.now()) {
+ const unavailable=reason=>({status:'UNAVAILABLE',reason});
+ const result=race.result,p=race.proposal_snapshot;
+ if(result?.status!=='CONFIRMED')return {status:'PENDING',reason:'確定結果の取得後に比較します。'};
+ if(!validResult(result,race.date,now)||['date','venue_code','race_no','deadline_at'].some(k=>result[k]!==race[k]))return unavailable('確定結果の対象・形式を照合できないため比較できません。');
+ if(!validProposal(p,race.date,now)||['date','venue_code','race_no','deadline_at'].some(k=>p[k]!==race[k])||now<Date.parse(race.deadline_at))return unavailable('締切前に固定した有効な保存提案がないため比較できません。現在の予想やオッズでは代用しません。');
+ if(p.entries?.some(e=>e.racer_id&&result.entries.find(r=>r.lane===e.lane)?.racer_id!==e.racer_id))return unavailable('保存予想と結果の選手が一致しないため比較できません。');
+ if(!result.payouts.length)return unavailable('3連単の確定買い目・払戻を確認できないため比較できません。');
+ const probabilities=[...p.probabilities].sort((a,b)=>b.probability-a.probability||a.rank-b.rank||a.combo.localeCompare(b.combo));
+ const quotes=new Map(p.odds.items.map(q=>[q.combo,q.odds]));
+ const values=probabilities.filter(r=>quotes.has(r.combo)).map(r=>({...r,value:r.probability*quotes.get(r.combo)})).sort((a,b)=>b.value-a.value||a.rank-b.rank||a.combo.localeCompare(b.combo));
+ return {status:'OK',model_name:p.model_name||p.model_id,prediction_saved_at:p.prediction_saved_at,odds_fetched_at:p.odds.fetched_at,cutoff_at:p.cutoff_at,quoted_count:quotes.size,
+  rows:result.payouts.map(actual=>{const index=probabilities.findIndex(r=>r.combo===actual.combo),row=probabilities[index],valueIndex=values.findIndex(r=>r.combo===actual.combo),odds=quotes.get(actual.combo)??null;
+   return {combo:actual.combo,probability_rank:index+1,probability:row.probability,odds,value:odds===null?null:row.probability*odds,value_rank:valueIndex<0?null:valueIndex+1,payout_yen_per_100:actual.payout_yen_per_100};})};
+}

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import {raceStatus} from './public/view.mjs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import {validateLiveOdds,applyLiveOdds,proposalRace} from './public/odds-live.mjs';
+import {validateLiveOdds,applyLiveOdds,proposalRace,resultComparison} from './public/odds-live.mjs';
 process.on('uncaughtException',error=>{
  const message=String(error.stack || error).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A');
  console.error('::error title=Public site verification::'+message);process.exit(1);
@@ -244,13 +244,16 @@ try{
  fs.writeFileSync(path.join(output,'release-notes.json'),JSON.stringify(releaseReport,null,2)+'\n');console.log('::notice title=Published release notes verification::'+JSON.stringify(releaseReport));
  const confirmed=venues.flatMap(v=>v.races.filter(r=>r.result?.status==='CONFIRMED').map(r=>({venue:v,race:r})));
  if(confirmed.length){
-  const sample=confirmed[0];await send('Page.navigate',{url:base+'?venue='+sample.venue.venue_code});
+  const sample=confirmed.find(s=>resultComparison(s.race).status==='OK')||confirmed[0];await send('Page.navigate',{url:base+'?venue='+sample.venue.venue_code});
   await wait("document.querySelectorAll('[data-race]').length>0");await run(`document.querySelector('[data-race="${sample.race.race_no}"]').click();document.getElementById('result-tab').click()`);
-  await wait("document.querySelectorAll('#result-panel tbody tr').length===6");
+  await wait("document.querySelectorAll('#result-panel .race-result > .table-wrap tbody tr').length===6");
+  const comparison=resultComparison(sample.race);
+  await wait("!!document.querySelector('.result-comparison')");
+  if(comparison.status==='OK'){assert.equal(await run("document.querySelectorAll('.result-comparison tbody tr').length"),comparison.rows.length);for(const row of comparison.rows)assert.ok((await run("document.querySelector('.result-comparison').textContent")).includes(row.combo));}
   const text=await run("document.getElementById('result-panel').textContent");assert.ok(text.includes('確定結果'));assert.ok(text.includes('本番ST'));assert.ok(text.includes('3連単'));
   assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(output,'results.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
-  const report={checked_at:new Date().toISOString(),confirmed_races:confirmed.length,venue_code:sample.venue.venue_code,race_no:sample.race.race_no,kimarite:sample.race.result.kimarite,payouts:sample.race.result.payouts,source_url:sample.race.result.source_url,mobile_overflow:false};
+  const report={checked_at:new Date().toISOString(),confirmed_races:confirmed.length,comparison_status:comparison.status,comparison_rows:comparison.rows,venue_code:sample.venue.venue_code,race_no:sample.race.race_no,kimarite:sample.race.result.kimarite,payouts:sample.race.result.payouts,source_url:sample.race.result.source_url,mobile_overflow:false};
   fs.writeFileSync(path.join(output,'results.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published race results verification::'+JSON.stringify(report));
  }
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

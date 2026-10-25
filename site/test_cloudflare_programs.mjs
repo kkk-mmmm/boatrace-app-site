@@ -70,3 +70,21 @@ test('結果を別データとして反映し、保存予想は保持。別日�
  assert.throws(()=>validateLiveOdds({...delivery,results:[{...result,date:'2029-12-31'}]},date,later));assert.throws(()=>validateLiveOdds(delivery,date,end));
  const mismatch={...result,entries:result.entries.map((e,i)=>({...e,racer_id:String(5000+i)}))};assert.equal(applyLiveOdds(old,{...delivery,results:[mismatch]},later).races[0].result,undefined);
 });
+
+test('確定買い目を固定提案の全120点と照合し、後から届いた確率・オッズを混ぜない',async()=>{
+ const {resultComparison}=await import('./public/odds-live.mjs'),{renderRaceResult}=await import('./public/view.mjs');
+ const {p,data}=example(),end=Date.parse(p.deadline_at),cutoff=end-180000,now=end+600000;
+ const quotes=p.probabilities.map((r,i)=>({combo:r.combo,odds:10+i}));
+ const candidate=proposalCandidate(p,{...data.races[0],items:quotes,fetched_at:new Date(cutoff-1000).toISOString()},cutoff-1000);assert.ok(candidate);
+ const saved={...candidate,frozen_at:new Date(cutoff).toISOString(),model_name:'保存モデル <test>'};
+ const sorted=[...saved.probabilities].sort((a,b)=>b.probability-a.probability||a.rank-b.rank);
+ const result={date:p.date,venue_code:p.venue_code,race_no:p.race_no,deadline_at:p.deadline_at,status:'CONFIRMED',source_url:'https://www.boatrace.jp/owpc/pc/race/raceresult?hd=20300101&jcd=06&rno=1',attempted_at:new Date(end+540000).toISOString(),fetched_at:new Date(now).toISOString(),entries:p.entries.map((e,i)=>({...e,finish:i+1,course:i+1,st:.12})),payouts:[{combo:sorted[9].combo,payout_yen_per_100:99999},{combo:sorted[10].combo,payout_yen_per_100:88888}]};
+ const race={...p,proposal_snapshot:saved,result};const before=JSON.stringify(race),comparison=resultComparison(race,now);assert.equal(comparison.status,'OK');assert.deepEqual(comparison.rows.map(r=>r.probability_rank),[10,11]);
+ for(const row of comparison.rows){const prob=saved.probabilities.find(p=>p.combo===row.combo).probability,odds=quotes.find(q=>q.combo===row.combo).odds;assert.equal(row.probability,prob);assert.equal(row.odds,odds);assert.equal(row.value,prob*odds);}
+ const expected=[...quotes].sort((a,b)=>saved.probabilities.find(p=>p.combo===b.combo).probability*b.odds-saved.probabilities.find(p=>p.combo===a.combo).probability*a.odds);assert.equal(comparison.rows[0].value_rank,expected.findIndex(q=>q.combo===comparison.rows[0].combo)+1);
+ const updated={...race,model_name:'最新モデル',probabilities:[...p.probabilities].reverse(),odds:{items:quotes.map(q=>({...q,odds:500}))}};assert.deepEqual(resultComparison(updated,now),comparison);assert.equal(JSON.stringify(race),before);
+ const html=renderRaceResult(race,now,comparison);assert.match(html,/10位（上位10点）/);assert.match(html,/11位/);assert.match(html,/保存モデル &lt;test&gt;/);assert.match(html,/実際の購入・的中履歴ではありません/);
+ for(const bad of [null,{...saved,race_no:2},{...saved,date:'2029-12-31'},{...saved,prediction_saved_at:new Date(end+1).toISOString()},{...saved,entries:saved.entries.map(e=>({...e,racer_id:'9999'}))}])assert.equal(resultComparison({...race,proposal_snapshot:bad},now).status,'UNAVAILABLE');
+ const partial={...saved,odds:{...saved.odds,items:quotes.filter(q=>q.combo!==result.payouts[0].combo)}};const missing=resultComparison({...race,proposal_snapshot:partial},now);assert.equal(missing.status,'OK');assert.equal(missing.rows[0].odds,null);assert.equal(missing.rows[0].value,null);assert.equal(missing.rows[0].value_rank,null);assert.equal(missing.quoted_count,119);
+ assert.equal(resultComparison({...race,result:{...result,payouts:[]}},now).status,'UNAVAILABLE');assert.equal(resultComparison({...race,result:{...result,status:'PENDING'}},now).status,'PENDING');
+});

@@ -113,3 +113,5 @@
 .entry-alerts{display:flex;flex-direction:column;gap:6px;padding:11px 13px;background:#eef8ff;border:1px solid #bddcec;border-radius:7px;margin:14px 0;font-size:11px;line-height:1.6}.entry-alerts .course-change-alert{color:#9a5b00;font-weight:700}.withdrawal-alert,.withdrawal-label{color:#bd3038}.withdrawal-label{display:block;font-size:11px}.gap-period{display:block;font-size:9px;white-space:normal;min-width:105px;color:var(--muted)}
 
 .entry-tabs{flex-wrap:wrap}.race-result{margin:16px 0;font-size:12px}.race-result .table-wrap{margin:12px 0}.result-payouts{padding:8px 14px;background:#eff8fe;border-radius:8px}.result-payouts strong{margin:0 4px}
+
+.result-comparison{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}.result-comparison h4{font-size:14px;margin:4px 0 10px}.result-comparison td{white-space:nowrap}

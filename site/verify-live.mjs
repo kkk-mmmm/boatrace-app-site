@@ -142,16 +142,17 @@ try{
   assert.deepEqual(await run("[...document.querySelectorAll('.development-hull')].map(p=>p.getAttribute('fill'))"),['#fff','#253744','#e34747','#1681ca','#ffd747','#28a76b']);
   const wakeFrames=await run(`(()=>{
    const water=document.getElementById('development-water');water.pauseAnimations();
-   const frames=[0,2,4,6].map(time=>{water.setCurrentTime(time);
+   const frames=[0,2,4.2,6].map(time=>{water.setCurrentTime(time);
     return [...document.querySelectorAll('.development-track')].map((track,i)=>{
-     const point=track.getPointAtLength(track.getTotalLength()*time/6),screen=new DOMPoint(point.x,point.y).matrixTransform(track.getCTM());
+     const fraction=Number(document.querySelectorAll('.development-boat animateMotion')[i].getAttribute('keyPoints').split(';')[1]),progress=time<=4.2?fraction*time/4.2:fraction+(1-fraction)*(time-4.2)/1.8;
+     const point=track.getPointAtLength(track.getTotalLength()*progress),screen=new DOMPoint(point.x,point.y).matrixTransform(track.getCTM());
      const boat=document.querySelectorAll('[data-development-boat]')[i].getCTM();
-     return {offset:parseFloat(getComputedStyle(track).strokeDashoffset),distance:Math.hypot(boat.e-screen.x,boat.f-screen.y)};
+     return {expectedOffset:100*(1-progress),offset:parseFloat(getComputedStyle(track).strokeDashoffset),distance:Math.hypot(boat.e-screen.x,boat.f-screen.y)};
     });
    });water.setCurrentTime(0);water.unpauseAnimations();return frames;
   })()`);
   for(let frame=0;frame<4;frame++)for(const wake of wakeFrames[frame]){
-   assert.ok(Math.abs(wake.offset-(100-[0,2,4,6][frame]/6*100))<.1,'航跡が時刻とともに伸びる');
+   assert.ok(Math.abs(wake.offset-wake.expectedOffset)<.1,'航跡が時刻とともに伸びる');
    assert.ok(wake.distance<1,'航跡の先端と船の位置が一致する');
   }
 
@@ -162,7 +163,7 @@ try{
   await run(`document.querySelector('button[data-development-lane="${c.lane}"]').click()`);
   const paths=await run("[...document.querySelectorAll('.development-boat animateMotion')].map(x=>x.getAttribute('path'))");
   for(const previous of developmentPathsSeen)assert.notDeepEqual(paths,previous);developmentPathsSeen.push(paths);
-  await run("document.getElementById('development-water').pauseAnimations();document.getElementById('development-water').setCurrentTime(6)");
+  await run("document.getElementById('development-water').pauseAnimations();document.getElementById('development-water').setCurrentTime(4.2)");
   assert.equal(await run("Number([...document.querySelectorAll('[data-development-boat]')].sort((a,b)=>a.getCTM().e-b.getCTM().e)[0].dataset.developmentBoat)"),c.lane);
   const combo=await run("document.querySelector('[data-development-combo]').dataset.developmentCombo");assert.ok(combo.startsWith(c.lane+'-'));developmentTickets.push(combo);
  }

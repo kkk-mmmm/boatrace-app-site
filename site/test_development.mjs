@@ -75,3 +75,10 @@ test('同じ傾向・同等スコアでも勝つ艇を切り替えると経路�
  assert.equal([...paths].sort((a,b)=>a.backX-b.backX)[0].lane,2,'強い他艇がいても選択した勝利条件を満たす');
  for(const p of paths)assert.ok(Number.isFinite(p.backX)&&p.backX>=24&&p.backX<620);
 });
+
+test('旋回直後に選択艇が先頭となり、差し・まくり差しだけ1号艇が外へ流れる',()=>{
+ const scenario=developmentScenarios(example())[1],normal=developmentPaths({...scenario,style:'まくり'});
+ for(const style of ['逃げ','差し','まくり','まくり差し']){const paths=developmentPaths({...scenario,style}),winner=paths.find(p=>p.lane===2);assert.ok(paths.filter(p=>p.lane!==2).every(p=>p.turnExitX-winner.turnExitX>=39));assert.ok(paths.every(p=>p.turnFraction>0&&p.turnFraction<1));const one=paths.find(p=>p.lane===1);if(['差し','まくり差し'].includes(style)){assert.ok(one.turnRadius>normal[0].turnRadius);assert.ok(one.turnExitY<normal[0].turnExitY);assert.equal(one.drift,true);}else assert.equal(one.drift,false);}
+ const escape=developmentPaths({...scenario,lane:1,style:'逃げ',combo:'1-2-3'});assert.equal(escape[0].drift,false);
+ assert.match(renderDevelopment(example(),2),/keyTimes="0;0.7;1"/);
+});

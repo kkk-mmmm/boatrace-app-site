@@ -13,10 +13,17 @@ const get=async path=>{const response=await fetch(new URL(path,base),{signal:Abo
 const current=await(await get('data/current.json')).json();
 assert.equal(current.date,new Date(Date.now()+9*3600000).toISOString().slice(0,10));
 assert.equal(current.venues.length,24);assert.equal(new Set(current.venues.map(v=>v.code)).size,24);
-const html=await(await get('')).text();assert.ok(html.includes('BOATRACE NOTE'));
+const html=await(await get('')).text();assert.ok(html.includes('フネヨミ'));
 assert.ok((await get('style.css')).headers.get('content-type').includes('text/css'));
 await get('app.mjs');await get('view.mjs');
 await get('odds-live.mjs');await get('development.mjs');
+// Verify search metadata without relying on JavaScript rendering.
+assert.ok(html.includes('name="application-name" content="フネヨミ"'));
+assert.ok(html.includes('<link rel="canonical" href="'+base+'">'));
+const sitemap=await(await get('sitemap.xml')).text();assert.equal((sitemap.match(/<loc>/g)||[]).length,25);
+for(const file of ['favicon.svg','favicon-32.png','apple-touch-icon.png','social-card.png','site.webmanifest'])await get(file);
+for(let i=1;i<=24;i++){const code=String(i).padStart(2,'0'),pageHtml=await(await get(`venues/${code}/`)).text();assert.ok(pageHtml.includes(`data-venue="${code}"`));assert.ok(pageHtml.includes(`<link rel="canonical" href="${base}venues/${code}/">`));assert.ok(pageHtml.includes('application/ld+json'));}
+console.log('::notice title=Published SEO verification::'+JSON.stringify({site_name:'フネヨミ',pages:25,sitemap:true,favicon:true,ogp:true,structured_data:true}));
 const oddsConfig=await(await get('data/odds-config.json')).json();
 assert.equal(oddsConfig.interval_seconds,60);
 let workerOdds=null;
@@ -197,7 +204,7 @@ try{
  fs.writeFileSync(path.join(output,'verification.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published site verification::'+JSON.stringify(report));
  }
  const featuredGroups={};
- assert.equal(await run("document.querySelector('#opportunities-section h1').textContent"),'厳選レース');
+ assert.equal(await run("document.querySelector('#opportunities-section h2').textContent"),'厳選レース');
  for(const tab of ['value','high','low']){
   await run(`document.querySelector('[data-featured-tab="${tab}"]').click()`);
   assert.equal(await run(`document.querySelector('[data-featured-tab="${tab}"]').getAttribute('aria-pressed')`),'true');

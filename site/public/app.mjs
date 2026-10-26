@@ -41,6 +41,7 @@ function preserveViewport(render) {
   if(anchor){const delta=anchor.node.getBoundingClientRect().top-anchor.top;if(Math.abs(delta)>.5)scrollBy({top:delta,left:0,behavior:'instant'});}
  }
 }
+const siteName=document.querySelector('meta[name=application-name]')?.content||'フネヨミ';
 const $ = id => document.getElementById(id);
 const yen = n => `${n.toLocaleString('ja-JP')}円`;
 const pct = n => n == null ? '—' : `${(n * 100).toFixed(1)}%`;
@@ -97,7 +98,7 @@ const freshUpdate = (update, date) => date === japanDate(Date.now()) && ['OK','P
   && Date.now() - Date.parse(update.last_success_at) <= 10 * 60000;
 function identifyVenue() {
   for (const element of document.querySelectorAll('[data-venue-name]')) element.textContent = venueName();
-  document.title = view==='releases'?'リリースノート | BOATRACE NOTE':`BOATRACE NOTE | ${venueName()}のモデル予想とオッズ`;
+  document.title = view==='releases'?`リリースノート | ${siteName}`:new URL(location.href).searchParams.has('venue')||document.body.dataset.venue?`${venueName()}のボートレース・競艇のAI予想とオッズ | ${siteName}`:`ボートレース・競艇のAI予想とオッズ | ${siteName}`;
 }
 function renderVenueOptions() {return preserveViewport(renderVenueOptionsContent);}
 function renderVenueOptionsContent() {
@@ -162,6 +163,7 @@ function showView(name) {
   $('archive-view').hidden = name !== 'archive';
   $('opportunities-section').hidden = name !== 'live';
   $('upcoming-section').hidden = name !== 'live';
+  $('venue-overview')?.toggleAttribute('hidden',name!=='live');
   $('live-tab').setAttribute('aria-pressed', String(name === 'live'));
   $('archive-tab').setAttribute('aria-pressed', String(name === 'archive'));
   $('releases-tab').setAttribute('aria-pressed',String(name==='releases'));
@@ -390,7 +392,7 @@ async function load({forceOdds=false}={}) {
         || nextCatalog.venues.some(v => !/^(0[1-9]|1\d|2[0-4])$/.test(v.code) || typeof v.name !== 'string')) throw Error('開催一覧の形式を確認できませんでした');
       catalog = nextCatalog;
       if (!selectedVenue) {
-        const query = new URL(location.href).searchParams.get('venue');
+        const query = new URL(location.href).searchParams.get('venue')||document.body.dataset.venue;
         selectedVenue = catalog.venues.some(v => v.code === query) ? query
           : catalog.venues.find(v => v.meeting_status === 'OPEN' && freshUpdate(v.update,catalog.date))?.code || '01';
         clearCurrent();

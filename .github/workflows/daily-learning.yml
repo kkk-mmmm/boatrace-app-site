@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
 concurrency:
   group: daily-history-learning
   cancel-in-progress: false
@@ -57,8 +58,10 @@ jobs:
           node tools/prediction/monthly_candidate.mjs site/cache/annual-history models/monthly-candidates
           node --test tools/prediction/test_monthly_promotion.mjs
           node tools/prediction/promote_monthly.mjs site/cache/annual-history models/monthly-candidates models/annual/current.json site/releases.json
-      - name: Save data only; publication remains tied to approved code
+      - name: Save data through a checked PR; never push directly to main
         if: steps.approval.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
@@ -73,7 +76,7 @@ jobs:
             git commit -m "Authorize validated monthly coefficient data with unchanged runtime"
           fi
           node site/check-approval.mjs | grep -x approved=true
-          git push origin HEAD:main
+          python site/merge-data-pr.py
       - name: Publish refreshed data with the approved runtime
         if: steps.approval.outputs.approved == 'true'
         env:

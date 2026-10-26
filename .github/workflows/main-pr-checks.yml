@@ -1,0 +1,36 @@
+name: Required main PR checks
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  main-pr-checks:
+    name: main-pr-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Verify public runtime, data guards and model update rules
+        run: |
+          node --test site/test_data.mjs site/test_seo.mjs site/test_update.mjs site/test_approval.mjs site/test_releases.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs tools/prediction/test_history_updates.mjs tools/prediction/test_monthly_promotion.mjs tools/prediction/test_prospective.mjs
+          python -B site/test_data_pr.py
+          node site/check-approval.mjs | grep -x approved=true
+      - name: Verify append-only release notes
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$PR_BASE" ]; then
+            BASE_SHA="$PR_BASE" node site/check-release-notes.mjs
+          else
+            BASE_SHA="$(git merge-base HEAD origin/main)" node site/check-release-notes.mjs
+          fi
+      - name: Build complete public artifact without fetching official sources
+        run: node site/build.mjs

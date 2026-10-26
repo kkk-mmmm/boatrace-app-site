@@ -6,6 +6,7 @@
   "triggers": {"crons": ["* * * * *"]},
   "vars": {
     "SITE_ORIGIN": "https://kkk-mmmm.github.io",
+    "EXTRA_ORIGINS": "https://funeyomi.win,https://www.funeyomi.win",
     "PLAYER_MODEL_URL": "https://kkk-mmmm.github.io/boatrace-app-site/data/player-model.json",
     "TARGETS_URL": "https://kkk-mmmm.github.io/boatrace-app-site/data/odds-targets.json"
   },

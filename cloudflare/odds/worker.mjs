@@ -53,8 +53,9 @@ export default {
   },
   async fetch(request,env) {
     const url=new URL(request.url),origin=request.headers.get('Origin');
-    const cors={'Access-Control-Allow-Origin':env.SITE_ORIGIN,'Vary':'Origin','Access-Control-Allow-Methods':'GET, OPTIONS'};
-    if(origin && origin!==env.SITE_ORIGIN)return json({error:'許可されていないオリジンです'},403);
+    const allowedOrigins=new Set([env.SITE_ORIGIN,...(env.EXTRA_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean)]);
+    const cors={'Access-Control-Allow-Origin':origin&&allowedOrigins.has(origin)?origin:env.SITE_ORIGIN,'Vary':'Origin','Access-Control-Allow-Methods':'GET, OPTIONS'};
+    if(origin && !allowedOrigins.has(origin))return json({error:'許可されていないオリジンです'},403);
     if(url.pathname!=='/v1/odds')return json({error:'Not found'},404,cors);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     if(request.method!=='GET')return json({error:'Method not allowed'},405,{...cors,Allow:'GET, OPTIONS'});

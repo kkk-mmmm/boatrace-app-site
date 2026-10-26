@@ -179,3 +179,9 @@ test('選択場やオッズ・予想の有無によらず全場の締切を共�
  const data=await (await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01&venue=06&race=1'))).json();
  assert.equal(data.upcoming_races.length,2);assert.deepEqual(data.upcoming_races.map(r=>r.venue_code),['06','24']);assert.equal(data.upcoming_races[1].race_no,2);assert.equal('probabilities' in data.upcoming_races[0],false);
 });
+
+test('独自ドメインへの移行中は明示した新旧originのみ許可し、類似ドメインには許可しない',async()=>{
+ const worker=(await import('./worker.mjs')).default,env={SITE_ORIGIN:'https://kkk-mmmm.github.io',EXTRA_ORIGINS:'https://funeyomi.win,https://www.funeyomi.win'};
+ for(const origin of [env.SITE_ORIGIN,'https://funeyomi.win','https://www.funeyomi.win']){const r=await worker.fetch(new Request('https://worker.test/v1/odds',{method:'OPTIONS',headers:{Origin:origin}}),env);assert.equal(r.status,204);assert.equal(r.headers.get('access-control-allow-origin'),origin);assert.equal(r.headers.get('vary'),'Origin');}
+ for(const origin of ['https://funeyomi.win.evil.example','http://funeyomi.win','https://unrelated.example','null']){const r=await worker.fetch(new Request('https://worker.test/v1/odds',{method:'OPTIONS',headers:{Origin:origin}}),env);assert.equal(r.status,403);assert.notEqual(r.headers.get('access-control-allow-origin'),origin);}
+});

@@ -1,0 +1,19 @@
+name: Configure owned custom domain
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+concurrency:
+  group: custom-domain-configuration
+  cancel-in-progress: false
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify DNS before configuring the owned Pages domain
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python site/configure-domain.py

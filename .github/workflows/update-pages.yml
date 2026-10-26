@@ -127,14 +127,16 @@ jobs:
         run: |
           python - <<'PY'
           import json,os,time
+          from pathlib import Path
           from urllib.request import urlopen
           from urllib.parse import urljoin
           url=os.environ['SITE_URL']
+          brand=json.loads(Path('site/branding.json').read_text())['name']
           for attempt in range(10):
               try:
                   with urlopen(url,timeout=15) as r: html=r.read().decode()
                   with urlopen(urljoin(url,'data/current.json'),timeout=15) as r: data=json.load(r)
-                  assert 'BOATRACE NOTE' in html and data['schema_version']==1 and len(data['venues'])==24
+                  assert brand in html and data['schema_version']==1 and len(data['venues'])==24
                   assert all(len(v['code'])==2 for v in data['venues'])
                   with urlopen(urljoin(url,'style.css'),timeout=15) as r: assert 'text/css' in r.headers.get('Content-Type','')
                   for code in ('03','24'):

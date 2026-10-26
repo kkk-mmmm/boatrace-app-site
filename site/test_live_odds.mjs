@@ -94,3 +94,9 @@ test('締切後・API失敗でも保存提案を表示でき、最新予想と�
   assert.throws(()=>validateLiveOdds({...data,proposals:[{...frozen,odds:{...frozen.odds,fetched_at:new Date(later).toISOString()}}]},date));
   assert.deepEqual(snapshot.races[0].probabilities,[{combo:'6-5-4',probability:.9}]);
 });
+
+test('全場の締切一覧を配信形式として検証し、別日・重複・不正な締切を拒否する',()=>{
+ const record={date,venue_code:'24',race_no:2,deadline_at:'2030-01-01T02:00:00Z'};
+ assert.doesNotThrow(()=>validateLiveOdds({...data,upcoming_races:[record]},date,now));
+ for(const rows of [[record,record],[{...record,date:'2029-12-31'}],[{...record,venue_code:'25'}],[{...record,deadline_at:'2030-01-02T00:00:00+09:00'}]])assert.throws(()=>validateLiveOdds({...data,upcoming_races:rows},date,now),/締切一覧/);
+});

@@ -77,3 +77,12 @@ test('結果タブは未確定・失敗と確定を区別し、公式結果と�
  const html=renderRaceResult({...race,result:{status:'CONFIRMED',fetched_at:'2030-01-01T01:10:00Z',kimarite:'差し',entries:[{lane:1,name:'<script>',finish:1,course:2,st:.13,st_status:'NORMAL'}],payouts:[{combo:'1-2-3',payout_yen_per_100:1230}]}});
  assert.match(html,/確定結果/);assert.match(html,/1,230円/);assert.match(html,/本番進入/);assert.match(html,/公式リプレイ/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
 });
+
+test('締切一覧は全場からオッズに依存せず近い5件を選び、期限切れ・別日・重複・不正値を除く',async()=>{
+ const {upcomingRaceList}=await import('./public/view.mjs'),now=Date.parse('2030-01-01T01:00:00Z');
+ const rows=Array.from({length:8},(_,i)=>({date:'2030-01-01',venue_code:String(i+1).padStart(2,'0'),race_no:2,deadline_at:new Date(now+(8-i)*60000).toISOString(),odds:null}));
+ const before=JSON.stringify(rows);assert.deepEqual(upcomingRaceList(rows,now).map(r=>r.venue_code),['08','07','06','05','04']);assert.equal(JSON.stringify(rows),before);
+ const bad=[null,{...rows[0],date:'2029-12-31'},{...rows[0],deadline_at:new Date(now).toISOString()},{...rows[0],venue_code:'25'},{...rows[0],race_no:13},{...rows[0],deadline_at:'2030-01-02T00:00:00+09:00'}];assert.deepEqual(upcomingRaceList(bad,now),[]);
+ assert.equal(upcomingRaceList([rows[0],rows[0]],now).length,1);assert.equal(upcomingRaceList(rows,now+7*60000).length,1);assert.deepEqual(upcomingRaceList(rows,now+8*60000),[]);
+ assert.deepEqual(Object.keys(upcomingRaceList(rows,now)[0]),['date','venue_code','race_no','deadline_at']);
+});

@@ -315,6 +315,8 @@ export class OddsCoordinator {
     const currentTargets=(work?.date===date?work.keys || []:[]).map(key=>{const p=programMap.get('program:'+key);return p?.probabilities?.length===120?{...p,source_kind:'CLOUDFLARE_SCHEDULED_PROGRAM'}:targets.get('target:'+key);}).filter(Boolean);
     const currentKeys=new Set(currentTargets.map(oddsKey));
     const allRecords=new Map([...records.values()].filter(r=>r.date===date && currentKeys.has(oddsKey(r))).map(r=>[oddsKey(r),r]));
+    const agendas=await storage.list({prefix:'agenda:'}),schedule=new Map();
+    for(const r of [...targets.values(),...programMap.values(),...[...agendas.values()].flat()])if(r.date===date)schedule.set(oddsKey(r),{date:r.date,venue_code:r.venue_code,race_no:r.race_no,deadline_at:r.deadline_at});
     const venue=url.searchParams.get('venue'),race=Number(url.searchParams.get('race'));
     const saved=await storage.list({prefix:venue?'proposal:'+venue+'-':'proposal:'});
     const proposals=[...saved.values()].filter(p=>(!venue || p.venue_code===venue) && (!race || p.race_no===race) && validProposal(p,date,now));
@@ -324,6 +326,6 @@ export class OddsCoordinator {
         completed_at:work?.date===date?work.completed_at:null,message:work?.date===date?work.message:'当日のオッズは更新待ちです'},
       calendar:await storage.get('calendar'),annual_model:await storage.get('annual-model-status'),programs:[...programMap.values()].filter(p=>p.entries?.length===6&&p.date===date&&(!venue||p.venue_code===venue)&&(!race||p.race_no===race)),
       results:[...(await storage.list({prefix:'result:'})).values()].filter(r=>r.date===date&&(!venue||r.venue_code===venue)&&(!race||r.race_no===race)),
-      races:rows,proposals,featured_races:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now,{featured:true}),opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
+      upcoming_races:[...schedule.values()],races:rows,proposals,featured_races:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now,{featured:true}),opportunities:work?.status==='FAILED'?[]:opportunityRows(currentTargets,allRecords,now)});
   }
 }

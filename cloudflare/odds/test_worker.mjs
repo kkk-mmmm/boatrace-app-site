@@ -171,3 +171,11 @@ test('締切後の結果キューでもオッズを再取得せず、保存予�
  let calls=0;t.mock.method(coordinator,'refreshResult',async actual=>{calls++;assert.deepEqual(actual,closed);});t.mock.method(globalThis,'fetch',async()=>{throw Error('結果キューからのオッズ取得は禁止');});
  await coordinator.processBatch();assert.equal(calls,1);assert.deepEqual(await storage.get('proposal:06-1'),{keep:true});assert.equal((await storage.get('work')).status,'COMPLETE');
 });
+
+test('選択場やオッズ・予想の有無によらず全場の締切を共有し、閲覧による公式取得を行わない',async t=>{
+ t.mock.timers.enable({apis:['Date'],now});const storage=new Storage(),coordinator=new OddsCoordinator({storage},{});
+ await storage.put('agenda:06',[target]);await storage.put('agenda:24',[{...target,venue_code:'24',race_no:2}]);await storage.put('agenda:01',[{...target,date:'2029-12-31',venue_code:'01'}]);await storage.put('target:06-1',target);
+ t.mock.method(globalThis,'fetch',async()=>{throw Error('一覧の閲覧で公式を取得しない');});
+ const data=await (await coordinator.snapshot(new URL('https://internal/snapshot?date=2030-01-01&venue=06&race=1'))).json();
+ assert.equal(data.upcoming_races.length,2);assert.deepEqual(data.upcoming_races.map(r=>r.venue_code),['06','24']);assert.equal(data.upcoming_races[1].race_no,2);assert.equal('probabilities' in data.upcoming_races[0],false);
+});

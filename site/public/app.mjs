@@ -1,4 +1,4 @@
-import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups, raceEntryAlerts, renderVenueSummary, renderRaceResult} from './view.mjs';
+import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups, raceEntryAlerts, renderVenueSummary, renderRaceResult, upcomingRaceList} from './view.mjs';
 import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveFeaturedRaces, proposalRace, PROPOSAL_LEAD_MS, resultComparison} from './odds-live.mjs';
 import {renderDevelopment} from './development.mjs';
 // Update matching DOM nodes in place so reading and interaction state survive polling.
@@ -7,7 +7,7 @@ function patchHTML(root,html) {
  const key=node=>{
   if(node.nodeType!==1)return node.nodeName;
   if(node.id)return node.nodeName+'#'+node.id;
-  for(const names of [['data-combo'],['data-development-lane'],['data-scenario'],['data-race'],['data-opportunity-venue','data-opportunity-race'],['data-venue-filter','data-filter-value'],['data-venue-result']])if(node.hasAttribute(names[0]))return node.nodeName+names.map(n=>':'+node.getAttribute(n)).join('');
+  for(const names of [['data-combo'],['data-development-lane'],['data-scenario'],['data-race'],['data-opportunity-venue','data-opportunity-race'],['data-upcoming-venue','data-upcoming-race'],['data-venue-filter','data-filter-value'],['data-venue-result']])if(node.hasAttribute(names[0]))return node.nodeName+names.map(n=>':'+node.getAttribute(n)).join('');
   if(node.nodeName==='TR'){const combo=node.querySelector('[data-combo]');if(combo)return 'TR:'+combo.dataset.combo;}
   return node.nodeName+':'+(node.getAttribute('class')||'').split(' ')[0];
  };
@@ -161,6 +161,7 @@ function showView(name) {
   $('live-view').hidden = name !== 'live';
   $('archive-view').hidden = name !== 'archive';
   $('opportunities-section').hidden = name !== 'live';
+  $('upcoming-section').hidden = name !== 'live';
   $('live-tab').setAttribute('aria-pressed', String(name === 'live'));
   $('archive-tab').setAttribute('aria-pressed', String(name === 'archive'));
   $('releases-tab').setAttribute('aria-pressed',String(name==='releases'));
@@ -182,11 +183,22 @@ function renderOpportunitiesContent() {
   $('featured-condition').textContent=conditions[featuredTab];
   patchHTML($('opportunities-content'), rows.length?`<div class="opportunity-grid">${rows.map((x,i)=>`<button class="opportunity-card" data-opportunity-venue="${e(x.venue_code)}" data-opportunity-race="${x.race_no}" data-in-probability="${x.scenario_probabilities.in}" data-other-probability="${x.scenario_probabilities.other}" data-expected-value="${x.value}" title="${e(x.model_name)} / オッズ取得 ${e(clock(x.fetched_at))}"><span class="opportunity-top"><span class="eyebrow">${i+1} / ${e(catalog?.venues.find(v=>v.code===x.venue_code)?.name || x.venue)} ${x.race_no}R</span><span>締切 ${e(shortClock(x.deadline_at))}</span></span><span class="opportunity-main"><strong>${e(x.combo)}</strong><span class="opportunity-value"><b>${x.value.toFixed(3)}</b>倍<small>期待値</small></span></span><span class="opportunity-probabilities"><span>イン逃げ想定 <b>${pct(x.scenario_probabilities.in)}</b></span><span>それ以外 <b>${pct(x.scenario_probabilities.other)}</b></span></span><span class="opportunity-bottom"><span>${pct(x.probability)} × ${x.odds.toFixed(1)}倍</span><span>取得 ${e(shortClock(x.fetched_at))}</span></span></button>`).join('')}</div>`
     : `<div class="opportunity-empty">締切まで1時間以内で、この条件に合うレースはありません。${featuredTab==='value'?'期待値1.0超のレースがない、または高率・低率へ分類済みのためです。':`イン逃げ想定${featuredTab==='high'?'70%以上':'30%以下'}のレースを確認できません。`}オッズ・全120通りの予想が未取得、更新待ち、締切済みの場合も対象外です。</div>`);
-  for(const button of document.querySelectorAll('[data-opportunity-venue]'))button.onclick=(async()=>{
-    const code=button.dataset.opportunityVenue,number=Number(button.dataset.opportunityRace);
-    showView('live');selectedVenue=code;clearCurrent();await load();
-    if(current?.venue_code===code){selected=number;renderCurrent();$('live-view').scrollIntoView({behavior:'smooth',block:'start'});}
-  });
+  for(const button of document.querySelectorAll('[data-opportunity-venue]'))button.onclick=()=>openListedRace(button.dataset.opportunityVenue,Number(button.dataset.opportunityRace),rows.find(r=>r.venue_code===button.dataset.opportunityVenue&&r.race_no===Number(button.dataset.opportunityRace)));
+  renderUpcoming();
+}
+
+async function openListedRace(code,number,record) {
+ showView('live');selectedVenue=code;clearCurrent();await load();
+ if(current?.venue_code!==code)return;
+ if(!current.races.some(r=>r.race_no===number)&&record&&record.date===current.date){
+  current={...current,races:[...current.races,{date:record.date,venue_code:code,venue:venueName(),race_no:number,deadline_at:record.deadline_at,entries:[],items:[],probabilities:[],odds:null,issue:'出走表・予想は取得待ちです。'}].sort((a,b)=>a.race_no-b.race_no)};
+ }
+ selected=number;renderCurrent();$('live-view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
+}
+function renderUpcoming() {
+ const now=Date.now(),rows=upcomingRaceList(liveOdds?.date===japanDate(now)?liveOdds.upcoming_races??catalog?.upcoming_races:catalog?.upcoming_races,now);
+ patchHTML($('upcoming-content'),rows.length?`<div class="upcoming-list">${rows.map(r=>`<button class="upcoming-race" data-upcoming-venue="${r.venue_code}" data-upcoming-race="${r.race_no}"><strong>${e(catalog?.venues.find(v=>v.code===r.venue_code)?.name||r.venue_code)} ${r.race_no}R</strong><span>締切 <time datetime="${e(r.deadline_at)}">${e(shortClock(r.deadline_at))}</time></span></button>`).join('')}</div>`:'<p class="upcoming-empty">現在、確認できる締切前のレースはありません。開催前・全レース締切済み・締切情報の取得待ちの場合があります。</p>');
+ for(const button of document.querySelectorAll('[data-upcoming-venue]'))button.onclick=()=>openListedRace(button.dataset.upcomingVenue,Number(button.dataset.upcomingRace),rows.find(r=>r.venue_code===button.dataset.upcomingVenue&&r.race_no===Number(button.dataset.upcomingRace)));
 }
 
 function renderCurrent() {return preserveViewport(renderCurrentContent);}

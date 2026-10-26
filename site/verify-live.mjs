@@ -263,4 +263,11 @@ try{
   const report={checked_at:new Date().toISOString(),confirmed_races:confirmed.length,comparison_status:comparison.status,comparison_rows:comparison.rows,venue_code:sample.venue.venue_code,race_no:sample.race.race_no,kimarite:sample.race.result.kimarite,payouts:sample.race.result.payouts,source_url:sample.race.result.source_url,mobile_overflow:false};
   fs.writeFileSync(path.join(output,'results.json'),JSON.stringify(report,null,2)+'\n');console.log('::notice title=Published race results verification::'+JSON.stringify(report));
  }
+ const upcoming=await run("[...document.querySelectorAll('[data-upcoming-venue]')].map(b=>({venue:b.dataset.upcomingVenue,race:Number(b.dataset.upcomingRace),deadline:b.querySelector('time').dateTime,text:b.textContent}))");
+ assert.ok(upcoming.length<=5);assert.equal(new Set(upcoming.map(r=>r.venue+'/'+r.race)).size,upcoming.length);
+ for(let i=0;i<upcoming.length;i++){assert.ok(!/オッズ|期待値/.test(upcoming[i].text));if(i)assert.ok(Date.parse(upcoming[i-1].deadline)<=Date.parse(upcoming[i].deadline));}
+ assert.equal(await run("document.getElementById('opportunities-section').nextElementSibling.id"),'upcoming-section');
+ if(upcoming.length){const target=upcoming.at(-1);await run(`document.querySelector('[data-upcoming-venue="${target.venue}"][data-upcoming-race="${target.race}"]').click()`);await wait(`document.getElementById('venue-select').value==='${target.venue}' && document.querySelector('[data-race="${target.race}"]')?.getAttribute('aria-pressed')==='true'`);assert.equal(await run("document.getElementById('live-view').hidden"),false);}
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
+ const upcomingReport={checked_at:new Date().toISOString(),races:upcoming,navigation_verified:upcoming.length>0,mobile_overflow:false,errors};fs.writeFileSync(path.join(output,'upcoming.json'),JSON.stringify(upcomingReport,null,2)+'\n');console.log('::notice title=Published upcoming races verification::'+JSON.stringify(upcomingReport));
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

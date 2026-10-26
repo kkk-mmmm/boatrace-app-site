@@ -99,6 +99,7 @@ export function validateLiveOdds(data, date, now=Date.now()) {
       || !Number.isInteger(r.race_no) || r.race_no < 1 || r.race_no > 12
       || !['OK','FAILED','UNAVAILABLE','CLOSED'].includes(r.status) || !validQuotes(r.items)
       || !Number.isFinite(Date.parse(r.attempted_at)))) throw Error('オッズAPIの対象・形式が一致しません');
+  if(data.upcoming_races&&(!Array.isArray(data.upcoming_races)||data.upcoming_races.length>288||new Set(data.upcoming_races.map(oddsKey)).size!==data.upcoming_races.length||data.upcoming_races.some(r=>r.date!==date||!/^(0[1-9]|1\d|2[0-4])$/.test(r.venue_code)||!Number.isInteger(r.race_no)||r.race_no<1||r.race_no>12||!Number.isFinite(Date.parse(r.deadline_at))||new Date(Date.parse(r.deadline_at)+9*3600000).toISOString().slice(0,10)!==date)))throw Error('締切一覧の対象・形式が不正です');
   if(data.featured_races && (!Array.isArray(data.featured_races)||data.featured_races.length>288))throw Error('厳選レースの配信形式が不正です');
   if (data.proposals && (!Array.isArray(data.proposals) || data.proposals.length>288 || new Set(data.proposals.map(oddsKey)).size!==data.proposals.length || data.proposals.some(p=>!validProposal(p,date)))) throw Error('保存提案の形式・時刻が不正です');
   if(data.programs && (!Array.isArray(data.programs)||data.programs.length>288||new Set(data.programs.map(oddsKey)).size!==data.programs.length||data.programs.some(p=>!validProgram(p,date,now))))throw Error('出走表・履歴予想の形式または時刻が不正です');
@@ -125,7 +126,7 @@ export function applyLiveOdds(snapshot, data, now=Date.now()) {
   if (snapshot.date !== data.date) return snapshot;
   const records = new Map(data.races.map(r => [oddsKey(r),r]));
   const proposals = new Map((data.proposals || []).map(p=>[oddsKey(p),p]));
-  return {...snapshot,races:snapshot.races.map(race => {
+  return {...snapshot,upcoming_races:data.upcoming_races||snapshot.upcoming_races||[],races:snapshot.races.map(race => {
     const saved=validProposal(race.proposal_snapshot,race.date,now)?race.proposal_snapshot:proposals.get(oddsKey(race));
     const proposal_snapshot=validProposal(saved,race.date,now) && saved.deadline_at===race.deadline_at && saved.venue_code===race.venue_code && saved.race_no===race.race_no?saved:null;
     const delivered=(data.results||[]).find(r=>oddsKey(r)===oddsKey(race)&&validResult(r,data.date,now)&&r.deadline_at===race.deadline_at);

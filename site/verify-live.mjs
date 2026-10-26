@@ -1,3 +1,4 @@
+import {branding} from './seo.mjs';
 import fs from 'node:fs';
 import {raceStatus} from './public/view.mjs';
 import assert from 'node:assert/strict';
@@ -8,7 +9,7 @@ process.on('uncaughtException',error=>{
  console.error('::error title=Public site verification::'+message);process.exit(1);
 });
 const output=path.resolve(process.env.SITE_VERIFY_OUTPUT || '/tmp/boatrace-public-check');fs.mkdirSync(output,{recursive:true});
-const base='https://kkk-mmmm.github.io/boatrace-app-site/';
+const base=branding.base_url;
 const get=async path=>{const response=await fetch(new URL(path,base),{signal:AbortSignal.timeout(20000),cache:'no-store'});assert.equal(response.status,200,path);return response;};
 const current=await(await get('data/current.json')).json();
 assert.equal(current.date,new Date(Date.now()+9*3600000).toISOString().slice(0,10));
@@ -20,6 +21,7 @@ await get('odds-live.mjs');await get('development.mjs');
 // Verify search metadata without relying on JavaScript rendering.
 assert.ok(html.includes('name="application-name" content="フネヨミ"'));
 assert.ok(html.includes('<link rel="canonical" href="'+base+'">'));
+if(new URL(base).pathname==='/')assert.ok((await(await get('robots.txt')).text()).includes(base+'sitemap.xml'));
 const sitemap=await(await get('sitemap.xml')).text();assert.equal((sitemap.match(/<loc>/g)||[]).length,25);
 for(const file of ['favicon.svg','favicon-32.png','apple-touch-icon.png','social-card.png','site.webmanifest'])await get(file);
 for(let i=1;i<=24;i++){const code=String(i).padStart(2,'0'),pageHtml=await(await get(`venues/${code}/`)).text();assert.ok(pageHtml.includes(`data-venue="${code}"`));assert.ok(pageHtml.includes(`<link rel="canonical" href="${base}venues/${code}/">`));assert.ok(pageHtml.includes('application/ld+json'));}
@@ -31,8 +33,8 @@ if(oddsConfig.api_url) {
  assert.equal(oddsConfig.api_url,'https://boatrace-odds.kazu80504.workers.dev/v1/odds');
  assert.ok(html.includes(new URL(oddsConfig.api_url).origin),'CSPにWorkerの接続先が必要です');
  const url=new URL(oddsConfig.api_url);url.searchParams.set('date',current.date);
- const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:'https://kkk-mmmm.github.io'}});
- assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'https://kkk-mmmm.github.io');
+ const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:new URL(branding.base_url).origin}});
+ assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),new URL(branding.base_url).origin);
  workerOdds=validateLiveOdds(await response.json(),current.date);
  assert.ok(Array.isArray(workerOdds.featured_races),'全場の厳選候補が必要です');
  assert.notEqual(workerOdds.update.status,'FAILED');assert.equal(workerOdds.interval_seconds,60);

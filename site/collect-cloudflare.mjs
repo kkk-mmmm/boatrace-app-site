@@ -20,10 +20,11 @@ export async function collectCloudflare(apiUrl,output='site/staging') {
   const data=await r.json();validateLiveOdds(data,japanDate(Date.now()));
   // During migration or a partial cold start, preserve genuine same-day saved
   // forecasts from our own Pages cache; this never fetches the official site.
+  const publicBase=JSON.parse(fs.readFileSync(new URL('./branding.json',import.meta.url))).base_url;
   const previous=[],queue=venues.filter(v=>data.calendar?.venues.find(c=>c.code===v.code)?.meeting_status==='OPEN'
     && (data.programs||[]).filter(p=>p.venue_code===v.code&&p.probabilities?.length===120).length<12);
   await Promise.all(Array.from({length:4},async()=>{while(queue.length){const v=queue.shift();try{
-    const old=await fetch(`https://kkk-mmmm.github.io/boatrace-app-site/data/venues/${v.code}.json`,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const old=await fetch(new URL(`data/venues/${v.code}.json`,publicBase),{cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(!old.ok)continue;const saved=await old.json();
     if(saved.schema_version===1&&saved.date===data.date&&saved.venue_code===v.code&&saved.venue===v.name&&Array.isArray(saved.races)
       && saved.races.every(p=>p.date===data.date&&p.venue_code===v.code))previous.push(saved);

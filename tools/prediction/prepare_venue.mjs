@@ -3,7 +3,7 @@ import {compareMonthly,coefficientId,venueInitializationAllowed} from './compare
 import {annualVenueSummary,validateAnnualModel} from '../../site/public/annual-model.mjs';
 const [directory,output]=process.argv.slice(2);if(!output)throw Error('履歴と候補フォルダが必要です');
 const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'))),races=JSON.parse(fs.readFileSync(path.join(directory,'races.json'))),file=path.join(output,'current.json'),candidate=JSON.parse(fs.readFileSync(file));
-const response=await fetch('https://kkk-mmmm.github.io/boatrace-app-site/data/player-model.json',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('現行の公開モデルを取得できません');const active=await response.json();
+const response=await fetch(new URL('data/player-model.json',JSON.parse(fs.readFileSync(new URL('../../site/branding.json',import.meta.url))).base_url),{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('現行の公開モデルを取得できません');const active=await response.json();
 candidate.profiles=buildHistoryProfiles(races,manifest);candidate.coefficient_id=coefficientId(candidate);
 const comparison=compareMonthly(races,manifest,candidate,active);comparison.venue_initialization_accepted=venueInitializationAllowed(comparison);candidate.validation.venue_comparison=comparison;delete candidate.id;candidate.id='annual-v3-'+crypto.createHash('sha256').update(JSON.stringify(candidate)).digest('hex');
 validateAnnualModel(candidate,new Date(Date.parse(manifest.through)+86400000).toISOString().slice(0,10));fs.writeFileSync(file,JSON.stringify(candidate)+'\n');

@@ -5,10 +5,10 @@
   "workers_dev": true,
   "triggers": {"crons": ["* * * * *"]},
   "vars": {
-    "SITE_ORIGIN": "https://kkk-mmmm.github.io",
-    "EXTRA_ORIGINS": "https://funeyomi.win,https://www.funeyomi.win",
-    "PLAYER_MODEL_URL": "https://kkk-mmmm.github.io/boatrace-app-site/data/player-model.json",
-    "TARGETS_URL": "https://kkk-mmmm.github.io/boatrace-app-site/data/odds-targets.json"
+    "SITE_ORIGIN": "https://funeyomi.win",
+    "EXTRA_ORIGINS": "https://kkk-mmmm.github.io,https://www.funeyomi.win",
+    "PLAYER_MODEL_URL": "https://funeyomi.win/data/player-model.json",
+    "TARGETS_URL": "https://funeyomi.win/data/odds-targets.json"
   },
   "durable_objects": {"bindings": [{"name": "ODDS", "class_name": "OddsCoordinator"}]},
   "migrations": [{"tag": "v1", "new_sqlite_classes": ["OddsCoordinator"]}],

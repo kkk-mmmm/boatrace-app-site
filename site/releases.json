@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "releases": [
+    {"version":"1.20.1","date":"2026-10-26","title":"独自ドメインfuneyomi.winへ移行","changes":["公開先をhttps://funeyomi.win/へ変更し、canonical・OGP・構造化データ・サイトマップ・Web ManifestのURLを統一し、独自ドメインのrobots.txtを追加しました。","Cloudflareの取得元と公開検証も新ドメインへ変更し、移行期間は旧URLからのデータアクセスも許可します。"]},
     {"version":"1.20.0","date":"2026-10-26","title":"独自ドメインへの接続を準備","changes":["取得済みのfuneyomi.winからもデータを取得できるよう、Cloudflareの許可対象を追加しました。","DNSとHTTPSの準備完了までは現在の公開URLを維持します。"]},
     {"version":"1.19.2","date":"2026-10-26","title":"新サイト名に合わせて公開確認を更新","changes":["公開後の確認処理もサイト名設定を参照し、旧名称に依存しない形に更新しました。"]},
     {"version":"1.19.1","date":"2026-10-26","title":"場別ページの取得日時を日本時間で表示","changes":["検索向けの場別ページでも、開催情報の取得日時を日本時間に統一しました。"]},

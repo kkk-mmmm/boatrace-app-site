@@ -1,3 +1,4 @@
+import {branding} from './seo.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,9 +12,9 @@ const started=Date.now();let baseline=null,idleBaseline=null,lastState=null,veri
 try {
   while(Date.now()-started<12*60000) {
     const url=new URL(api);url.searchParams.set('date',date());
-    const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:'https://kkk-mmmm.github.io'}});
+    const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Origin:new URL(branding.base_url).origin}});
     assert.equal(response.status,200,'WorkerのHTTP応答');
-    assert.equal(response.headers.get('access-control-allow-origin'),'https://kkk-mmmm.github.io','Pages向けCORS');
+    assert.equal(response.headers.get('access-control-allow-origin'),new URL(branding.base_url).origin,'Pages向けCORS');
     const data=validateLiveOdds(await response.json(),date()),now=Date.now();
     const records=data.races.filter(r=>r.status==='OK' && r.items.length && Number.isFinite(Date.parse(r.fetched_at))
       && Date.parse(r.fetched_at)<=now+60000 && now-Date.parse(r.fetched_at)<=ODDS_MAX_AGE_MS && Date.parse(r.deadline_at)>now+60000);

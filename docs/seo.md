@@ -8,9 +8,9 @@
 
 ## 公開後の外部設定
 
-- Search Consoleで `https://kkk-mmmm.github.io/boatrace-app-site/` のURLプレフィックスを所有権確認し、`https://kkk-mmmm.github.io/boatrace-app-site/sitemap.xml` を送信します。認証情報・所有権確認コードは未提供のため登録・送信自体は未実施です。
+- Search Consoleで `https://funeyomi.win/` のURLプレフィックスを所有権確認し、`https://funeyomi.win/sitemap.xml` を送信します。認証情報・所有権確認コードは未提供のため登録・送信自体は未実施です。
 - Search ConsoleのURL検査でトップと各場のURLを確認します。検索順位・クロール・インデックス登録は保証できません。
-- GitHub Pagesのプロジェクト配下では `/boatrace-app-site/robots.txt` はホスト直下の `/robots.txt` の代わりになりません。この変更では偽のrobots設定を追加せず、ページのrobots metaとサイトマップを用意します。ホスト直下のrobotsポリシーはこのリポジトリでは変更していません。
+- 独自ドメインのホスト直下に `robots.txt` を生成し、サイトマップを案内します。旧GitHub Pagesのプロジェクト配下のrobots.txtは旧ホスト直下のポリシーを変更するものではありません。
 - 商標・同名サービスの網羅的調査は未実施です。
 
 `node --test site/test_seo.mjs` でcanonical・タイトル・構造化データ・鮮度・画像寸法を検証します。

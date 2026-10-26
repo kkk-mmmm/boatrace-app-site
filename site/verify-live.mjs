@@ -219,10 +219,17 @@ try{
  await run("document.querySelector('[data-featured-tab=value]').click()");
  if(workerOdds){
   await wait("!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length>0");
+  if(!morning)await run("window.__uxPanel=document.getElementById('entries-panel');window.__uxWater=document.getElementById('development-water');window.__uxButton=document.getElementById('entries-tab');window.__uxDetails=document.querySelector('.score-section details');if(window.__uxDetails)window.__uxDetails.open=true;window.__uxButton.scrollIntoView({block:'center'});window.__uxButton.focus({preventScroll:true});window.__uxTop=window.__uxButton.getBoundingClientRect().top");
   const before=await run('window.__cloudflareReads.length');
   for(let n=1;n<=2;n++){
    await run("document.getElementById('refresh-button').click()");
    await wait(`!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length===${before+n}`);
+  }
+  if(!morning){
+   assert.equal(await run("window.__uxPanel===document.getElementById('entries-panel') && window.__uxWater===document.getElementById('development-water')"),true);
+   assert.equal(await run("document.activeElement===window.__uxButton"),true);
+   assert.equal(await run("!window.__uxDetails || window.__uxDetails.open"),true);
+   assert.ok(await run("Math.abs(window.__uxButton.getBoundingClientRect().top-window.__uxTop)<2"));
   }
   const reads=await run('window.__cloudflareReads.slice(-2)');
   for(const read of reads){assert.equal(read.status,200);assert.equal(read.cache,'no-store');assert.equal(read.date,current.date);assert.equal(read.venue,candidate.venue_code);}
@@ -231,7 +238,7 @@ try{
    assert.equal(await run("document.getElementById('update-status').textContent.includes('取得に失敗')"),false);
   }
   assert.deepEqual(errors,[]);
-  const refreshReport={checked_at:new Date().toISOString(),site_url:base,manual_refreshes:reads,waited_for_60_second_throttle:false,update_status:await run("document.getElementById('update-status').textContent"),errors};
+  const refreshReport={checked_at:new Date().toISOString(),site_url:base,manual_refreshes:reads,waited_for_60_second_throttle:false,dom_preserved:!morning,viewport_preserved:!morning,focus_preserved:!morning,details_preserved:!morning,update_status:await run("document.getElementById('update-status').textContent"),errors};
   fs.writeFileSync(path.join(output,'manual-refresh.json'),JSON.stringify(refreshReport,null,2)+'\n');console.log('::notice title=Published manual refresh verification::'+JSON.stringify(refreshReport));
  }
  await run("document.getElementById('releases-tab').click()");

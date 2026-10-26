@@ -1,7 +1,8 @@
+import {branding} from './seo.mjs';
 import assert from 'node:assert/strict';import crypto from 'node:crypto';import fs from 'node:fs';
 import {validateAnnualModel} from './public/annual-model.mjs';
 import {validateLiveOdds} from './public/odds-live.mjs';
-const date=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10),base='https://kkk-mmmm.github.io/boatrace-app-site/';
+const date=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10),base=branding.base_url;
 const get=async url=>{const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000)});assert.equal(r.status,200);return r.json();};
 let report,lastError;
 for(let n=0;n<18;n++){

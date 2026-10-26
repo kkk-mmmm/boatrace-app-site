@@ -1,4 +1,4 @@
-"""Configure the owned Pages domain only after public DNS matches GitHub Pages."""
+"""Check public DNS, existing Pages configuration and HTTPS without changing settings."""
 import json,os,subprocess,time
 from pathlib import Path
 from urllib.request import Request,urlopen
@@ -21,7 +21,8 @@ def api(method='GET',payload=None):
   raise RuntimeError('Pages API HTTP '+str(e.code)+': '+e.read(2000).decode(errors='replace')) from None
 state=api()
 if state.get('cname') not in (None,domain):raise SystemExit('A different custom domain is configured; refusing to overwrite it.')
-if state.get('cname')!=domain:api('PUT',{'cname':domain})
+if state.get('cname')!=domain:
+ notice({'state':'MANUAL_CONFIG_REQUIRED','domain':domain,'settings_url':'https://github.com/'+repo+'/settings/pages'});raise SystemExit('Set the custom domain in GitHub Pages settings; the integration cannot change this setting.')
 ready=False
 for attempt in range(12):
  try:
@@ -29,7 +30,5 @@ for attempt in range(12):
  except Exception:pass
  if ready:break
  time.sleep(10)
-if ready:
- try:api('PUT',{'https_enforced':True})
- except RuntimeError as e:notice({'https_enforcement':'PENDING','reason':str(e)})
+if ready and not state.get('https_enforced'):notice({'state':'MANUAL_HTTPS_REQUIRED','settings_url':'https://github.com/'+repo+'/settings/pages'})
 state=api();notice({'domain':domain,'cname':state.get('cname'),'html_url':state.get('html_url'),'https_enforced':state.get('https_enforced'),'certificate':(state.get('https_certificate') or {}).get('state'),'https_ready':ready,'state':'READY' if ready and state.get('https_enforced') else 'CERTIFICATE_PENDING'})

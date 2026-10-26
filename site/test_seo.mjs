@@ -12,7 +12,7 @@ test('全25ページに自己canonical・場名タイトル・OGP・CSPで許可
 });
 test('静的な場ページの出走情報は鮮度を確認して表示し、欠損時刻を捏造しない',()=>{
  const snapshot={date:'2030-01-01',update:{status:'OK',last_success_at:new Date(now).toISOString()},meeting_status:'OPEN',meeting:{title:'テスト開催'},races:[{race_no:1,deadline_at:null,entries:[{lane:1,name:'<img src=x>'}]}]};
- const html=seoPage(template,{venue:venues[23],snapshot,now});assert.match(html,/テスト開催/);assert.match(html,/未確認/);assert.match(html,/&lt;img src=x&gt;/);assert.doesNotMatch(html,/<img src=x>/);
+ const html=seoPage(template,{venue:venues[23],snapshot,now});assert.match(html,/テスト開催/);assert.match(html,/2030\/01\/01 10:00:00/);assert.doesNotMatch(html,/（UTC）/);assert.match(html,/未確認/);assert.match(html,/&lt;img src=x&gt;/);assert.doesNotMatch(html,/<img src=x>/);
  const old=seoPage(template,{venue:venues[23],snapshot:{...snapshot,date:'2029-12-31'},now});assert.doesNotMatch(old,/テスト開催|src=x/);
 });
 test('SNS共有画像と各サイズのPNGアイコンが存在し、指定寸法で出力される',()=>{

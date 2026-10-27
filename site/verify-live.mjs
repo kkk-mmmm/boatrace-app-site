@@ -145,6 +145,13 @@ try{
  await run("document.getElementById('clear-bets').click();document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
+ assert.equal(await run("document.getElementById('prediction-details').open"),false);
+ assert.equal(await run("document.querySelector('.time-note').closest('details').id"),'prediction-details');
+ const closedPredictionDetailsHeight=await run("document.getElementById('prediction-details').getBoundingClientRect().height");assert.ok(closedPredictionDetailsHeight<80);
+ await run("document.querySelector('#prediction-details>summary').click()");
+ assert.ok(await run("document.getElementById('prediction-details').getBoundingClientRect().height")>closedPredictionDetailsHeight+40);
+ assert.ok((await run("document.getElementById('prediction-details').textContent")).includes('期待値は推定確率 × 取得時点のオッズ'));
+ await run("document.querySelector('#prediction-details>summary').click()");
  await run("document.getElementById('assessment-tab').click()");
  await wait("!document.getElementById('assessment-panel').hidden && typeof window.Chart==='function' && !!window.Chart.getChart(document.getElementById('score-radar'))");
  const radar=await run("(()=>{const c=window.Chart.getChart(document.getElementById('score-radar'));return {axes:c.data.labels.length,datasets:c.data.datasets.length,colors:c.data.datasets.map(d=>d.borderColor)};})()");

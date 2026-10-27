@@ -125,7 +125,7 @@ try{
  await wait("document.querySelectorAll('#venue-select option').length===24 && document.querySelectorAll('[data-race]').length>0");
  await run(`document.querySelector('[data-race="${race.race_no}"]').click()`);
  await wait("document.querySelectorAll('.prediction-table tbody tr').length===10");
- if(workerOdds)assert.ok((await run("document.getElementById('odds-status').textContent")).includes('1分'));
+ if(workerOdds)assert.match(await run("document.getElementById('odds-status').textContent"),/^オッズ：(取得済み|未取得)$/);
  assert.equal(await run("getComputedStyle(document.querySelector('.header')).display"),'flex');
  const label=await run("document.getElementById('model-label').textContent"),displayed=proposalRace(race,now);
  assert.equal(label,displayed.model_validation?.selected_lambda===null?'固定式 / 履歴補正は未適用':displayed.model_name || '固定スコアモデル v1');
@@ -138,7 +138,11 @@ try{
  await wait(`!document.getElementById('mobile-refresh-button').disabled && window.__cloudflareReads.length===${desktopReads+1}`);
  assert.ok(await run("Math.abs(window.__desktopRefreshAnchor.getBoundingClientRect().top-window.__desktopRefreshTop)<2"));
  assert.equal(await run('document.activeElement.id'),'mobile-refresh-button');
- console.log('::notice title=Published desktop refresh verification::'+JSON.stringify({fixed:true,manual_refresh:true,viewport_preserved:true,focus_preserved:true}));
+ assert.equal(await run("document.querySelectorAll('.selection-toolbar, #jump-to-suji').length"),0);
+ assert.equal(await run("document.querySelectorAll('#bet-selection-count').length"),1);
+ console.log('::notice title=Published desktop refresh verification::'+JSON.stringify({fixed:true,unified_menu:true,manual_refresh:true,viewport_preserved:true,focus_preserved:true}));
+ assert.doesNotMatch(await run('document.body.innerText'),/\b\d{1,2}:\d{2}:\d{2}\b/);
+ assert.doesNotMatch(await run("document.querySelector('.entry-alerts')?.textContent||''"),/本番.*未確定/);
  const probabilityRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");
  await run("document.getElementById('value-tab').click()");
  const valueRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");assert.equal(valueRows,expectedValueRows);

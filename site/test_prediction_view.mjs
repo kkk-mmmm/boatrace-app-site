@@ -74,7 +74,8 @@ test('場の過去実績は予想確率と区別し、場・日付が合うと�
 test('結果タブは未確定・失敗と確定を区別し、公式結果とリプレイへ案内する',async()=>{
  const {renderRaceResult}=await import('./public/view.mjs');const race={date:'2030-01-01',venue_code:'24',race_no:1,deadline_at:'2030-01-01T01:00:00Z'};
  assert.match(renderRaceResult(race,Date.parse(race.deadline_at)-1),/レース前/);assert.match(renderRaceResult(race,Date.parse(race.deadline_at)+1),/未確定・取得待ち/);assert.match(renderRaceResult({...race,result:{status:'FAILED'}},Date.parse(race.deadline_at)+1),/取得に失敗/);
- const html=renderRaceResult({...race,result:{status:'CONFIRMED',fetched_at:'2030-01-01T01:10:00Z',kimarite:'差し',entries:[{lane:1,name:'<script>',finish:1,course:2,st:.13,st_status:'NORMAL'}],payouts:[{combo:'1-2-3',payout_yen_per_100:1230}]}});
+ const html=renderRaceResult({...race,result:{status:'CONFIRMED',fetched_at:'2030-01-01T01:10:59Z',kimarite:'差し',entries:[{lane:1,name:'<script>',finish:1,course:2,st:.13,st_status:'NORMAL'}],payouts:[{combo:'1-2-3',payout_yen_per_100:1230}]}});
+ assert.match(html,/10:10/);assert.doesNotMatch(html,/\b\d{1,2}:\d{2}:\d{2}\b/);assert.match(html,/0\.13/);
  assert.match(html,/確定結果/);assert.match(html,/1,230円/);assert.match(html,/本番進入/);assert.match(html,/公式リプレイ/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
 });
 

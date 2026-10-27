@@ -1,6 +1,6 @@
 # 定期実行の監視と復旧
 
-GitHub Actions自体のcron欠落を検出するため、既存Cloudflare Workerの毎分cronから、独立したWorkflowMonitor Durable Objectを呼び出す。GitHubへの確認は10分間隔。オッズ取得とは別のwaitUntilと別ストレージで動作し、一方の失敗で他方を止めない。予想係数・検証条件・保存済み原記録を監視処理から変更しない。
+GitHub Actions自体のcron欠落を検出するため、既存Cloudflare Workerの毎分cronから、独立したWorkflowMonitor Durable Objectを呼び出す。GitHubへの確認は通常10分間隔。自動復旧を開始した後は次の成功・異常判定まで1分間隔で追跡し、正常化後は通常間隔に戻る。監視コードの版を更新した際は確認待ち時間だけをリセットし、再試行回数は保持する。オッズ取得とは別のwaitUntilと別ストレージで動作し、一方の失敗で他方を止めない。予想係数・検証条件・保存済み原記録を監視処理から変更しない。
 
 ## 対象と猶予
 

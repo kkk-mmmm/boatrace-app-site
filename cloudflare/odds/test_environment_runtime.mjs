@@ -22,3 +22,24 @@ test('独立監視DOをSQLite bindingで実行し、保存状態の読み取り�
  const repeated=await(await mf.dispatchFetch('https://internal/tick',{method:'POST'})).json();assert.deepEqual(repeated,first);
  assert.equal((await mf.dispatchFetch('https://internal/retry',{method:'POST'})).status,404);
 });
+test('Workers本体のfetchでGitHub監視・認証・復旧を実行し、リダイレクトを追従しない',{timeout:30000},async t=>{
+ const source=`export {WorkflowMonitor} from './monitor.mjs';export default{fetch(request,env){return env.MONITOR.get(env.MONITOR.idFromName('test')).fetch(request);}};`;
+ const output=await build({stdin:{contents:source,resolveDir:directory},format:'esm',platform:'browser',bundle:true,write:false});
+ const calls=[];let redirect=false;
+ const mf=new Miniflare({modules:true,script:output.outputFiles[0].text,compatibilityDate:'2026-06-11',bindings:{GITHUB_MONITOR_TOKEN:'test-only-token'},durableObjects:{MONITOR:{className:'WorkflowMonitor',useSQLite:true}},outboundService:async request=>{
+  const u=new URL(request.url);assert.equal(u.origin,'https://api.github.com');assert.equal(request.headers.get('authorization'),'Bearer test-only-token');
+  calls.push({url:request.url,method:request.method,body:request.method==='POST'?await request.json():null});
+  if(redirect)return new Response(null,{status:302,headers:{Location:'https://untrusted.test/'}});
+  if(request.method==='POST')return new Response(null,{status:204});
+  return Response.json(u.pathname.endsWith('/runs')?{workflow_runs:[]}:{state:'active'});
+ }});t.after(()=>mf.dispose());
+ const report=await(await mf.dispatchFetch('https://internal/tick',{method:'POST'})).json();
+ assert.equal(report.recovery_configured,true);assert.ok(report.workflows.filter(r=>r.status!=='OUTSIDE_SCHEDULE').every(r=>r.recovery==='DISPATCHED'));
+ const posts=calls.filter(r=>r.method==='POST');assert.ok(posts.length>=2);assert.ok(posts.every(r=>r.body.ref==='main'));
+ assert.equal(posts.find(r=>r.url.includes('verification-data')).body.inputs.mode,'hourly');
+ const count=calls.length;await mf.dispatchFetch('https://internal/status');assert.equal(calls.length,count);
+ // A new object has no cooldown and tests the real Workers redirect implementation.
+ redirect=true;const second=await mf.getDurableObjectNamespace('MONITOR');
+ const blocked=await(await second.get(second.idFromName('redirect-test')).fetch('https://internal/tick',{method:'POST'})).json();
+ assert.equal(blocked.workflows[0].status,'CHECK_FAILED');assert.equal(blocked.workflows[0].error,'HTTP_302');
+});

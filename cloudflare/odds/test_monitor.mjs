@@ -31,7 +31,7 @@ test('missing token reports recovery requirement and public GET never dispatches
 test('bounded persisted recovery, main-only allowlist, cooldown and no duplicates after restart',async t=>{
  const calls=[];t.mock.method(globalThis,'fetch',async(u,o)=>{calls.push([u,o]);if(o.method==='POST')return new Response(null,{status:204});return response(u.includes('/runs?')?{workflow_runs:[]}:{state:'active'});});
  const m=monitor({GITHUB_MONITOR_TOKEN:'test-only-token'});
- let report=await m.tick(now);assert.ok(report.workflows.every(r=>r.recovery==='DISPATCHED'));
+ let report=await m.tick(now);assert.ok(report.workflows.every(r=>r.recovery==='DISPATCHED'));assert.equal(await m.storage.get('next_check'),now+M);
  let posts=calls.filter(([,o])=>o.method==='POST');assert.equal(posts.length,3);
  for(const [u,o] of posts){assert.match(u,/repos\/kkk-mmmm\/boatrace-app-site\/actions\/workflows\/(update-pages|verification-data|daily-learning)\.yml\/dispatches$/);assert.equal(JSON.parse(o.body).ref,'main');}
  assert.deepEqual(JSON.parse(posts.find(([u])=>u.includes('verification-data'))[1].body).inputs,{mode:'hourly'});
@@ -67,4 +67,12 @@ test('health endpoint read only and odds scheduling isolated from monitor failur
  assert.equal((await worker.fetch(new Request('https://worker/v1/health'),env)).status,503);
  await worker.scheduled({scheduledTime:now},env,{waitUntil:p=>waits.push(p)});
  const results=await Promise.allSettled(waits);assert.equal(oddsStarted,true);assert.equal(results.filter(r=>r.status==='rejected').length,1);
+});
+
+test('monitor upgrades recheck immediately without resetting exhausted recovery budgets',async t=>{
+ t.mock.method(globalThis,'fetch',async(u,o)=>{assert.notEqual(o.method,'POST');return response({workflow_runs:[]});});
+ const m=monitor({GITHUB_MONITOR_TOKEN:'test'});
+ await m.storage.put('monitor_version',1);await m.storage.put('next_check',now+86400000);
+ for(const p of WORKFLOWS)await m.storage.put(`retry:${p.file}`,{started_at:now-M,attempts:2});
+ const report=await m.tick(now);assert.equal(report.monitor_version,2);assert.ok(report.workflows.every(r=>r.recovery==='EXHAUSTED'));
 });

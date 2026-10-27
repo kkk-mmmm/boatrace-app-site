@@ -195,10 +195,11 @@ function jumpToSuji(){
 const mobileRaceContext=document.createElement('aside');mobileRaceContext.id='mobile-race-context';mobileRaceContext.className='mobile-race-context';mobileRaceContext.hidden=true;mobileRaceContext.setAttribute('aria-label','今日の予想の更新と閲覧中のレース');
 mobileRaceContext.innerHTML='<div><strong id="mobile-race-name"></strong><span id="mobile-race-deadline"></span></div><button id="mobile-refresh-button" type="button" aria-label="出走表・展示・予想・オッズの表示データを更新" title="Cloudflareが保持する最新の出走表・展示・予想・オッズを再取得します"><span class="refresh-icon" aria-hidden="true">↻</span><span id="mobile-refresh-label">データ更新</span></button><button id="mobile-suji-jump" type="button"><span id="mobile-selection-count">選択中 0点</span><span>スジ候補へ ↓</span></button><span id="mobile-refresh-feedback" class="mobile-refresh-feedback" role="status" hidden></span>';
 document.body.append(mobileRaceContext);$('mobile-suji-jump').onclick=jumpToSuji;
+new ResizeObserver(()=>document.documentElement.style.setProperty('--race-context-height',`${Math.ceil(mobileRaceContext.getBoundingClientRect().height)}px`)).observe(mobileRaceContext);
 function updateRaceContext(){
  const race=current?.date===japanDate(Date.now())?current.races?.find(r=>r.race_no===selected):null;
- const mobile=matchMedia('(max-width:650px)').matches,header=document.querySelector('.header');
- mobileRaceContext.hidden=!(mobile&&view==='live'&&header&&header.getBoundingClientRect().bottom<=0);
+ const header=document.querySelector('.header');
+ mobileRaceContext.hidden=!(view==='live'&&header&&header.getBoundingClientRect().bottom<=0);
  const label=race?`${current.venue} ${race.race_no}R`:selectedVenue?venueName():'今日の予想',deadline=!race?'最新の取得データを確認':Number.isFinite(Date.parse(race.deadline_at))?`${Date.now()>=Date.parse(race.deadline_at)?'締切済み':'締切'} ${shortClock(race.deadline_at)}`:'締切 未確認';
  if($('mobile-race-name').textContent!==label)$('mobile-race-name').textContent=label;
  if($('mobile-race-deadline').textContent!==deadline)$('mobile-race-deadline').textContent=deadline;

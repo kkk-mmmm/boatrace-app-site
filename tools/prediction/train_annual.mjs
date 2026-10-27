@@ -1,6 +1,6 @@
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
-import {ANNUAL_ENGINE,ANNUAL_FEATURES,VENUE_ANNUAL_ENGINE,VENUE_ANNUAL_FEATURES,emptyAnnualProfiles,annualFeatures,observeAnnual,annualTriples} from '../../site/public/annual-model.mjs';
-const venueMode=process.argv.includes('--venue'),featureNames=venueMode?VENUE_ANNUAL_FEATURES:ANNUAL_FEATURES;
+import {CONTEXT_ANNUAL_ENGINE,CONTEXT_ANNUAL_FEATURES,ANNUAL_ENGINE,ANNUAL_FEATURES,VENUE_ANNUAL_ENGINE,VENUE_ANNUAL_FEATURES,emptyAnnualProfiles,annualFeatures,observeAnnual,annualTriples} from '../../site/public/annual-model.mjs';
+const contextMode=process.argv.includes('--context'),venueMode=contextMode||process.argv.includes('--venue'),featureNames=contextMode?CONTEXT_ANNUAL_FEATURES:venueMode?VENUE_ANNUAL_FEATURES:ANNUAL_FEATURES;
 const [directory,output]=process.argv.slice(2);if(!directory||!output)throw Error('履歴フォルダとモデル出力先が必要です');
 const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'))),races=JSON.parse(fs.readFileSync(path.join(directory,'races.json')));
 if(manifest.days!==365||manifest.failures.length||!races.length)throw Error('完全な1年履歴が必要です');
@@ -31,7 +31,7 @@ const baselineBeta=featureNames.map((_,i)=>i===0?scales[0]:0),baselineTemps=[.8,
 const baseline=evaluate(test,baselineBeta,baselineTemps[0].temperature);
 const report={baseline:{name:'枠別1着率のみ',temperature:baselineTemps[0].temperature,heldout:baseline},delta_log_loss:heldout.log_loss-baseline.log_loss,kind:'RETROSPECTIVE_TEMPORAL_HOLDOUT',training_races:train.length,tuning_from:tuneStart,test_from:testStart,lambda:selected.lambda,temperature:selected.temperature,tuning:selected.tuning,heldout,
  note:'結果アーカイブからの時系列検証。実運用の締切前保存を証明する成績ではありません。スタート順位は正常な6艇のSTを順位化し、同値は平均順位。'};
-const model={schema_version:3,engine_version:venueMode?VENUE_ANNUAL_ENGINE:ANNUAL_ENGINE,name:venueMode?'直近1年・選手履歴＋場別傾向モデル v3.1':'直近1年・選手履歴モデル v3',status:'HISTORICAL_VALIDATED',trained_from:manifest.from,trained_through:manifest.through,
+const model={schema_version:3,engine_version:contextMode?CONTEXT_ANNUAL_ENGINE:venueMode?VENUE_ANNUAL_ENGINE:ANNUAL_ENGINE,name:contextMode?'直近1年・選手履歴＋場別・直前条件モデル v3.2':venueMode?'直近1年・選手履歴＋場別傾向モデル v3.1':'直近1年・選手履歴モデル v3',status:'HISTORICAL_VALIDATED',trained_from:manifest.from,trained_through:manifest.through,
  coefficients_trained_through:manifest.through,created_at:new Date().toISOString(),feature_names:featureNames,coefficients:selected.beta,means,scales,temperature:selected.temperature,profiles,
  coverage:{from:manifest.from,through:manifest.through,days:365,races:races.length,players:Object.keys(profiles.players).length,failures:0,excluded_races:manifest.excluded_races?.length||0},validation:report};
 model.id='annual-v3-'+crypto.createHash('sha256').update(JSON.stringify(model)).digest('hex');fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(model)+'\n');

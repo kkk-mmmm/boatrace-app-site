@@ -1,10 +1,11 @@
+import {forecastConfidence} from '../../site/public/race-metrics.mjs';
 import {predictAnnual,validateAnnualModel,annualHistory,annualLaneStats} from '../../site/public/annual-model.mjs';
 export const norm=value=>String(value||'').normalize('NFKC').replace(/&nbsp;|&#160;/g,' ').trim();
 const requireValue=(ok,message)=>{if(!ok)throw Error(message);};
 const num=value=>/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(norm(value).replaceAll(',',''))?Number(norm(value).replaceAll(',','')):null;
 const tokens=cell=>String(cell?.text||'').split(/\r?\n/).map(norm).filter(Boolean);
 export async function parseProgramHtml(html){
- const tables=[],stack=[];let row=null,cell=null,detail='',day='',body='',link=null,dayIndex=0,activeDay=null,bodyClass='';
+ const tables=[],stack=[];let row=null,cell=null,detail='',day='',body='',link=null,dayIndex=0,activeDay=null,bodyClass='',weatherUnit='',weather={},weatherLabel='',windCode=null;
  const response=new HTMLRewriter()
  .on('table',{element(e){const t={rows:[]};tables.push(t);stack.push(t);e.onEndTag(()=>stack.pop());}})
  .on('tbody',{element(e){bodyClass=e.getAttribute('class')||'';e.onEndTag(()=>bodyClass='');}})
@@ -12,12 +13,15 @@ export async function parseProgramHtml(html){
  .on('td, th',{element(e){if(row){cell={attrs:{...Object.fromEntries(e.attributes),tbody_class:bodyClass},text:''};row.push(cell);e.onEndTag(()=>cell=null);}},text(c){if(cell)cell.text+=c.text;}})
  .on('a[href]',{element(e){if(row){link={href:e.getAttribute('href'),text:''};(row.links||=[]).push(link);e.onEndTag(()=>link=null);}},text(c){if(link)link.text+=c.text;}})
  .on('body',{text(c){body+=c.text;}})
+ .on('.weather1_title',{text(c){weatherLabel+=c.text;}})
+ .on('.weather1_bodyUnit',{element(e){weatherUnit=(e.getAttribute('class')||'').split(/\s+/).find(x=>x.startsWith('is-'))||'unknown';weather[weatherUnit]='';},text(c){weather[weatherUnit]+=c.text;}})
+ .on('.weather1_bodyUnitImage',{element(e){const m=/\bis-wind(\d{1,2})\b/.exec(e.getAttribute('class')||'');if(m)windCode=Number(m[1]);}})
  .on('br, div, p',{element(){if(cell)cell.text+='\n';}})
  .on('.title16_titleDetail__add2020',{text(c){detail+=c.text;}})
  .on('.tab2_tabs li',{element(e){dayIndex++;if(/\bis-active[12]\b/.test(e.getAttribute('class')||''))activeDay=dayIndex;}})
  .on('.tab2_tabs .is-active1, .tab2_tabs .is-active2',{text(c){day+=c.text;}})
  .transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}}));
- await response.arrayBuffer();return {tables,detail:norm(detail),day:norm(day),activeDay,body};
+ await response.arrayBuffer();return {tables,detail:norm(detail),day:norm(day),activeDay,body,weather,weatherLabel:norm(weatherLabel),windCode};
 }
 export function programEntries(page){
  const rows=page.tables.flatMap(t=>t.rows).filter(r=>r[0]?.attrs?.rowspan==='4'&&/\bis-boatColor[1-6]\b/.test(r[0].attrs.class||''));
@@ -69,7 +73,7 @@ export function annualForecast(program,model,now){
  if(!model||!program.entries?.length||program.entries.some(e=>e.participation_status==='WITHDRAWN')||now>=Date.parse(program.deadline_at)-180000)return null;
  validateAnnualModel(model,program.date);
  const result=predictAnnual(program,model),saved=new Date(now).toISOString();
- return {...program,entries:result.entries,probabilities:result.items,items:result.items.slice(0,10),scores:result.scores,
+ return {...program,confidence:forecastConfidence({...program,entries:result.entries,probabilities:result.items}),entries:result.entries,probabilities:result.items,items:result.items.slice(0,10),scores:result.scores,
   model_id:model.id,model_coefficient_id:model.coefficient_id||null,model_name:model.name,model_status:model.status,model_validation:{...model.validation,selected_lambda:model.validation.lambda},
   prediction_key:`${model.id}:${saved}`,prediction_saved_at:saved,input_fetched_at:[program.entries_fetched_at,program.exhibition_fetched_at].filter(t=>Number.isFinite(Date.parse(t))).sort((a,b)=>Date.parse(b)-Date.parse(a))[0],
   history_window:model.coverage,history:annualHistory(program,model),update_status:'OK',last_success_at:program.entries_fetched_at,issue:null};
@@ -125,4 +129,13 @@ export function programResult(page){
 export function resultDue(target,previous,now){
  const end=Date.parse(target.deadline_at);
  return Number.isFinite(end)&&now>=end+5*60000&&previous?.status!=='CONFIRMED'&&(!previous?.attempted_at||now-Date.parse(previous.attempted_at)>=5*60000);
+}
+
+export function programEnvironment(page,{source_url,fetched_at}={}){
+ const value=(key,pattern)=>{const m=pattern.exec(norm(page.weather?.[key]));return m?Number(m[1]):null;};
+ const wind=value('is-wind',/風速\s*(\d+(?:\.\d+)?)m/),wave=value('is-wave',/波高\s*(\d+(?:\.\d+)?)cm/),code=Number.isInteger(page.windCode)&&page.windCode>=1&&page.windCode<=16?page.windCode:null;
+ if(wind!==null&&(wind<0||wind>60)||wave!==null&&(wave<0||wave>300))throw Error('気象値が範囲外です');
+ return {schema_version:2,kind:'PRERACE_OFFICIAL',fetched_at,source_url,measurement_label:page.weatherLabel||null,
+  wind_speed_mps:wind,wind_direction_code:code,wind_direction_key:code===null?null:'OFFICIAL_ICON:'+code,wind_direction_basis:'公式水面図基準。方位・向かい風へ未検証の変換をしません。',wave_height_cm:wave,
+  air_temperature_c:value('is-direction',/気温\s*(-?\d+(?:\.\d+)?)(?:℃|°C)/),water_temperature_c:value('is-waterTemperature',/水温\s*(-?\d+(?:\.\d+)?)(?:℃|°C)/),tide:{status:'UNAVAILABLE',kind:'PREDICTED_REFERENCE'}};
 }

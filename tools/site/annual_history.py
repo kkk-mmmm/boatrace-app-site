@@ -53,7 +53,7 @@ def download(day,folder):
 
 
 
-def parse_results(text,day):
+def parse_results(text,day,*,include_environment=False):
     import re,unicodedata
     races=[];errors=[];venue=None;meeting_day=None;race=None
     def flush():
@@ -78,7 +78,10 @@ def parse_results(text,day):
             flush()
             if venue is None:raise ValueError('結果に場番号がありません')
             label=m[2].strip();phase='SEMI_FINAL' if '準優' in label else 'FINAL' if '優勝戦' in label else 'QUALIFYING' if '予選' in label else 'OTHER'
-            race={'date':day.isoformat(),'venue_code':venue,'race_no':int(m[1]),'context':{'meeting_day':meeting_day,'phase':phase},'kimarite':None,'entries':[]};continue
+            race={'date':day.isoformat(),'venue_code':venue,'race_no':int(m[1]),'context':{'meeting_day':meeting_day,'phase':phase},'kimarite':None,'entries':[]}
+            weather=re.search(r'風\s*([^\s]+)\s+(\d+(?:\.\d+)?)m\s+波\s*(\d+(?:\.\d+)?)cm',line)
+            if include_environment and weather:race['environment']={'kind':'RESULT_REPORTED','wind_direction_key':'COMPASS:'+weather[1],'wind_speed_mps':float(weather[2]),'wave_height_cm':float(weather[3]),'fetched_at':None}
+            continue
         if race is None:continue
         if 'スタートタイミング' in line or 'レースタイム' in line:
             m=re.search(r'(まくり差し|逃げ|差し|まくり|抜き|恵まれ)',line)
@@ -112,7 +115,7 @@ def acquire_year(end,folder):
     for offset in range(365):
         day=start+timedelta(days=offset)
         try:
-            text,source=download(day,folder/'archives');races,errors=parse_results(text,day)
+            text,source=download(day,folder/'archives');races,errors=parse_results(text,day,include_environment=True)
             excluded.extend({'date':str(day),**error} for error in errors)
             destination=folder/'days'/f'{day}.json';destination.parent.mkdir(parents=True,exist_ok=True)
             destination.write_text(json.dumps(races,ensure_ascii=False,separators=(',',':')))

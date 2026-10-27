@@ -12,7 +12,7 @@ test('全28ページに自己canonical・場名タイトル・OGP・CSPで許可
  }
  const daily=fs.readFileSync(path.join(dir,'verification/index.html'),'utf8');
  assert.match(daily,/<h1>日別の予想実績（直近7日）<\/h1>/);assert.match(daily,/実際の購入履歴の成績ではありません/);assert.match(daily,/href="\.\/#archive">検証企画・記事/);
- const home=fs.readFileSync(path.join(dir,'index.html'),'utf8');assert.match(home,/id="archive-tab"[^>]*>検証企画・記事/);assert.match(home,/href="\.\/verification\/">日別の予想実績/);assert.match(home,/id="experiments-refresh"/);assert.match(home,/id="experiments-status"[^>]*role="status"/);
+ const home=fs.readFileSync(path.join(dir,'index.html'),'utf8');assert.match(home,/id="archive-tab"[^>]*>検証企画・記事/);assert.match(home,/href="\.\/verification\/">予想実績/);assert.match(home,/id="experiments-refresh"/);assert.match(home,/id="experiments-status"[^>]*role="status"/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('静的な場ページの出走情報は鮮度を確認して表示し、欠損時刻を捏造しない',()=>{
@@ -43,7 +43,7 @@ test('受信確認済みの公開メールだけを案内し、不正なリン�
 test('ヘッダーの4項目は全ページで同じ順番を保ち、独立画面からも各機能へ戻れる',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-shared-navigation-'));
  try{writeSeoPages(dir,template,[],now);
-  const expected=['今日の予想','検証企画・記事','リリースノート','日別の予想実績'];
+  const expected=['今日の予想','検証企画・記事','予想実績','リリースノート'];
   for(const route of ['',...venues.map(v=>`venues/${v.code}/`),...informationPages().map(p=>p.slug+'/')]){
    const html=fs.readFileSync(path.join(dir,route,'index.html'),'utf8'),header=html.match(/<header[\s\S]*?<\/header>/)[0],nav=header.match(/<nav aria-label="メイン">([\s\S]*?)<\/nav>/)[1];
    assert.deepEqual([...nav.matchAll(/<(?:a|button)\b[^>]*>([^<]+)<\/(?:a|button)>/g)].map(m=>m[1]),expected,route||'home');

@@ -328,6 +328,7 @@ try{
  const studyReport={status:study.status,activated_at:study.activated_at,summary:study.summary,days:study.record_days.length,mobile_overflow:false};
  fs.writeFileSync(path.join(output,'study.json'),JSON.stringify(studyReport,null,2)+'\n');console.log('::notice title=Published strategy study verification::'+JSON.stringify(studyReport));
  const sharedHeaderLabels=await run("[...document.querySelector('header nav').children].map(x=>x.textContent)");
+ assert.deepEqual(sharedHeaderLabels,['今日の予想','検証企画・記事','予想実績','リリースノート']);
  await send('Page.navigate',{url:base+'verification/'});
  await wait("document.querySelectorAll('[data-verification-date]').length===7 && document.getElementById('verification-status').textContent.includes('更新確認')");
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);

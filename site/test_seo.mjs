@@ -38,3 +38,16 @@ test('受信確認済みの公開メールだけを案内し、不正なリン�
  assert.throws(()=>informationPages({...settings,email:'x@example.com',verified:true}),/公開用/);
  assert.throws(()=>informationPages({...settings,email:'" onmouseover=alert(1)',verified:true}),/公開用/);
 });
+
+test('ヘッダーの4項目は全ページで同じ順番を保ち、独立画面からも各機能へ戻れる',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-shared-navigation-'));
+ try{writeSeoPages(dir,template,[],now);
+  const expected=['今日の予想','検証企画・記事','リリースノート','日別の予想実績'];
+  for(const route of ['',...venues.map(v=>`venues/${v.code}/`),...informationPages().map(p=>p.slug+'/')]){
+   const html=fs.readFileSync(path.join(dir,route,'index.html'),'utf8'),header=html.match(/<header[\s\S]*?<\/header>/)[0],nav=header.match(/<nav aria-label="メイン">([\s\S]*?)<\/nav>/)[1];
+   assert.deepEqual([...nav.matchAll(/<(?:a|button)\b[^>]*>([^<]+)<\/(?:a|button)>/g)].map(m=>m[1]),expected,route||'home');
+   if(informationPages().some(p=>route===p.slug+'/')){assert.equal(nav.includes('<button'),false);for(const href of ['./','./#archive','./#releases','./verification/'])assert.ok(nav.includes(`href="${href}"`));}
+   if(route==='verification/')assert.match(nav,/href="\.\/verification\/" aria-current="page"/);
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

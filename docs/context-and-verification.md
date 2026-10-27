@@ -1,6 +1,6 @@
 # 直前条件・評価・検証の拡張
 
-既存のSQLite-backed Durable Objectを利用するため、新しいD1アカウントや秘密情報は不要です。`cloudflare/odds/migrations/002_environment_and_history.sql` 相当の冪等なDDLを初回起動時に実行します。風向コード・風速・波高・予測潮位・地点・取得時刻・出典と、変更しない保存予想・確定結果を保存します。日替わりのdeleteAllは廃止し、内部記録を30日保持します。従来の検証用Gitブランチも引き続き原本を保持します。
+既存のSQLite-backed Durable Objectを利用するため、新しいD1アカウントや秘密情報は不要です。`cloudflare/odds/migrations/002_environment_and_history.sql` と `003_public_verification_archive.sql` 相当の冪等なDDLを初回起動時に実行します。風向コード・風速・波高・予測潮位・地点・取得時刻・出典と、変更しない保存予想・確定結果を保存します。日替わりのdeleteAllは廃止し、内部記録を30日保持します。従来の検証用Gitブランチも引き続き原本を保持します。
 
 ## 入力
 

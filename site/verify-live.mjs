@@ -145,6 +145,7 @@ try{
  await run("document.getElementById('clear-bets').click();document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
+ assert.equal(await run("document.getElementById('exhibition-tab').textContent"),'展示情報');
  assert.equal(await run("document.getElementById('prediction-details').open"),false);
  assert.equal(await run("document.querySelector('.time-note').closest('details').id"),'prediction-details');
  const closedPredictionDetailsHeight=await run("document.getElementById('prediction-details').getBoundingClientRect().height");assert.ok(closedPredictionDetailsHeight<80);
@@ -316,9 +317,12 @@ try{
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
  const studyReport={status:study.status,activated_at:study.activated_at,summary:study.summary,days:study.record_days.length,mobile_overflow:false};
  fs.writeFileSync(path.join(output,'study.json'),JSON.stringify(studyReport,null,2)+'\n');console.log('::notice title=Published strategy study verification::'+JSON.stringify(studyReport));
+ const sharedHeaderLabels=await run("[...document.querySelector('header nav').children].map(x=>x.textContent)");
  await send('Page.navigate',{url:base+'verification/'});
  await wait("document.querySelectorAll('[data-verification-date]').length===7 && document.getElementById('verification-status').textContent.includes('日本時間')");
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
+ assert.deepEqual(await run("[...document.querySelector('header nav').children].map(x=>x.textContent)"),sharedHeaderLabels);
+ assert.equal(await run("document.querySelectorAll('header nav a').length"),4);
  const verificationReport={days:7,visible_records:await run("document.querySelectorAll('.verification-record').length"),status:await run("document.getElementById('verification-status').textContent"),mobile_overflow:false};
  const verificationURL=new URL(oddsConfig.api_url);verificationURL.pathname='/v1/verification';verificationURL.search='';
  const verificationAPI=await fetch(verificationURL,{headers:{Origin:new URL(base).origin},signal:AbortSignal.timeout(20000)});assert.equal(verificationAPI.status,200);const response=await verificationAPI.json();assert.equal(response.kind,'PUBLIC_SAVED_FORECAST_VERIFICATION');assert.equal(response.days.length,7);

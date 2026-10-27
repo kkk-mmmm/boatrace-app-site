@@ -28,8 +28,14 @@ export function informationPages(settings=contact){
 }
 export function informationTemplate(template,page){
  // Keep the shared stylesheet/CSP, but informational pages never fetch race data.
+ // Derive every header from the home template; standalone pages use links for its view buttons.
+ const sourceHeader=template.match(/<header[\s\S]*?<\/header>/)?.[0];
+ if(!sourceHeader)throw Error('共通ヘッダーを確認できません');
+ const routes={live:'./',archive:'./#archive',releases:'./#releases'};
+ let sharedHeader=sourceHeader.replace(/<button\b[^>]*id="(live|archive|releases)-tab"[^>]*>([\s\S]*?)<\/button>/g,(_,view,label)=>`<a href="${routes[view]}">${label}</a>`);
+ if(page.slug==='verification')sharedHeader=sharedHeader.replace('href="./verification/"','href="./verification/" aria-current="page"');
  return template.replace(/<script defer src="https:\/\/cdn\.jsdelivr\.net[^>]*><\/script>\s*/, '').replace(/<script type="module" src="\.\/app\.mjs"><\/script>\s*/, '')
- .replace(/<header[\s\S]*?<\/header>/,`<header class="header"><a class="brand" href="./"><img class="brand-icon" src="./favicon.svg" width="40" height="40" alt=""><span>フネヨミ<span class="brand-small">ボートレース・競艇予想</span></span></a><nav aria-label="メイン"><a href="./">今日の予想</a><a href="./guide/">予想の見方</a><a href="./about/">運営情報</a></nav></header>`)
+ .replace(/<header[\s\S]*?<\/header>/,()=>sharedHeader)
  .replace(/<main>[\s\S]*?<\/main>/,`<main><article class="information-page"><h1>${escape(page.title)}</h1>${page.content}</article></main>`)
  .replace(/<nav class="venue-seo-links"[\s\S]*?<\/nav>/,'')
  .replace('</head>',(page.module?`<script type="module" src="${page.module}"></script>`:'')+'</head>');

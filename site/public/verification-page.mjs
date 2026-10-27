@@ -1,3 +1,4 @@
+import {renderValidation} from './validation-view.mjs';
 import {escape,japanDate} from './view.mjs';
 import {verificationResponse} from './verification-data.mjs';
 const names=['桐生','戸田','江戸川','平和島','多摩川','浜名湖','蒲郡','常滑','津','三国','びわこ','住之江','尼崎','鳴門','丸亀','児島','宮島','徳山','下関','若松','芦屋','福岡','唐津','大村'];
@@ -30,7 +31,14 @@ async function load(offset=0){
  }catch(error){$('verification-status').textContent=`記録を取得できません：${error.message}。表示を更新して再確認してください。`;}
  finally{loading=false;}
 }
+let validationLoading=false;
+async function loadValidation(){
+ const root=$('validation-quality'),status=$('validation-quality-status');if(!root||validationLoading)return;validationLoading=true;status.textContent='30完了日分の検証集計を確認しています。';
+ try{const response=await fetch('./data/validation.json',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('HTTP '+response.status);const report=await response.json();renderValidation(root,report);status.textContent=`公開時点の30完了日集計 / データ集計 ${clock(report.generated_at)} / 画面確認 ${clock(new Date().toISOString())}`;}
+ catch{status.textContent=root.querySelector('h2')?'30完了日集計の更新に失敗しました。直前に確認できた集計を表示しています。':'確率・期待値の検証を取得できません。表示を更新して再確認してください。';}
+ finally{validationLoading=false;}
+}
 $('verification-venue').innerHTML='<option value="">全場</option>'+names.map((name,i)=>`<option value="${String(i+1).padStart(2,'0')}">${name}</option>`).join('');$('verification-venue').value=venue;
-$('verification-venue').onchange=()=>{venue=$('verification-venue').value;displayed=[];load(0);};$('verification-refresh').onclick=()=>load(0);$('verification-more').onclick=()=>load(displayed.length);
+$('verification-venue').onchange=()=>{venue=$('verification-venue').value;displayed=[];load(0);};$('verification-refresh').onclick=()=>{load(0);loadValidation();};$('verification-more').onclick=()=>load(displayed.length);
 try{const response=await fetch('./data/odds-config.json');const config=await response.json();if(config.api_url){const url=new URL(config.api_url);url.pathname='/v1/verification';url.search='';api=url.href;}}catch{}
-await load();
+await Promise.all([load(),loadValidation()]);

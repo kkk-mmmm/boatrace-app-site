@@ -1,11 +1,12 @@
-import {validProposal,validResult,rankExpectedValue} from './odds-live.mjs';
+import {validProposal,validResult} from './odds-live.mjs';
+import {predictionRanking} from './view.mjs';
 const key=r=>`${r.date}/${r.venue_code}/${r.race_no}`;
 const day=now=>new Date(now+9*3600000).toISOString().slice(0,10);
 export function verificationRow(proposal,result,now=Date.now(),cohort='WORKER_REPORTED_ONLY'){
  const r=proposal||result;if(!r)return null;
  const base={key:key(r),date:r.date,venue_code:r.venue_code,race_no:r.race_no,deadline_at:r.deadline_at||null,cohort,status:'PENDING',reason:null};
  if(!proposal||!validProposal(proposal,proposal.date,now,!!proposal.frozen_at))return {...base,status:'MISSING_PROPOSAL',reason:'締切前の有効な保存予想がありません'};
- const probability=[...proposal.probabilities].sort((a,b)=>b.probability-a.probability||a.combo.localeCompare(b.combo)),values=rankExpectedValue(probability,proposal.odds.items),quote=new Map(proposal.odds.items.map(o=>[o.combo,o.odds]));
+ const probability=[...proposal.probabilities].sort((a,b)=>b.probability-a.probability||a.combo.localeCompare(b.combo)),values=predictionRanking(probability,proposal.odds.items,{tab:'value',currentOdds:true}),quote=new Map(proposal.odds.items.map(o=>[o.combo,o.odds]));
  const rows=a=>a.slice(0,10).map(x=>({combo:x.combo,probability:x.probability,odds:quote.get(x.combo)??null,value:quote.has(x.combo)?x.probability*quote.get(x.combo):null}));
  const saved={...base,model_id:proposal.model_id,model_name:proposal.model_name,proposal_saved_at:proposal.proposal_saved_at,odds_fetched_at:proposal.odds.fetched_at,cutoff_at:proposal.cutoff_at,probability_top10:rows(probability),value_top10:rows(values)};
  if(result?.source_conflict)return {...saved,status:'EXCLUDED',reason:'取得元の間で結果・払戻が一致しないため、確認が必要です'};

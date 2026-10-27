@@ -364,6 +364,12 @@ try{
  assert.deepEqual(await run("[...document.querySelector('header nav').children].map(x=>x.textContent)"),sharedHeaderLabels);
  assert.equal(await run("document.querySelectorAll('header nav a').length"),4);
  assert.equal(await run("document.body.textContent.includes('日本時間')"),false);
+ const review=await(await get('data/validation.json')).json();assert.equal(review.kind,'PROBABILITY_EV_VALIDATION');assert.equal(review.policy.version,'probability-ev-v1');
+ assert.equal(Date.parse(review.through)-Date.parse(review.from),29*86400000);assert.ok(review.through<current.date);assert.equal(review.inputs_sha256.length,64);
+ for(const g of review.groups){assert.ok(g.summary.races<=g.selected);assert.ok(g.summary.roi_races<=g.summary.races);assert.equal(g.summary.probability_bins.reduce((s,b)=>s+b.observations,0),g.summary.races*120);assert.equal(g.summary.first_place_bins.reduce((s,b)=>s+b.hits,0),g.summary.races);if(g.summary.races<2000||g.summary.days<20)assert.equal(g.summary.uncertainty.eligible,false);}
+ await wait("document.querySelector('#validation-quality h2') && document.getElementById('validation-quality-status').textContent.includes('データ集計')");
+ assert.equal(await run("document.querySelectorAll('#validation-group option').length"),review.groups.length);assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
+ console.log('::notice title=Published probability and EV validation::'+JSON.stringify({from:review.from,through:review.through,policy:review.policy.version,coverage:review.coverage,groups:review.groups.map(g=>({cohort:g.cohort,coefficient:g.coefficient_id,races:g.summary.races,days:g.summary.days,roi_races:g.summary.roi_races,uncertainty_ready:g.summary.uncertainty.eligible})),mobile_overflow:false}));
  const verificationReport={days:7,visible_records:await run("document.querySelectorAll('.verification-record').length"),status:await run("document.getElementById('verification-status').textContent"),mobile_overflow:false};
  const verificationURL=new URL(oddsConfig.api_url);verificationURL.pathname='/v1/verification';verificationURL.search='';
  const verificationAPI=await fetch(verificationURL,{headers:{Origin:new URL(base).origin},signal:AbortSignal.timeout(20000)});assert.equal(verificationAPI.status,200);const response=await verificationAPI.json();assert.equal(response.kind,'PUBLIC_SAVED_FORECAST_VERIFICATION');assert.equal(response.days.length,7);

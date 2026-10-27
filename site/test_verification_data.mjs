@@ -24,3 +24,11 @@ test('公開用書き出しは7日だけ、受信記録と結果ハッシュを�
  fs.appendFileSync(file,' ');assert.throws(()=>publicVerificationArchive(dir,{now}),/integrity/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('期待値が同じ場合も保存順位ではなく画面と同じ買い目順で10点を選ぶ',async()=>{
+ const {predictionRanking}=await import('./public/view.mjs');
+ const probs=p.probabilities.map((r,i)=>({...r,probability:1/120,rank:120-i}));
+ const proposal={...p,probabilities:probs,odds:{...p.odds,items:probs.map(r=>({combo:r.combo,odds:20}))}};
+ const row=verificationRow(proposal,result,now);assert.equal(row.status,'SETTLED');
+ const expected=predictionRanking(probs,proposal.odds.items,{tab:'value',currentOdds:true}).slice(0,10).map(r=>r.combo);
+ assert.deepEqual(row.value_top10.map(r=>r.combo),expected);assert.deepEqual(expected,[...probs].map(r=>r.combo).sort().slice(0,10));
+});

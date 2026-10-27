@@ -9,9 +9,12 @@ export function informationPages(settings=contact){
  <section><h2>運営について</h2><dl><dt>サイト名</dt><dd>フネヨミ｜ボートレース・競艇予想</dd><dt>運営者</dt><dd>${escape(settings.operator)}</dd></dl><p>全国24場の出走表・展示情報・3連単オッズと、統計モデルによるAI予想を掲載する非公式の情報サイトです。BOAT RACEの公式サービスではありません。投票・購入機能はありません。</p></section>
  <section><h2>お問い合わせ</h2>${settings.verified?`<p>ご意見や表示・データの不具合は <a href="mailto:${escape(email)}">${escape(email)}</a> へお寄せください。</p><p>不具合のご連絡には、開催日・場名・レース番号・閲覧端末・表示された内容を添えていただくと確認がスムーズです。パスワードや決済情報などは送らないでください。</p>`:'<p>お問い合わせ用メールアドレスは準備中です。開設・受信確認後に掲載します。</p>'}</section>
  <section><h2>掲載情報について</h2><p>出走表・展示・オッズ・結果などの取得元は <a href="https://www.boatrace.jp/" target="_blank" rel="noopener noreferrer">BOAT RACE オフィシャルウェブサイト</a> です。データには取得の遅れや欠損があるため、画面の取得時刻・更新状態を確認し、最終的な締切・オッズ・払戻は公式情報と照合してください。</p><p>予想は統計モデルによる推定で、的中や利益を保証しません。計算方法や注意点は <a href="./guide/">予想の見方</a> をご覧ください。</p></section>`},
- {slug:'verification',title:'日別の予想実績（直近7日）',description:'締切前の保存予想と公式結果を日別に照合。確率上位・期待値上位を各点100円で購入した仮想的中・回収率を、直近7日分確認できます。実際の購入履歴ではありません。',module:'./verification-page.mjs',content:`
- <p>保存した予想を各点100円で購入したと仮定した、直近7日分の成績です。記録のあるレースだけを表示し、未保存・未照合を不的中に含めません。全レースや実際の購入履歴の成績ではありません。</p>
+ {slug:'verification',title:'予想実績・確率と期待値の検証',description:'締切前の保存予想と公式結果を照合。直近7日のレース別実績と、30完了日の確率・期待値・仮想回収率の検証を確認できます。実際の購入履歴ではありません。',module:'./verification-page.mjs',content:`
+ <p>保存した予想を各点100円で購入したと仮定した、直近7日のレース別実績と30完了日の確率・期待値の検証です。記録のあるレースだけを表示し、未保存・未照合を不的中に含めません。全レースや実際の購入履歴の成績ではありません。</p>
  <p class="small-note">条件を固定して期間を通して調べる企画と終了記事は、<a href="./#archive">検証企画・記事</a>から確認できます。</p>
+ <p id="validation-quality-status" class="small-note" role="status"></p>
+ <section id="validation-quality" class="validation-quality" aria-label="確率と期待値の検証">確率・期待値の検証を確認しています。</section>
+ <h2>日別の保存予想と結果（直近7日）</h2>
  <div class="verification-controls"><label>開催場 <select id="verification-venue" aria-label="検証する開催場"></select></label><button id="verification-refresh">表示を更新 ↻</button></div>
  <div id="verification-days" class="verification-days" role="group" aria-label="検証する日付"></div><p id="verification-status" class="small-note" role="status">記録を確認しています。</p><p id="verification-summary"></p><div id="verification-records"></div><button id="verification-more" hidden>追加で20レース見る</button><p id="verification-method" class="small-note"></p>
  <p class="small-note">公開対象は直近7日、内部の予想・結果は学習・検証用に30日以上保持します。履歴は毎日更新し、係数の更新は月1回の検証条件を維持します。</p>`},

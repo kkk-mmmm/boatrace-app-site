@@ -1,5 +1,6 @@
 export const REPOSITORY='kkk-mmmm/boatrace-app-site';
 const M=60_000;
+const MONITOR_VERSION=2;
 export const CHECK_INTERVAL=10*M;
 export const WORKFLOWS=[
  {file:'update-pages.yml',label:'公開データ更新',period:5*M,grace:20*M,timeout:45*M,active:h=>h>=8&&h<22},
@@ -39,12 +40,13 @@ export class WorkflowMonitor{
  }
  async github(path,options={}){
   const token=this.env.GITHUB_MONITOR_TOKEN;
-  const r=await fetch(`https://api.github.com/repos/${REPOSITORY}/${path}`,{...options,redirect:'error',signal:AbortSignal.timeout(15_000),headers:{Accept:'application/vnd.github+json','User-Agent':'funeyomi-schedule-monitor','X-GitHub-Api-Version':'2022-11-28',...(token?{Authorization:`Bearer ${token}`} : {}),...(options.body?{'Content-Type':'application/json'}:{})}});
+  const r=await fetch(`https://api.github.com/repos/${REPOSITORY}/${path}`,{...options,redirect:'manual',signal:AbortSignal.timeout(15_000),headers:{Accept:'application/vnd.github+json','User-Agent':'funeyomi-schedule-monitor','X-GitHub-Api-Version':'2022-11-28',...(token?{Authorization:`Bearer ${token}`} : {}),...(options.body?{'Content-Type':'application/json'}:{})}});
   if(!r.ok){const e=new Error(`GitHub HTTP ${r.status}`);e.status=r.status;const retry=Number(r.headers.get('retry-after')),reset=Number(r.headers.get('x-ratelimit-reset'))*1000;e.nextCheck=retry>0?Date.now()+Math.min(retry,86400)*1000:reset>Date.now()?Math.min(reset,Date.now()+86400_000):Date.now()+CHECK_INTERVAL;throw e;}
   return r.status===204?null:r.json();
  }
  async tick(now=Date.now()){
-  if(now<(await this.storage.get('next_check')||0))return await this.storage.get('report')||{status:'WAITING'};
+  if(await this.storage.get('monitor_version')===MONITOR_VERSION&&now<(await this.storage.get('next_check')||0))return await this.storage.get('report')||{status:'WAITING'};
+  await this.storage.put('monitor_version',MONITOR_VERSION);
   await this.storage.put('next_check',now+CHECK_INTERVAL);
   const previous=await this.storage.get('report'),rows=[];
   for(const p of WORKFLOWS){try{
@@ -68,7 +70,8 @@ export class WorkflowMonitor{
    rows.push(row);
   }catch(e){const old=previous?.workflows?.find(r=>r.workflow===p.file);rows.push({...e.row,workflow:p.file,label:p.label,status:'CHECK_FAILED',last_success:old?.last_success||null,error:e.status?`HTTP_${e.status}`:'UNAVAILABLE'});if(e.nextCheck){await this.storage.put('next_check',Math.max(now+CHECK_INTERVAL,e.nextCheck));break;}}}
   for(const p of WORKFLOWS)if(!rows.some(r=>r.workflow===p.file))rows.push({...previous?.workflows?.find(r=>r.workflow===p.file),workflow:p.file,label:p.label,status:'NOT_CHECKED'});
-  const report={schema_version:1,checked_at:new Date(now).toISOString(),recovery_configured:Boolean(this.env.GITHUB_MONITOR_TOKEN),status:rows.every(r=>['OK','RUNNING','WAITING','OUTSIDE_SCHEDULE'].includes(r.status))?'OK':'ATTENTION',workflows:rows};
+  if(!rows.some(r=>r.status==='CHECK_FAILED')&&rows.some(r=>['DISPATCHED','AWAITING_COMPLETION'].includes(r.recovery)))await this.storage.put('next_check',now+M);
+  const report={schema_version:1,monitor_version:MONITOR_VERSION,checked_at:new Date(now).toISOString(),recovery_configured:Boolean(this.env.GITHUB_MONITOR_TOKEN),status:rows.every(r=>['OK','RUNNING','WAITING','OUTSIDE_SCHEDULE'].includes(r.status))?'OK':'ATTENTION',workflows:rows};
   await this.storage.put('report',report);console.log(JSON.stringify({event:'workflow_monitor',...report}));return report;
  }
 }

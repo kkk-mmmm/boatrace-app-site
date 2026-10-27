@@ -129,6 +129,16 @@ try{
  assert.equal(await run("getComputedStyle(document.querySelector('.header')).display"),'flex');
  const label=await run("document.getElementById('model-label').textContent"),displayed=proposalRace(race,now);
  assert.equal(label,displayed.model_validation?.selected_lambda===null?'固定式 / 履歴補正は未適用':displayed.model_name || '固定スコアモデル v1');
+ // The fixed refresh action must also work before switching to mobile emulation.
+ await run("document.querySelector('.prediction-table').scrollIntoView({block:'center',behavior:'instant'})");
+ await wait("!document.getElementById('mobile-race-context').hidden && !document.getElementById('mobile-refresh-button').disabled");
+ assert.equal(await run("getComputedStyle(document.getElementById('mobile-race-context')).position"),'fixed');
+ const desktopReads=await run('window.__cloudflareReads.length');
+ await run("window.__desktopRefreshAnchor=document.querySelector('.prediction-table thead');window.__desktopRefreshTop=window.__desktopRefreshAnchor.getBoundingClientRect().top;document.getElementById('mobile-refresh-button').focus({preventScroll:true});document.getElementById('mobile-refresh-button').click()");
+ await wait(`!document.getElementById('mobile-refresh-button').disabled && window.__cloudflareReads.length===${desktopReads+1}`);
+ assert.ok(await run("Math.abs(window.__desktopRefreshAnchor.getBoundingClientRect().top-window.__desktopRefreshTop)<2"));
+ assert.equal(await run('document.activeElement.id'),'mobile-refresh-button');
+ console.log('::notice title=Published desktop refresh verification::'+JSON.stringify({fixed:true,manual_refresh:true,viewport_preserved:true,focus_preserved:true}));
  const probabilityRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");
  await run("document.getElementById('value-tab').click()");
  const valueRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");assert.equal(valueRows,expectedValueRows);

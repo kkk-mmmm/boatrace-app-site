@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import os from 'node:os';import crypto from 'node:crypto';
 import {buildValidationReview,summarizeValidation,dayBootstrap,VALIDATION_POLICY} from './validation-review.mjs';
 import {captureProspective} from '../tools/prediction/prospective.mjs';
+import {storeLiveResults} from '../tools/prediction/live_results.mjs';
 import {annualTriples} from './public/annual-model.mjs';
 const now=Date.parse('2030-02-01T02:00Z'),date='2030-01-31',start=Date.parse(date+'T01:00Z');
 const hash=x=>crypto.createHash('sha256').update(typeof x==='string'?x:JSON.stringify(x)).digest('hex');
@@ -69,4 +70,14 @@ test('coefficient versions within one receipt cohort are never pooled; outcome-i
 });
 test('a source archive for a different date is rejected even when its saved-file digest matches',t=>{
  const {dir,result,writeResult}=setup(t);result.source.url=result.source.url.replace('k300131','k300130');writeResult();assert.equal(buildValidationReview(dir,{now}).coverage.excluded,1);
+});
+
+test('速報結果の数字の着順区分も正常として照合し、不整合な区分は除外する',t=>{
+ for(const mismatch of [false,true]){
+  const {dir,file,result}=setup(t),p=JSON.parse(fs.readFileSync(file)).proposal;fs.rmSync(path.join(dir,'results'),{recursive:true});
+  const live={date,venue_code:'01',race_no:1,deadline_at:p.deadline_at,status:'CONFIRMED',attempted_at:new Date(Date.parse(p.deadline_at)+300000).toISOString(),fetched_at:new Date(Date.parse(p.deadline_at)+360000).toISOString(),source_url:'https://www.boatrace.jp/owpc/pc/race/raceresult?hd=20300131&jcd=01&rno=1',entries:result.entries.map(e=>({...e,course:e.lane,st:e.actual_st,st_status:e.actual_st_status,finish_status:String(e.finish)})),payouts:[{combo:'1-2-3',payout_yen_per_100:2400}]};
+  if(mismatch)live.entries[0].finish_status='2';
+  const stored=storeLiveResults(dir,[live],[p],{now});assert.equal(stored.saved,1);
+  const report=buildValidationReview(dir,{now});assert.equal(report.coverage.settled,mismatch?0:1);if(mismatch)assert.equal(report.coverage.excluded,1);else assert.equal(report.groups[0].summary.probability_top10.return_yen,2400);
+ }
 });

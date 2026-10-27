@@ -87,3 +87,14 @@ test('締切一覧は全場からオッズに依存せず近い5件を選び、�
  assert.equal(upcomingRaceList([rows[0],rows[0]],now).length,1);assert.equal(upcomingRaceList(rows,now+7*60000).length,1);assert.deepEqual(upcomingRaceList(rows,now+8*60000),[]);
  assert.deepEqual(Object.keys(upcomingRaceList(rows,now)[0]),['date','venue_code','race_no','deadline_at']);
 });
+
+test('回収率上位は50倍・1%以上を境界込みで抽出し、期待値順・傾向別に表示する',()=>{
+ const probs=[{combo:'1-2-3',probability:.01},{combo:'1-2-4',probability:.0099999},{combo:'2-1-3',probability:.02},{combo:'2-1-4',probability:.025},{combo:'3-1-2',probability:.02},{combo:'4-1-2',probability:.05}];
+ const prices=[{combo:'1-2-3',odds:50},{combo:'1-2-4',odds:100},{combo:'2-1-3',odds:49.999},{combo:'2-1-4',odds:50},{combo:'3-1-2',odds:100}];
+ const before=JSON.stringify({probs,prices}),ranked=predictionRanking(probs,prices,{tab:'return',currentOdds:true});
+ assert.deepEqual(ranked.map(x=>x.combo),['3-1-2','2-1-4','1-2-3']);assert.deepEqual(ranked.map(x=>x.value),[2,1.25,.5]);
+ assert.deepEqual(predictionRanking(probs,prices,{tab:'return',currentOdds:false}),[]);
+ assert.deepEqual(predictionRanking(probs,prices,{tab:'return',currentOdds:true,scenario:'in'}).map(x=>x.combo),['1-2-3']);
+ assert.deepEqual(predictionRanking(probs,prices,{tab:'return',currentOdds:true,scenario:'other'}).map(x=>x.combo),['3-1-2','2-1-4']);
+ assert.equal(JSON.stringify({probs,prices}),before);
+});

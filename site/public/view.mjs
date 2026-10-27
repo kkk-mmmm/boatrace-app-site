@@ -71,13 +71,16 @@ export function scenarioProbabilities(rows) {
   return {in: rows.filter(row => row.combo.startsWith('1-')).reduce((sum, row) => sum + row.probability, 0),
     other: rows.filter(row => !row.combo.startsWith('1-')).reduce((sum, row) => sum + row.probability, 0)};
 }
+export const RETURN_CANDIDATE_RULE=Object.freeze({minimum_odds:50,minimum_probability:.01});
 export function predictionRanking(rows, quotes, {scenario = 'all', tab = 'probability', currentOdds = false} = {}) {
   const prices = new Map(quotes.filter(row => Number.isFinite(row.odds) && row.odds > 0).map(row => [row.combo, row.odds]));
-  if (tab === 'value' && !currentOdds) return [];
+  const byValue=tab==='value'||tab==='return';
+  if (byValue && !currentOdds) return [];
   return rows.filter(row => matchesPredictionScenario(row.combo, scenario))
     .map(row => ({...row, odds: prices.get(row.combo) ?? null, value: currentOdds && prices.has(row.combo) ? row.probability * prices.get(row.combo) : null}))
-    .filter(row => tab !== 'value' || row.value !== null)
-    .sort((a, b) => (tab === 'value' ? b.value - a.value : b.probability - a.probability) || a.combo.localeCompare(b.combo));
+    .filter(row => !byValue || row.value !== null)
+    .filter(row => tab!=='return'||row.odds>=RETURN_CANDIDATE_RULE.minimum_odds&&row.probability>=RETURN_CANDIDATE_RULE.minimum_probability)
+    .sort((a, b) => (byValue ? b.value - a.value : b.probability - a.probability) || a.combo.localeCompare(b.combo));
 }
 
 // Each selected ticket contributes a relationship; rank the union only once.

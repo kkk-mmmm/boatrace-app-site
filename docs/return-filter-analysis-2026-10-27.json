@@ -1,0 +1,1312 @@
+{
+  "schema_version": 1,
+  "kind": "RETURN_FILTER_EXPLORATORY_AUDIT",
+  "generated_at": "2026-10-27T13:05:49.739Z",
+  "from": "2026-09-27",
+  "through": "2026-10-26",
+  "inputs_sha256": "c472e54d32b9cbde7796021d24cc1ee3d10c19d09c60bac397bfa8cbf7942261",
+  "coverage": {
+    "snapshot_files": 665,
+    "invalid": 0,
+    "duplicates": 1,
+    "selected": 664,
+    "settled": 630,
+    "pending": 1,
+    "excluded": 33,
+    "partial_odds": 0,
+    "missing_payout": 0,
+    "unique_races": 637
+  },
+  "selection": "期待値降順、同率は買い目辞書順、最大10点、各100円。条件未達のレースは購入なし。",
+  "decision": {
+    "adopted_rule": {
+      "id": "requested",
+      "minimum_odds": 50,
+      "minimum_probability": 0.01,
+      "minimum_value": 0
+    },
+    "alternative_adopted": false,
+    "reason": "保存済みの締切前予想・オッズによる探索集計。代替条件を事後選択せず、指定条件を維持する。条件を変更するには未使用期間での比較が必要。"
+  },
+  "groups": [
+    {
+      "id": "WORKER_REPORTED_ONLY/UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "cohort": "WORKER_REPORTED_ONLY",
+      "coefficient_id": "UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-23",
+      "selected": 48,
+      "pending": 0,
+      "excluded": 3,
+      "conditions": [
+        {
+          "rule": {
+            "id": "requested",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 45,
+          "eligible_days": 1,
+          "bought_races": 45,
+          "bought_days": 1,
+          "tickets": 390,
+          "hits": 3,
+          "stake_yen": 39000,
+          "return_yen": 65660,
+          "profit_yen": 26660,
+          "hit_rate_when_bought": 0.06666666666666667,
+          "ticket_hit_rate": 0.007692307692307693,
+          "predicted_hit_rate_when_bought": 0.1600684649311823,
+          "recovery_percent": 168.35897435897436,
+          "expected_recovery_percent": 188.0814423074188,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 45,
+              "tickets": 390,
+              "hits": 3,
+              "stake_yen": 39000,
+              "return_yen": 65660
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "requested_ev_at_least_one",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 1
+          },
+          "eligible_races": 45,
+          "eligible_days": 1,
+          "bought_races": 45,
+          "bought_days": 1,
+          "tickets": 350,
+          "hits": 3,
+          "stake_yen": 35000,
+          "return_yen": 65660,
+          "profit_yen": 30660,
+          "hit_rate_when_bought": 0.06666666666666667,
+          "ticket_hit_rate": 0.008571428571428572,
+          "predicted_hit_rate_when_bought": 0.14882742225841789,
+          "recovery_percent": 187.6,
+          "expected_recovery_percent": 200.19100174206665,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 45,
+              "tickets": 350,
+              "hits": 3,
+              "stake_yen": 35000,
+              "return_yen": 65660
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds30_probability1",
+            "minimum_odds": 30,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 45,
+          "eligible_days": 1,
+          "bought_races": 45,
+          "bought_days": 1,
+          "tickets": 443,
+          "hits": 5,
+          "stake_yen": 44300,
+          "return_yen": 74960,
+          "profit_yen": 30660,
+          "hit_rate_when_bought": 0.1111111111111111,
+          "ticket_hit_rate": 0.011286681715575621,
+          "predicted_hit_rate_when_bought": 0.2176589183062427,
+          "recovery_percent": 169.2099322799097,
+          "expected_recovery_percent": 183.961698950251,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 45,
+              "tickets": 443,
+              "hits": 5,
+              "stake_yen": 44300,
+              "return_yen": 74960
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds100_probability1",
+            "minimum_odds": 100,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 45,
+          "eligible_days": 1,
+          "bought_races": 41,
+          "bought_days": 1,
+          "tickets": 171,
+          "hits": 3,
+          "stake_yen": 17100,
+          "return_yen": 65660,
+          "profit_yen": 48560,
+          "hit_rate_when_bought": 0.07317073170731707,
+          "ticket_hit_rate": 0.017543859649122806,
+          "predicted_hit_rate_when_bought": 0.059450898364367157,
+          "recovery_percent": 383.9766081871345,
+          "expected_recovery_percent": 235.81481173031045,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 41,
+              "tickets": 171,
+              "hits": 3,
+              "stake_yen": 17100,
+              "return_yen": 65660
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds50_probability2",
+            "minimum_odds": 50,
+            "minimum_probability": 0.02,
+            "minimum_value": 0
+          },
+          "eligible_races": 45,
+          "eligible_days": 1,
+          "bought_races": 38,
+          "bought_days": 1,
+          "tickets": 138,
+          "hits": 0,
+          "stake_yen": 13800,
+          "return_yen": 0,
+          "profit_yen": -13800,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.09846780973546354,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 193.62506698442047,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 38,
+              "tickets": 138,
+              "hits": 0,
+              "stake_yen": 13800,
+              "return_yen": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WORKER_REPORTED_ONLY/annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "cohort": "WORKER_REPORTED_ONLY",
+      "coefficient_id": "annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-24",
+      "selected": 267,
+      "pending": 0,
+      "excluded": 11,
+      "conditions": [
+        {
+          "rule": {
+            "id": "requested",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 256,
+          "eligible_days": 2,
+          "bought_races": 256,
+          "bought_days": 2,
+          "tickets": 2271,
+          "hits": 16,
+          "stake_yen": 227100,
+          "return_yen": 161170,
+          "profit_yen": -65930,
+          "hit_rate_when_bought": 0.0625,
+          "ticket_hit_rate": 0.007045354469396741,
+          "predicted_hit_rate_when_bought": 0.15852333752592523,
+          "recovery_percent": 70.96873623954205,
+          "expected_recovery_percent": 204.86355370189483,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 106,
+              "tickets": 939,
+              "hits": 3,
+              "stake_yen": 93900,
+              "return_yen": 42190
+            },
+            {
+              "date": "2026-10-24",
+              "races": 150,
+              "tickets": 1332,
+              "hits": 13,
+              "stake_yen": 133200,
+              "return_yen": 118980
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "requested_ev_at_least_one",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 1
+          },
+          "eligible_races": 256,
+          "eligible_days": 2,
+          "bought_races": 253,
+          "bought_days": 2,
+          "tickets": 2017,
+          "hits": 15,
+          "stake_yen": 201700,
+          "return_yen": 147670,
+          "profit_yen": -54030,
+          "hit_rate_when_bought": 0.05928853754940711,
+          "ticket_hit_rate": 0.0074367873078829945,
+          "predicted_hit_rate_when_bought": 0.14751598689828863,
+          "recovery_percent": 73.21269211700545,
+          "expected_recovery_percent": 220.07913613926004,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 105,
+              "tickets": 829,
+              "hits": 2,
+              "stake_yen": 82900,
+              "return_yen": 28690
+            },
+            {
+              "date": "2026-10-24",
+              "races": 148,
+              "tickets": 1188,
+              "hits": 13,
+              "stake_yen": 118800,
+              "return_yen": 118980
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds30_probability1",
+            "minimum_odds": 30,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 256,
+          "eligible_days": 2,
+          "bought_races": 256,
+          "bought_days": 2,
+          "tickets": 2499,
+          "hits": 19,
+          "stake_yen": 249900,
+          "return_yen": 148810,
+          "profit_yen": -101090,
+          "hit_rate_when_bought": 0.07421875,
+          "ticket_hit_rate": 0.007603041216486595,
+          "predicted_hit_rate_when_bought": 0.20678878311161217,
+          "recovery_percent": 59.54781912765106,
+          "expected_recovery_percent": 201.05817844335587,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 106,
+              "tickets": 1030,
+              "hits": 4,
+              "stake_yen": 103000,
+              "return_yen": 36490
+            },
+            {
+              "date": "2026-10-24",
+              "races": 150,
+              "tickets": 1469,
+              "hits": 15,
+              "stake_yen": 146900,
+              "return_yen": 112320
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds100_probability1",
+            "minimum_odds": 100,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 256,
+          "eligible_days": 2,
+          "bought_races": 240,
+          "bought_days": 2,
+          "tickets": 1216,
+          "hits": 7,
+          "stake_yen": 121600,
+          "return_yen": 86680,
+          "profit_yen": -34920,
+          "hit_rate_when_bought": 0.029166666666666667,
+          "ticket_hit_rate": 0.005756578947368421,
+          "predicted_hit_rate_when_bought": 0.0742322168763735,
+          "recovery_percent": 71.28289473684211,
+          "expected_recovery_percent": 253.67969131092804,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 100,
+              "tickets": 539,
+              "hits": 2,
+              "stake_yen": 53900,
+              "return_yen": 28690
+            },
+            {
+              "date": "2026-10-24",
+              "races": 140,
+              "tickets": 677,
+              "hits": 5,
+              "stake_yen": 67700,
+              "return_yen": 57990
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds50_probability2",
+            "minimum_odds": 50,
+            "minimum_probability": 0.02,
+            "minimum_value": 0
+          },
+          "eligible_races": 256,
+          "eligible_days": 2,
+          "bought_races": 239,
+          "bought_days": 2,
+          "tickets": 734,
+          "hits": 5,
+          "stake_yen": 73400,
+          "return_yen": 34010,
+          "profit_yen": -39390,
+          "hit_rate_when_bought": 0.02092050209205021,
+          "ticket_hit_rate": 0.006811989100817439,
+          "predicted_hit_rate_when_bought": 0.08327858548389605,
+          "recovery_percent": 46.335149863760215,
+          "expected_recovery_percent": 215.65708972015233,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 97,
+              "tickets": 296,
+              "hits": 2,
+              "stake_yen": 29600,
+              "return_yen": 21020
+            },
+            {
+              "date": "2026-10-24",
+              "races": 142,
+              "tickets": 438,
+              "hits": 3,
+              "stake_yen": 43800,
+              "return_yen": 12990
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RECEIPT_BEFORE_CUTOFF/UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "cohort": "RECEIPT_BEFORE_CUTOFF",
+      "coefficient_id": "UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-23",
+      "selected": 7,
+      "pending": 0,
+      "excluded": 0,
+      "conditions": [
+        {
+          "rule": {
+            "id": "requested",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 1,
+          "bought_races": 7,
+          "bought_days": 1,
+          "tickets": 70,
+          "hits": 0,
+          "stake_yen": 7000,
+          "return_yen": 0,
+          "profit_yen": -7000,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.17530567022174606,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 196.02639528228434,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 7,
+              "tickets": 70,
+              "hits": 0,
+              "stake_yen": 7000,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "requested_ev_at_least_one",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 1
+          },
+          "eligible_races": 7,
+          "eligible_days": 1,
+          "bought_races": 7,
+          "bought_days": 1,
+          "tickets": 65,
+          "hits": 0,
+          "stake_yen": 6500,
+          "return_yen": 0,
+          "profit_yen": -6500,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.16651158345049402,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 204.94192074569037,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 7,
+              "tickets": 65,
+              "hits": 0,
+              "stake_yen": 6500,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds30_probability1",
+            "minimum_odds": 30,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 1,
+          "bought_races": 7,
+          "bought_days": 1,
+          "tickets": 70,
+          "hits": 0,
+          "stake_yen": 7000,
+          "return_yen": 0,
+          "profit_yen": -7000,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.23433675069127627,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 209.1391174961978,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 7,
+              "tickets": 70,
+              "hits": 0,
+              "stake_yen": 7000,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds100_probability1",
+            "minimum_odds": 100,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 1,
+          "bought_races": 7,
+          "bought_days": 1,
+          "tickets": 40,
+          "hits": 0,
+          "stake_yen": 4000,
+          "return_yen": 0,
+          "profit_yen": -4000,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.07942784325290068,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 224.53247398935702,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 7,
+              "tickets": 40,
+              "hits": 0,
+              "stake_yen": 4000,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds50_probability2",
+            "minimum_odds": 50,
+            "minimum_probability": 0.02,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 1,
+          "bought_races": 7,
+          "bought_days": 1,
+          "tickets": 28,
+          "hits": 0,
+          "stake_yen": 2800,
+          "return_yen": 0,
+          "profit_yen": -2800,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.10048792279342837,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 183.892960259688,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 7,
+              "tickets": 28,
+              "hits": 0,
+              "stake_yen": 2800,
+              "return_yen": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RECEIPT_BEFORE_CUTOFF/annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "cohort": "RECEIPT_BEFORE_CUTOFF",
+      "coefficient_id": "annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-24",
+      "selected": 7,
+      "pending": 0,
+      "excluded": 0,
+      "conditions": [
+        {
+          "rule": {
+            "id": "requested",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 2,
+          "bought_races": 7,
+          "bought_days": 2,
+          "tickets": 59,
+          "hits": 0,
+          "stake_yen": 5900,
+          "return_yen": 0,
+          "profit_yen": -5900,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.16120381187046098,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 224.43004416640434,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 3,
+              "tickets": 22,
+              "hits": 0,
+              "stake_yen": 2200,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-24",
+              "races": 4,
+              "tickets": 37,
+              "hits": 0,
+              "stake_yen": 3700,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "requested_ev_at_least_one",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 1
+          },
+          "eligible_races": 7,
+          "eligible_days": 2,
+          "bought_races": 7,
+          "bought_days": 2,
+          "tickets": 57,
+          "hits": 0,
+          "stake_yen": 5700,
+          "return_yen": 0,
+          "profit_yen": -5700,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.15803714437166436,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 229.67291499756962,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 3,
+              "tickets": 22,
+              "hits": 0,
+              "stake_yen": 2200,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-24",
+              "races": 4,
+              "tickets": 35,
+              "hits": 0,
+              "stake_yen": 3500,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds30_probability1",
+            "minimum_odds": 30,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 2,
+          "bought_races": 7,
+          "bought_days": 2,
+          "tickets": 67,
+          "hits": 0,
+          "stake_yen": 6700,
+          "return_yen": 0,
+          "profit_yen": -6700,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.19469091010340894,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 209.60906500954655,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 3,
+              "tickets": 28,
+              "hits": 0,
+              "stake_yen": 2800,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-24",
+              "races": 4,
+              "tickets": 39,
+              "hits": 0,
+              "stake_yen": 3900,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds100_probability1",
+            "minimum_odds": 100,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 2,
+          "bought_races": 7,
+          "bought_days": 2,
+          "tickets": 42,
+          "hits": 0,
+          "stake_yen": 4200,
+          "return_yen": 0,
+          "profit_yen": -4200,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.08766000213607983,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 242.35338631483293,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 3,
+              "tickets": 21,
+              "hits": 0,
+              "stake_yen": 2100,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-24",
+              "races": 4,
+              "tickets": 21,
+              "hits": 0,
+              "stake_yen": 2100,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds50_probability2",
+            "minimum_odds": 50,
+            "minimum_probability": 0.02,
+            "minimum_value": 0
+          },
+          "eligible_races": 7,
+          "eligible_days": 2,
+          "bought_races": 7,
+          "bought_days": 2,
+          "tickets": 25,
+          "hits": 0,
+          "stake_yen": 2500,
+          "return_yen": 0,
+          "profit_yen": -2500,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.09702260064662803,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 200.24686681140045,
+          "daily": [
+            {
+              "date": "2026-10-23",
+              "races": 3,
+              "tickets": 9,
+              "hits": 0,
+              "stake_yen": 900,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-24",
+              "races": 4,
+              "tickets": 16,
+              "hits": 0,
+              "stake_yen": 1600,
+              "return_yen": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WORKER_REPORTED_ONLY/annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "cohort": "WORKER_REPORTED_ONLY",
+      "coefficient_id": "annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "model_name": "直近1年・選手履歴＋場別傾向モデル v3.1",
+      "last_observed_date": "2026-10-26",
+      "selected": 321,
+      "pending": 1,
+      "excluded": 18,
+      "conditions": [
+        {
+          "rule": {
+            "id": "requested",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 302,
+          "eligible_days": 3,
+          "bought_races": 302,
+          "bought_days": 3,
+          "tickets": 2824,
+          "hits": 24,
+          "stake_yen": 282400,
+          "return_yen": 199140,
+          "profit_yen": -83260,
+          "hit_rate_when_bought": 0.07947019867549669,
+          "ticket_hit_rate": 0.0084985835694051,
+          "predicted_hit_rate_when_bought": 0.16416431102124412,
+          "recovery_percent": 70.51699716713881,
+          "expected_recovery_percent": 215.25807508148472,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 12,
+              "tickets": 113,
+              "hits": 0,
+              "stake_yen": 11300,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 154,
+              "tickets": 1437,
+              "hits": 12,
+              "stake_yen": 143700,
+              "return_yen": 85900
+            },
+            {
+              "date": "2026-10-26",
+              "races": 136,
+              "tickets": 1274,
+              "hits": 12,
+              "stake_yen": 127400,
+              "return_yen": 113240
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "requested_ev_at_least_one",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 1
+          },
+          "eligible_races": 302,
+          "eligible_days": 3,
+          "bought_races": 300,
+          "bought_days": 3,
+          "tickets": 2649,
+          "hits": 21,
+          "stake_yen": 264900,
+          "return_yen": 176060,
+          "profit_yen": -88840,
+          "hit_rate_when_bought": 0.07,
+          "ticket_hit_rate": 0.007927519818799546,
+          "predicted_hit_rate_when_bought": 0.15777236647689719,
+          "recovery_percent": 66.4628161570404,
+          "expected_recovery_percent": 223.83519563613473,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 12,
+              "tickets": 97,
+              "hits": 0,
+              "stake_yen": 9700,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 153,
+              "tickets": 1349,
+              "hits": 10,
+              "stake_yen": 134900,
+              "return_yen": 68330
+            },
+            {
+              "date": "2026-10-26",
+              "races": 135,
+              "tickets": 1203,
+              "hits": 11,
+              "stake_yen": 120300,
+              "return_yen": 107730
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds30_probability1",
+            "minimum_odds": 30,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 302,
+          "eligible_days": 3,
+          "bought_races": 302,
+          "bought_days": 3,
+          "tickets": 3002,
+          "hits": 35,
+          "stake_yen": 300200,
+          "return_yen": 231220,
+          "profit_yen": -68980,
+          "hit_rate_when_bought": 0.11589403973509933,
+          "ticket_hit_rate": 0.011658894070619586,
+          "predicted_hit_rate_when_bought": 0.20163195765758532,
+          "recovery_percent": 77.02198534310459,
+          "expected_recovery_percent": 213.53194543175405,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 12,
+              "tickets": 120,
+              "hits": 0,
+              "stake_yen": 12000,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 154,
+              "tickets": 1529,
+              "hits": 14,
+              "stake_yen": 152900,
+              "return_yen": 82730
+            },
+            {
+              "date": "2026-10-26",
+              "races": 136,
+              "tickets": 1353,
+              "hits": 21,
+              "stake_yen": 135300,
+              "return_yen": 148490
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds100_probability1",
+            "minimum_odds": 100,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 302,
+          "eligible_days": 3,
+          "bought_races": 297,
+          "bought_days": 3,
+          "tickets": 1719,
+          "hits": 7,
+          "stake_yen": 171900,
+          "return_yen": 102000,
+          "profit_yen": -69900,
+          "hit_rate_when_bought": 0.02356902356902357,
+          "ticket_hit_rate": 0.004072134962187318,
+          "predicted_hit_rate_when_bought": 0.0838244307754428,
+          "recovery_percent": 59.33682373472949,
+          "expected_recovery_percent": 254.23939075739003,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 12,
+              "tickets": 60,
+              "hits": 0,
+              "stake_yen": 6000,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 152,
+              "tickets": 875,
+              "hits": 2,
+              "stake_yen": 87500,
+              "return_yen": 22520
+            },
+            {
+              "date": "2026-10-26",
+              "races": 133,
+              "tickets": 784,
+              "hits": 5,
+              "stake_yen": 78400,
+              "return_yen": 79480
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds50_probability2",
+            "minimum_odds": 50,
+            "minimum_probability": 0.02,
+            "minimum_value": 0
+          },
+          "eligible_races": 302,
+          "eligible_days": 3,
+          "bought_races": 276,
+          "bought_days": 3,
+          "tickets": 905,
+          "hits": 14,
+          "stake_yen": 90500,
+          "return_yen": 67850,
+          "profit_yen": -22650,
+          "hit_rate_when_bought": 0.050724637681159424,
+          "ticket_hit_rate": 0.015469613259668509,
+          "predicted_hit_rate_when_bought": 0.08679959218100192,
+          "recovery_percent": 74.97237569060773,
+          "expected_recovery_percent": 212.6751958887521,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 11,
+              "tickets": 27,
+              "hits": 0,
+              "stake_yen": 2700,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 141,
+              "tickets": 461,
+              "hits": 8,
+              "stake_yen": 46100,
+              "return_yen": 43570
+            },
+            {
+              "date": "2026-10-26",
+              "races": 124,
+              "tickets": 417,
+              "hits": 6,
+              "stake_yen": 41700,
+              "return_yen": 24280
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RECEIPT_BEFORE_CUTOFF/annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "cohort": "RECEIPT_BEFORE_CUTOFF",
+      "coefficient_id": "annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "model_name": "直近1年・選手履歴＋場別傾向モデル v3.1",
+      "last_observed_date": "2026-10-26",
+      "selected": 14,
+      "pending": 0,
+      "excluded": 1,
+      "conditions": [
+        {
+          "rule": {
+            "id": "requested",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 13,
+          "eligible_days": 3,
+          "bought_races": 13,
+          "bought_days": 3,
+          "tickets": 129,
+          "hits": 1,
+          "stake_yen": 12900,
+          "return_yen": 9580,
+          "profit_yen": -3320,
+          "hit_rate_when_bought": 0.07692307692307693,
+          "ticket_hit_rate": 0.007751937984496124,
+          "predicted_hit_rate_when_bought": 0.16739934482158764,
+          "recovery_percent": 74.26356589147287,
+          "expected_recovery_percent": 205.79783996473685,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 2,
+              "tickets": 20,
+              "hits": 1,
+              "stake_yen": 2000,
+              "return_yen": 9580
+            },
+            {
+              "date": "2026-10-25",
+              "races": 6,
+              "tickets": 60,
+              "hits": 0,
+              "stake_yen": 6000,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-26",
+              "races": 5,
+              "tickets": 49,
+              "hits": 0,
+              "stake_yen": 4900,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "requested_ev_at_least_one",
+            "minimum_odds": 50,
+            "minimum_probability": 0.01,
+            "minimum_value": 1
+          },
+          "eligible_races": 13,
+          "eligible_days": 3,
+          "bought_races": 13,
+          "bought_days": 3,
+          "tickets": 124,
+          "hits": 1,
+          "stake_yen": 12400,
+          "return_yen": 9580,
+          "profit_yen": -2820,
+          "hit_rate_when_bought": 0.07692307692307693,
+          "ticket_hit_rate": 0.008064516129032258,
+          "predicted_hit_rate_when_bought": 0.1618845270840869,
+          "recovery_percent": 77.25806451612904,
+          "expected_recovery_percent": 210.52013542611704,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 2,
+              "tickets": 19,
+              "hits": 1,
+              "stake_yen": 1900,
+              "return_yen": 9580
+            },
+            {
+              "date": "2026-10-25",
+              "races": 6,
+              "tickets": 60,
+              "hits": 0,
+              "stake_yen": 6000,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-26",
+              "races": 5,
+              "tickets": 45,
+              "hits": 0,
+              "stake_yen": 4500,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds30_probability1",
+            "minimum_odds": 30,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 13,
+          "eligible_days": 3,
+          "bought_races": 13,
+          "bought_days": 3,
+          "tickets": 130,
+          "hits": 0,
+          "stake_yen": 13000,
+          "return_yen": 0,
+          "profit_yen": -13000,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.18412418528030686,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 207.97320323398898,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 2,
+              "tickets": 20,
+              "hits": 0,
+              "stake_yen": 2000,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 6,
+              "tickets": 60,
+              "hits": 0,
+              "stake_yen": 6000,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-26",
+              "races": 5,
+              "tickets": 50,
+              "hits": 0,
+              "stake_yen": 5000,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds100_probability1",
+            "minimum_odds": 100,
+            "minimum_probability": 0.01,
+            "minimum_value": 0
+          },
+          "eligible_races": 13,
+          "eligible_days": 3,
+          "bought_races": 13,
+          "bought_days": 3,
+          "tickets": 76,
+          "hits": 0,
+          "stake_yen": 7600,
+          "return_yen": 0,
+          "profit_yen": -7600,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.08135281751048257,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 245.6737358147921,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 2,
+              "tickets": 8,
+              "hits": 0,
+              "stake_yen": 800,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 6,
+              "tickets": 38,
+              "hits": 0,
+              "stake_yen": 3800,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-26",
+              "races": 5,
+              "tickets": 30,
+              "hits": 0,
+              "stake_yen": 3000,
+              "return_yen": 0
+            }
+          ]
+        },
+        {
+          "rule": {
+            "id": "odds50_probability2",
+            "minimum_odds": 50,
+            "minimum_probability": 0.02,
+            "minimum_value": 0
+          },
+          "eligible_races": 13,
+          "eligible_days": 3,
+          "bought_races": 13,
+          "bought_days": 3,
+          "tickets": 38,
+          "hits": 0,
+          "stake_yen": 3800,
+          "return_yen": 0,
+          "profit_yen": -3800,
+          "hit_rate_when_bought": 0,
+          "ticket_hit_rate": 0,
+          "predicted_hit_rate_when_bought": 0.07545850050116168,
+          "recovery_percent": 0,
+          "expected_recovery_percent": 195.2120386322561,
+          "daily": [
+            {
+              "date": "2026-10-24",
+              "races": 2,
+              "tickets": 6,
+              "hits": 0,
+              "stake_yen": 600,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-25",
+              "races": 6,
+              "tickets": 18,
+              "hits": 0,
+              "stake_yen": 1800,
+              "return_yen": 0
+            },
+            {
+              "date": "2026-10-26",
+              "races": 5,
+              "tickets": 14,
+              "hits": 0,
+              "stake_yen": 1400,
+              "return_yen": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "当日を除く直近30完了日の保存記録だけを使用。保存していない過去の予想・オッズは復元しない。",
+    "係数版と受信区分は分離。全120通りのオッズと正常な公式払戻が揃うレースのみ。F/L・欠場・異常結果・欠損の扱いは通常の確率・期待値検証と同じ。",
+    "候補ごとに購入するレース数・点数・購入額が異なる。少数の高配当だけで回収率は大きく変わり、見かけの最高回収率を採用条件にしない。",
+    "推定確率1%は実測の的中率の下限ではない。オッズ50倍・推定確率1%では推定期待値は0.5倍。的中や利益は保証しない。",
+    "現行データは導入前の記録を含む観測監査。条件の有効性・優越性を確定するものではない。"
+  ]
+}

@@ -146,6 +146,12 @@ try{
  const probabilityRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");
  await run("document.getElementById('value-tab').click()");
  const valueRows=await run("document.querySelectorAll('.prediction-table tbody tr').length");assert.equal(valueRows,expectedValueRows);
+ assert.equal(await run("document.getElementById('probability-tab').textContent"),'的中率上位');assert.equal(await run("document.getElementById('value-tab').textContent"),'期待値上位');
+ await run("document.getElementById('return-tab').click()");
+ assert.equal(await run("document.getElementById('prediction-panel').getAttribute('aria-labelledby')"),'return-tab');
+ const returnRows=await run("[...document.querySelectorAll('.prediction-table tbody tr')].map(tr=>({combo:tr.querySelector('[data-combo]').dataset.combo,probability:parseFloat(tr.children[2].textContent),odds:parseFloat(tr.children[3].textContent),value:parseFloat(tr.children[4].textContent)}))");
+ assert.ok(returnRows.length<=10);assert.ok(returnRows.every(r=>r.probability>=1&&r.odds>=50));for(let i=1;i<returnRows.length;i++)assert.ok(returnRows[i-1].value>=returnRows[i].value);
+ if(!returnRows.length)assert.ok(await run("!!document.querySelector('.empty-value')"));
  // Check the published scenario filters and full incremental list, using
  // probability order so unavailable market quotes cannot hide combinations.
  await run("document.getElementById('probability-tab').click();document.querySelector('[data-scenario=in]').click()");

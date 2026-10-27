@@ -4,6 +4,20 @@ on:
 permissions:
   contents: read
 jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Record immediate read-only monitor diagnostics
+        run: |
+          node --input-type=module - <<'JS'
+          const response=await fetch('https://boatrace-odds.kazu80504.workers.dev/v1/health',{signal:AbortSignal.timeout(15000),redirect:'error'});
+          console.log('::notice title=Immediate monitor status::'+JSON.stringify({http_status:response.status,body:await response.text()}));
+          if(!response.ok)process.exitCode=1;
+          JS
   verify-monitor:
     runs-on: ubuntu-latest
     timeout-minutes: 15

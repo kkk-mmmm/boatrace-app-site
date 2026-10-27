@@ -10,7 +10,7 @@ def allowed_changes(files):
     exact = {
         'models/annual/current.json', 'models/annual/validation.json', 'models/annual/coverage.json',
         'models/exhibition-st/current.json', 'models/exhibition-st/records.json',
-        'models/exhibition-st/last-update.json', 'site/releases.json', '.github/publication.json',
+        'models/exhibition-st/last-update.json', 'models/course2-escape/current.json', 'site/releases.json', '.github/publication.json',
     }
     candidate = r'models/monthly-candidates/\d{4}-\d{2}/(?:current|validation|review|decision|previous-coefficients)\.json'
     return bool(files) and all(f in exact or re.fullmatch(candidate, f) for f in files)

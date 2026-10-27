@@ -177,3 +177,16 @@ export function upcomingRaceList(rows,now=Date.now(),limit=5) {
   seen.add(key);return true;
  }).sort((a,b)=>Date.parse(a.deadline_at)-Date.parse(b.deadline_at)||a.venue_code.localeCompare(b.venue_code)||a.race_no-b.race_no).slice(0,limit).map(({date,venue_code,race_no,deadline_at})=>({date,venue_code,race_no,deadline_at}));
 }
+
+export function renderEnvironment(race){
+ const env=race.environment;if(!env)return '<p class="small-note">風・波高・予測潮位は直前情報の取得待ちです。</p>';
+ const numeric=(v,unit)=>Number.isFinite(v)?escape(v)+unit:'未取得',tide=env.tide,code=env.wind_direction_code;
+ const time=value=>Number.isFinite(Date.parse(value))?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'未確認';
+ const direction=env.wind_speed_mps===0?'無風・風向なし':Number.isInteger(code)&&code>=1&&code<=16?`<span class="wind-direction wind-code-${code}" aria-hidden="true">↑</span><span>公式図の方向 ${code}</span>`:'風向未取得';
+ return `<section class="race-environment"><h4>風・水面と予測潮位</h4><div class="condition-values"><span>風速 <strong>${numeric(env.wind_speed_mps,'m/s')}</strong></span><span>${direction}</span><span>波高 <strong>${numeric(env.wave_height_cm,'cm')}</strong></span></div><p class="small-note">${escape(env.measurement_label||'水面気象情報')} / 取得 ${time(env.fetched_at)}（日本時間）。風向は公式水面図を基準に表示します。取得時刻が気象の観測時刻とは限りません。</p>${tide?.status==='OK'?`<p>気象庁の参考予測潮位：<strong>${numeric(tide.height_cm,'cm')}</strong> / ${escape(tide.station_name)} / ${tide.trend==='RISING'?'上げ潮':tide.trend==='FALLING'?'下げ潮':'潮止まり付近'}（${numeric(tide.change_cm_per_hour,'cm/時')}）</p><p class="small-note">出典：気象庁「潮位表」を加工（毎時値から補間）。基準：${escape(tide.datum)}。締切予定時刻の予測値を毎時値から補間。近隣地点の天文潮位で、場内の実測水位ではありません。高潮・風による吹き寄せ等は含みません。取得 ${time(tide.fetched_at)}。<br>満潮 ${(tide.high_tides||[]).map(v=>escape(v.time)).join('・')||'該当なし'} / 干潮 ${(tide.low_tides||[]).map(v=>escape(v.time)).join('・')||'該当なし'}</p>`:`<p class="small-note">予測潮位：${escape(tide?.reason||'未取得・未対応です')}。波高を潮位として代用しません。</p>`}<p class="small-note">${['wind_speed','wind_direction','tide','tide_trend'].some(k=>race.history?.context_usage?.[k])?'学習済みの条件係数と取得済みの入力だけを使用します。今回の反映量はスコアの内訳をご確認ください。':'風・潮位の確率補正は記録の蓄積・検証中のため未適用です。現在の予想係数を維持しています。'}</p></section>`;
+}
+export function renderCourse2(race){
+ const s=race.history?.course2_escape;if(!s)return '';
+ const pct=v=>Number.isFinite(v)?(v*100).toFixed(1)+'%':'未集計',two=race.entries?.find(e=>e.racer_id===s.player_id);
+ return `<section class="course2-escape"><h4>2コース選手の逃がし率</h4><p>${escape(two?.name||s.player_id||'選手未確認')}（${escape(s.basis)}） / ${s.samples||0}走</p><p>過去の割合 <strong>${pct(s.escape_rate)}</strong> / 少数例を補正した割合 <strong>${pct(s.smoothed_escape_rate)}</strong></p><p class="small-note">実進入2コースの選手ごとに、1号艇が実進入1コースから「逃げ」で勝った割合を集計します。正常6艇レースが対象です。アシストの因果関係や、差しに行った回数を示すものではありません。2コース選手自身の差し決着率（少数例補正後）：${pct(s.sashi_rate)}。${race.history.context_usage?.course2_escape?'このモデルの評価因子に使用。':'集計を表示。現行モデルの係数にはまだ追加していません。'}</p></section>`;
+}

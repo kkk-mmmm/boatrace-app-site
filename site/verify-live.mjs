@@ -23,11 +23,11 @@ await get('odds-live.mjs');await get('development.mjs');
 assert.ok(html.includes('name="application-name" content="フネヨミ"'));
 assert.ok(html.includes('<link rel="canonical" href="'+base+'">'));
 if(new URL(base).pathname==='/')assert.ok((await(await get('robots.txt')).text()).includes(base+'sitemap.xml'));
-const sitemap=await(await get('sitemap.xml')).text();assert.equal((sitemap.match(/<loc>/g)||[]).length,27);
-for(const slug of ['about','guide']){const page=await(await get(slug+'/')).text();assert.ok(page.includes(`<link rel="canonical" href="${base}${slug}/">`));assert.ok(page.includes('予想の見方'));if(slug==='about'){assert.ok(page.includes('フネヨミ運営者'));if(contact.verified){assert.ok(page.includes(`mailto:${contact.email}`));assert.ok(!page.includes('お問い合わせ用メールアドレスは準備中'));}}}
+const sitemap=await(await get('sitemap.xml')).text();assert.equal((sitemap.match(/<loc>/g)||[]).length,28);
+for(const slug of ['about','guide','verification']){const page=await(await get(slug+'/')).text();assert.ok(page.includes(`<link rel="canonical" href="${base}${slug}/">`));assert.ok(page.includes('予想の見方'));if(slug==='about'){assert.ok(page.includes('フネヨミ運営者'));if(contact.verified){assert.ok(page.includes(`mailto:${contact.email}`));assert.ok(!page.includes('お問い合わせ用メールアドレスは準備中'));}}}
 for(const file of ['favicon.svg','favicon-32.png','apple-touch-icon.png','social-card.png','site.webmanifest'])await get(file);
 for(let i=1;i<=24;i++){const code=String(i).padStart(2,'0'),pageHtml=await(await get(`venues/${code}/`)).text();assert.ok(pageHtml.includes(`data-venue="${code}"`));assert.ok(pageHtml.includes(`<link rel="canonical" href="${base}venues/${code}/">`));assert.ok(pageHtml.includes('application/ld+json'));}
-console.log('::notice title=Published SEO verification::'+JSON.stringify({site_name:'フネヨミ',pages:27,sitemap:true,favicon:true,ogp:true,structured_data:true}));
+console.log('::notice title=Published SEO verification::'+JSON.stringify({site_name:'フネヨミ',pages:28,sitemap:true,favicon:true,ogp:true,structured_data:true}));
 const oddsConfig=await(await get('data/odds-config.json')).json();
 assert.equal(oddsConfig.interval_seconds,60);
 let workerOdds=null;
@@ -145,6 +145,13 @@ try{
  await run("document.getElementById('clear-bets').click();document.querySelector('[data-scenario=all]').click();document.getElementById('"+(expectedValueRows?"value":"probability")+"-tab').click();document.querySelector('.prediction-table [data-combo]').click()");
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
+ await run("document.getElementById('assessment-tab').click()");
+ await wait("!document.getElementById('assessment-panel').hidden && typeof window.Chart==='function' && !!window.Chart.getChart(document.getElementById('score-radar'))");
+ const radar=await run("(()=>{const c=window.Chart.getChart(document.getElementById('score-radar'));return {axes:c.data.labels.length,datasets:c.data.datasets.length,colors:c.data.datasets.map(d=>d.borderColor)};})()");
+ assert.equal(radar.axes,6);assert.equal(radar.datasets,6);assert.deepEqual(radar.colors,['#8b96a4','#253744','#e34747','#1681ca','#e3bc12','#28a76b']);
+ await run("document.querySelector('[data-radar-lane=\"2\"]').click()");
+ assert.equal(await run("window.Chart.getChart(document.getElementById('score-radar')).data.datasets.find(d=>d.label.startsWith('2号艇')).hidden"),true);
+ console.log('::notice title=Published assessment verification::'+JSON.stringify(radar));
  await run("document.getElementById('development-tab').click()");
  assert.equal(await run("document.getElementById('development-panel').hidden"),false);
  assert.equal(await run("document.querySelectorAll('[data-development-boat]').length"),6);
@@ -281,4 +288,11 @@ try{
  if(upcoming.length){const target=upcoming.at(-1);await run(`document.querySelector('[data-upcoming-venue="${target.venue}"][data-upcoming-race="${target.race}"]').click()`);await wait(`document.getElementById('venue-select').value==='${target.venue}' && document.querySelector('[data-race="${target.race}"]')?.getAttribute('aria-pressed')==='true'`);assert.equal(await run("document.getElementById('live-view').hidden"),false);}
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
  const upcomingReport={checked_at:new Date().toISOString(),races:upcoming,navigation_verified:upcoming.length>0,mobile_overflow:false,errors};fs.writeFileSync(path.join(output,'upcoming.json'),JSON.stringify(upcomingReport,null,2)+'\n');console.log('::notice title=Published upcoming races verification::'+JSON.stringify(upcomingReport));
+ await send('Page.navigate',{url:base+'verification/'});
+ await wait("document.querySelectorAll('[data-verification-date]').length===7 && document.getElementById('verification-status').textContent.includes('日本時間')");
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
+ const verificationReport={days:7,visible_records:await run("document.querySelectorAll('.verification-record').length"),status:await run("document.getElementById('verification-status').textContent"),mobile_overflow:false};
+ const verificationURL=new URL(oddsConfig.api_url);verificationURL.pathname='/v1/verification';verificationURL.search='';
+ const verificationAPI=await fetch(verificationURL,{headers:{Origin:new URL(base).origin},signal:AbortSignal.timeout(20000)});assert.equal(verificationAPI.status,200);const response=await verificationAPI.json();assert.equal(response.kind,'PUBLIC_SAVED_FORECAST_VERIFICATION');assert.equal(response.days.length,7);
+ verificationReport.api_records=response.total;verificationReport.public_days=response.public_days;fs.writeFileSync(path.join(output,'verification-page.json'),JSON.stringify(verificationReport,null,2)+'\n');console.log('::notice title=Published saved forecasts verification::'+JSON.stringify(verificationReport));
 }finally{ws.close();await fetch(cdp+'/json/close/'+page.id).catch(()=>{});}

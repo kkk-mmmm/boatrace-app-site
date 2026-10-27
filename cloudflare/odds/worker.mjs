@@ -1,5 +1,8 @@
+import {migrateHistory,saveEnvironment,saveHistoryRecord,historyRecords,rolloverHistory} from './history-store.mjs';
+import {loadTide} from './tides.mjs';
+import {verificationRow,verificationResponse} from '../../site/public/verification-data.mjs';
 import {scenarioProbabilities} from '../../site/public/view.mjs';
-import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,dataActions,annualForecast,programCalendar,annualEntryData,programResult,resultDue} from './program.mjs';
+import {parseProgramHtml,programEntries,programDeadlines,programContext,programExhibition,programEnvironment,dataActions,annualForecast,programCalendar,annualEntryData,programResult,resultDue} from './program.mjs';
 import {validateAnnualModel} from '../../site/public/annual-model.mjs';
 import {fetchText,officialUrl,robotsAllowed,parseOfficialHtml,OFFICIAL_ORIGIN} from './official.mjs';
 import {ODDS_INTERVAL_MS,ODDS_MAX_AGE_MS,oddsKey,rankExpectedValue,validQuotes,proposalCandidate,validProposal,oddsRefreshInterval,FAR_ODDS_INTERVAL_MS} from '../../site/public/odds-live.mjs';
@@ -56,9 +59,15 @@ export default {
     const allowedOrigins=new Set([env.SITE_ORIGIN,...(env.EXTRA_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean)]);
     const cors={'Access-Control-Allow-Origin':origin&&allowedOrigins.has(origin)?origin:env.SITE_ORIGIN,'Vary':'Origin','Access-Control-Allow-Methods':'GET, OPTIONS'};
     if(origin && !allowedOrigins.has(origin))return json({error:'許可されていないオリジンです'},403);
-    if(url.pathname!=='/v1/odds')return json({error:'Not found'},404,cors);
+    if(!['/v1/odds','/v1/verification'].includes(url.pathname))return json({error:'Not found'},404,cors);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     if(request.method!=='GET')return json({error:'Method not allowed'},405,{...cors,Allow:'GET, OPTIONS'});
+    if(url.pathname==='/v1/verification'){
+      const keys=[...url.searchParams.keys()];
+      if(keys.some(k=>!['date','venue','offset','limit'].includes(k))||keys.some(k=>url.searchParams.getAll(k).length!==1))return json({error:'Invalid verification parameters'},400,cors);
+      try{const response=await stub(env).fetch('https://internal/verification'+url.search);const headers=new Headers(response.headers);for(const [k,v]of Object.entries(cors))headers.set(k,v);return new Response(response.body,{status:response.status,headers});}
+      catch{return json({error:'検証記録を取得できません'},503,cors);}
+    }
     if([...url.searchParams.keys()].some(key=>!['date','venue','race'].includes(key))
       || [...new Set(url.searchParams.keys())].some(key=>url.searchParams.getAll(key).length!==1))return json({error:'不正なパラメーターです'},400,cors);
     const date=url.searchParams.get('date'),venue=url.searchParams.get('venue'),race=url.searchParams.get('race');
@@ -73,7 +82,7 @@ export default {
 };
 
 export class OddsCoordinator {
-  constructor(ctx,env) {this.ctx=ctx;this.env=env;this.serial=Promise.resolve();this.annualModel=null;}
+  constructor(ctx,env) {this.ctx=ctx;this.env=env;this.serial=Promise.resolve();this.annualModel=null;migrateHistory(ctx.storage);}
   exclusive(fn) {const next=this.serial.then(fn);this.serial=next.catch(()=>{});return next;}
   async fetch(request) {
     const url=new URL(request.url);
@@ -81,6 +90,7 @@ export class OddsCoordinator {
       const input=await request.json().catch(()=>({}));
       return this.exclusive(()=>this.start(input.scheduled_at));
     }
+    if(url.pathname==='/verification'&&request.method==='GET')return this.verification(url);
     if(url.pathname==='/snapshot' && request.method==='GET')return this.snapshot(url);
     return json({error:'Not found'},404);
   }
@@ -97,7 +107,8 @@ export class OddsCoordinator {
       let feed;try{feed=JSON.parse(await fetchText(this.env.TARGETS_URL,fetch,5*1024*1024));}catch{feed={schema_version:1,date,generated_at:iso(now),races:[]};}
       const cachedRobots=await storage.get('robots'),reuseRobots=cachedRobots && now-cachedRobots.checked_at<300000;
       const robots=reuseRobots?cachedRobots.text:await fetchText(OFFICIAL_ORIGIN+'/robots.txt',fetch,128*1024);
-      if(work?.date!==date)await storage.deleteAll();
+      if(work?.date!==date)await rolloverHistory(storage,date);
+      if(this.env.VERIFICATION_ARCHIVE_URL)await this.loadVerificationArchive(now);
       await storage.put('robots',{text:robots,checked_at:reuseRobots?cachedRobots.checked_at:now});
       let calendar=null;
       if(this.env.PLAYER_MODEL_URL){try{calendar=await this.loadCalendar(date,robots,now);}catch(error){console.error('calendar: '+error.message);}}
@@ -130,7 +141,8 @@ export class OddsCoordinator {
       if(keys.length)await storage.setAlarm(now+1);
       return json({status:work.status,targets:keys.length},202);
     } catch(error) {
-      if(work?.date!==date)await storage.deleteAll();
+      if(work?.date!==date)await rolloverHistory(storage,date);
+      if(this.env.VERIFICATION_ARCHIVE_URL)await this.loadVerificationArchive(now);
       await storage.put('work',{...(work?.date===date?work:{}),date,scheduled_slot:slot,started_ms:now,started_at:iso(now),
         running:false,status:'FAILED',message:String(error.message).slice(0,200)});
       console.error(JSON.stringify({event:'odds_refresh_start_failed',date,message:error.message}));
@@ -268,7 +280,7 @@ export class OddsCoordinator {
       const result=programResult(await parseProgramHtml(await fetchText(source_url)));
       const program=await storage.get('program:'+oddsKey(target));
       if(result&&program?.entries?.some(e=>result.entries.find(r=>r.lane===e.lane)?.racer_id!==e.racer_id))throw Error('結果と出走表の選手が一致しません');
-      await storage.put(key,{...base,...(result||{status:'PENDING'}),fetched_at:iso(Date.now())});
+      const record={...base,...(result||{status:'PENDING'}),fetched_at:iso(Date.now())};await storage.put(key,record);if(result?.status==='CONFIRMED')await saveHistoryRecord(storage,'result',record);
     }catch(error){await storage.put(key,{...base,status:'FAILED',message:String(error.message).slice(0,200)});}
   }
   async refreshProgram(target,waitTurn){
@@ -285,7 +297,10 @@ export class OddsCoordinator {
     if(actions.exhibition){
       const url=`${OFFICIAL_ORIGIN}/owpc/pc/race/beforeinfo?hd=${target.date.replaceAll('-','')}&jcd=${target.venue_code}&rno=${target.race_no}`;
       await waitTurn(target.venue_code);program={...identity,...program,exhibition_last_attempt:iso(Date.now())};dirty=true;
-      try{if(!robotsAllowed(robots,url))throw Error('展示はrobots.txtで取得対象外です');const display=programExhibition(await parseProgramHtml(await fetchText(url)));
+      try{if(!robotsAllowed(robots,url))throw Error('展示はrobots.txtで取得対象外です');const page=await parseProgramHtml(await fetchText(url));const display=programExhibition(page);
+        program.environment=programEnvironment(page,{source_url:url,fetched_at:iso(Date.now())});
+        program.environment.tide=await loadTide(storage,target.venue_code,target.date,target.deadline_at,fetchText);
+        await saveEnvironment(storage,{...target,environment:program.environment});
         program.entries=(program.entries||[]).map(e=>({...e,...display.find(x=>x.lane===e.lane)}));program.exhibition_fetched_at=iso(Date.now());program.exhibition_source_url=url;program.exhibition_available=display.length===6&&display.every(e=>e.participation_status==='WITHDRAWN'||[e.exhibition_time,e.exhibition_st,e.exhibition_course].every(Number.isFinite));program.exhibition_issue=null;changed=true;
         if(Date.parse(target.deadline_at)-now<=300000)program.exhibition_5m_done=true;else program.exhibition_10m_done=true;
       }catch(error){program.exhibition_issue=String(error.message).slice(0,200);}
@@ -307,8 +322,29 @@ export class OddsCoordinator {
       const key='proposal:'+oddsKey(candidate);
       if(saved.has(key) || candidate.date!==japanDate(now) || Date.parse(candidate.cutoff_at)>now)continue;
       const frozen={...candidate,frozen_at:iso(now)};
-      if(validProposal(frozen,candidate.date,now))await storage.put(key,frozen);
+      if(validProposal(frozen,candidate.date,now)){await storage.put(key,frozen);await saveHistoryRecord(storage,'proposal',frozen);}
     }
+  }
+  async loadVerificationArchive(now){
+    const storage=this.ctx.storage,previous=await storage.get('verification-archive');
+    if(previous&&now-Date.parse(previous.attempted_at)<15*60000)return;
+    let next={...previous,attempted_at:iso(now)};
+    try{const url=new URL(this.env.VERIFICATION_ARCHIVE_URL);if(url.origin!==new URL(this.env.SITE_ORIGIN).origin||url.pathname!=='/data/verification.json')throw Error('Invalid archive origin');
+      const body=JSON.parse(await fetchText(url.href,fetch,8*1024*1024));
+      if(body.kind!=='PUBLIC_VERIFICATION_ARCHIVE'||body.public_days!==7||!Array.isArray(body.records)||body.records.length>4032||!Number.isFinite(Date.parse(body.generated_at))||Date.parse(body.generated_at)>now+60000)throw Error('Invalid verification archive');
+      next={...next,archive:body};
+    }catch(error){next.issue=String(error.message).slice(0,160);}
+    await storage.put('verification-archive',next);
+  }
+  async verification(url){
+    const now=Date.now(),today=japanDate(now),from=new Date(Date.parse(today)-6*86400000).toISOString().slice(0,10),storage=this.ctx.storage;
+    const records=await historyRecords(storage,from,today),proposals=new Map(),results=new Map();
+    const identity=r=>`${r.date}/${r.venue_code}/${r.race_no}`;
+    for(const {kind,record} of records)(kind==='proposal'?proposals:results).set(identity(record),record);
+    const rows=[...new Set([...proposals.keys(),...results.keys()])].map(k=>verificationRow(proposals.get(k),results.get(k),now));
+    const archive=(await storage.get('verification-archive'))?.archive;
+    try{return json(verificationResponse([...(archive?.records||[]),...rows],{date:url.searchParams.get('date'),venue:url.searchParams.get('venue'),offset:Number(url.searchParams.get('offset')||0),limit:Number(url.searchParams.get('limit')||20),now,generated_at:archive?.generated_at||iso(now)}));}
+    catch(error){return json({error:String(error.message)},400);}
   }
   async snapshot(url) {
     const now=Date.now(),date=url.searchParams.get('date'),storage=this.ctx.storage,work=await storage.get('work');

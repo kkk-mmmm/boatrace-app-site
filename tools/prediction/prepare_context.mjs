@@ -1,0 +1,12 @@
+import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
+import {compareMonthly,coefficientId} from './compare_monthly.mjs';import {buildHistoryProfiles} from './history_profiles.mjs';
+import {validateAnnualModel} from '../../site/public/annual-model.mjs';
+const [directory,output]=process.argv.slice(2);if(!output)throw Error('Annual directory and candidate output required');
+const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'))),races=JSON.parse(fs.readFileSync(path.join(directory,'races.json'))),file=path.join(output,'current.json'),candidate=JSON.parse(fs.readFileSync(file));
+const base=JSON.parse(fs.readFileSync(new URL('../../site/branding.json',import.meta.url))).base_url,response=await fetch(new URL('data/player-model.json',base),{signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('Cannot read active public model');const active=await response.json();
+candidate.profiles=buildHistoryProfiles(races,manifest);candidate.coefficient_id=coefficientId(candidate);
+const comparison=compareMonthly(races,manifest,candidate,active),readinessFile=path.join(directory,'context-readiness.json'),readiness=fs.existsSync(readinessFile)?JSON.parse(fs.readFileSync(readinessFile)):null;
+candidate.validation.context_comparison=comparison;candidate.context_readiness={...readiness,course2_samples:candidate.profiles.race_context?.course2?.n||0,weather_coefficients:candidate.feature_names.map((label,i)=>({label,coefficient:candidate.coefficients[i]})).filter((_,i)=>i>=19)};
+delete candidate.id;candidate.id='annual-v3-'+crypto.createHash('sha256').update(JSON.stringify(candidate)).digest('hex');validateAnnualModel(candidate,new Date(Date.parse(manifest.through)+86400000).toISOString().slice(0,10));
+fs.writeFileSync(file,JSON.stringify(candidate)+'\n');fs.writeFileSync(path.join(output,'comparison.json'),JSON.stringify({...comparison,daily:undefined,readiness:candidate.context_readiness},null,2)+'\n');fs.writeFileSync(path.join(output,'review.json'),JSON.stringify({kind:'CONTEXT_MODEL_CANDIDATE',accepted:comparison.accepted,candidate_sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),active_coefficient_id:coefficientId(active)},null,2)+'\n');
+console.log('::notice title=Context model comparison::'+JSON.stringify({...comparison,daily:undefined,readiness:candidate.context_readiness}));

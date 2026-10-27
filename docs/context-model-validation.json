@@ -1,0 +1,62 @@
+{
+  "kind": "PAIRED_TEMPORAL_HOLDOUT",
+  "from": "2026-09-27",
+  "through": "2026-10-26",
+  "races": 4281,
+  "days": 30,
+  "active_coefficient_id": "annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+  "candidate_coefficient_id": "annual-coeff-c7cd8494d64861b09ffb2bb2ccac3ffc17784c2b51c73a88f387876b5e04fa5d",
+  "active": {
+    "log_loss": 3.9111392326215175,
+    "top10_hit_rate": 0.4781593085727634,
+    "brier": 0.9644610928230574
+  },
+  "candidate": {
+    "log_loss": 3.913742151787573,
+    "top10_hit_rate": 0.4744218640504555,
+    "brier": 0.9641805626373219
+  },
+  "delta_log_loss": 0.0026029191660554376,
+  "delta_top10": -0.003737444522307872,
+  "delta_brier": -0.00028053018573552817,
+  "daily_loss_ci95": [
+    -0.002759248803410419,
+    0.00777793680722542
+  ],
+  "criteria": {
+    "minimum_races": 2000,
+    "minimum_days": 20,
+    "maximum_delta_log_loss": -0.01,
+    "minimum_delta_top10": 0,
+    "maximum_delta_brier": 0,
+    "maximum_daily_ci_upper": 0
+  },
+  "note": "同じレース・同じ過去履歴から比較。日単位の再標本化95%区間。過去検証であり収益の改善を保証しません。",
+  "accepted": false,
+  "readiness": {
+    "from": "2026-09-27",
+    "through": "2026-10-26",
+    "prerace_environment_pairs": 0,
+    "tide_pairs": 0,
+    "note": "直前取得時刻を検証できた直近30日分だけを照合。結果資料の風を事前入力として代用しない。",
+    "course2_samples": 51226,
+    "weather_coefficients": [
+      {
+        "label": "風速条件とコース適性",
+        "coefficient": 0
+      },
+      {
+        "label": "風向条件とコース適性",
+        "coefficient": 0
+      },
+      {
+        "label": "予測潮位とコース適性",
+        "coefficient": 0
+      },
+      {
+        "label": "潮位変化とコース適性",
+        "coefficient": 0
+      }
+    ]
+  }
+}

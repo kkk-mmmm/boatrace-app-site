@@ -1,0 +1,13 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';import {Miniflare} from 'miniflare';
+const directory=path.dirname(fileURLToPath(import.meta.url));
+test('Workersの公式気象パースとSQLite移行・日付変更後の記録保持',{timeout:30000},async t=>{
+ const source=`import {parseProgramHtml,programEnvironment} from './program.mjs';import {migrateHistory,saveEnvironment,saveHistoryRecord,rolloverHistory} from './history-store.mjs';
+ export class StorageProbe{constructor(ctx){this.ctx=ctx;migrateHistory(ctx.storage);}async fetch(){const storage=this.ctx.storage;const race={date:'2030-01-07',venue_code:'24',race_no:1,environment:{fetched_at:'2030-01-07T01:00:00Z',source_url:'https://www.boatrace.jp/',wind_speed_mps:0,wind_direction_code:null,wave_height_cm:0,tide:{status:'UNAVAILABLE'}}};await saveEnvironment(storage,race);await saveHistoryRecord(storage,'proposal',{date:race.date,venue_code:'24',race_no:1,token:'original'});await storage.put('program:24-1',race);migrateHistory(storage);await rolloverHistory(storage,'2030-01-08');return Response.json({environment:[...storage.sql.exec('SELECT * FROM race_environment')],records:[...storage.sql.exec('SELECT * FROM verification_records')],programRemoved:!await storage.get('program:24-1')});}}
+ export default{async fetch(request,env){if(new URL(request.url).pathname==='/db')return env.DB.get(env.DB.idFromName('test')).fetch(request);return Response.json(programEnvironment(await parseProgramHtml(await request.text()),{source_url:request.url,fetched_at:'2026-10-26T10:00:00Z'}));}};`;
+ const output=await build({stdin:{contents:source,resolveDir:directory},format:'esm',platform:'browser',bundle:true,write:false});
+ const mf=new Miniflare({modules:true,script:output.outputFiles[0].text,compatibilityDate:'2026-06-11',durableObjects:{DB:{className:'StorageProbe',useSQLite:true}}});t.after(()=>mf.dispose());
+ const html=fs.readFileSync(new URL('../../tools/site/fixtures/context/beforeinfo-20261026-24-R12.html',import.meta.url),'utf8');
+ const weather=await(await mf.dispatchFetch('https://example.test/weather',{method:'POST',body:html})).json();assert.equal(weather.wind_speed_mps,5);assert.equal(weather.wind_direction_code,11);assert.equal(weather.wave_height_cm,4);assert.equal(weather.air_temperature_c,21);assert.match(weather.measurement_label,/11R/);
+ const db=await(await mf.dispatchFetch('https://example.test/db')).json();assert.equal(db.environment.length,1);assert.equal(db.environment[0].wind_speed_mps,0);assert.equal(db.records.length,1);assert.equal(JSON.parse(db.records[0].payload).token,'original');assert.equal(db.programRemoved,true);
+});

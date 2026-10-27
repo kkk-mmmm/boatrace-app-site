@@ -9,6 +9,11 @@ export function informationPages(settings=contact){
  <section><h2>運営について</h2><dl><dt>サイト名</dt><dd>フネヨミ｜ボートレース・競艇予想</dd><dt>運営者</dt><dd>${escape(settings.operator)}</dd></dl><p>全国24場の出走表・展示情報・3連単オッズと、統計モデルによるAI予想を掲載する非公式の情報サイトです。BOAT RACEの公式サービスではありません。投票・購入機能はありません。</p></section>
  <section><h2>お問い合わせ</h2>${settings.verified?`<p>ご意見や表示・データの不具合は <a href="mailto:${escape(email)}">${escape(email)}</a> へお寄せください。</p><p>不具合のご連絡には、開催日・場名・レース番号・閲覧端末・表示された内容を添えていただくと確認がスムーズです。パスワードや決済情報などは送らないでください。</p>`:'<p>お問い合わせ用メールアドレスは準備中です。開設・受信確認後に掲載します。</p>'}</section>
  <section><h2>掲載情報について</h2><p>出走表・展示・オッズ・結果などの取得元は <a href="https://www.boatrace.jp/" target="_blank" rel="noopener noreferrer">BOAT RACE オフィシャルウェブサイト</a> です。データには取得の遅れや欠損があるため、画面の取得時刻・更新状態を確認し、最終的な締切・オッズ・払戻は公式情報と照合してください。</p><p>予想は統計モデルによる推定で、的中や利益を保証しません。計算方法や注意点は <a href="./guide/">予想の見方</a> をご覧ください。</p></section>`},
+ {slug:'verification',title:'直近7日の予想と結果',description:'締切前に保存した予想と公式結果を照合。確率上位・期待値上位の仮想的中と回収率を直近7日分確認できます。',module:'./verification-page.mjs',content:`
+ <p>記録のあるレースだけを表示します。全レースや実際の購入履歴の成績ではありません。各点100円の仮想評価で、未保存・未照合を不的中に含めません。</p>
+ <div class="verification-controls"><label>開催場 <select id="verification-venue" aria-label="検証する開催場"></select></label><button id="verification-refresh">表示を更新 ↻</button></div>
+ <div id="verification-days" class="verification-days" role="group" aria-label="検証する日付"></div><p id="verification-status" class="small-note" role="status">記録を確認しています。</p><p id="verification-summary"></p><div id="verification-records"></div><button id="verification-more" hidden>追加で20レース見る</button><p id="verification-method" class="small-note"></p>
+ <p class="small-note">公開対象は直近7日、内部の予想・結果は学習・検証用に30日以上保持します。履歴は毎日更新し、係数の更新は月1回の検証条件を維持します。</p>`},
  {slug:'guide',title:'予想の見方',description:'推定確率・期待値・オッズ・スジ候補・展開予想・結果比較の読み方と、データ更新の仕組みを説明します。',content:`
  <nav class="guide-contents" aria-label="このページの目次"><a href="./guide/#probability">推定確率</a><a href="./guide/#expected-value">期待値</a><a href="./guide/#data-updates">データ更新</a><a href="./guide/#saved">保存予想と結果</a></nav>
  <section id="probability"><h2>推定確率と的中率</h2><p>各買い目の「推定確率」はモデルが計算した確率です。実際のレースで測った的中率を表す数値ではありません。全120通りの3連単へ確率を配分し、推定確率上位・期待値上位を切り替えて10点ずつ確認できます。</p><p>「イン逃げ想定」は1号艇が1着になる買い目の確率の合計、「それ以外」は2〜6号艇が1着になる確率の合計です。実際の進入コースや、決まり手が「逃げ」になる確率とは異なります。</p></section>
@@ -22,8 +27,9 @@ export function informationPages(settings=contact){
 }
 export function informationTemplate(template,page){
  // Keep the shared stylesheet/CSP, but informational pages never fetch race data.
- return template.replace(/<script type="module" src="\.\/app\.mjs"><\/script>\s*/, '')
+ return template.replace(/<script defer src="https:\/\/cdn\.jsdelivr\.net[^>]*><\/script>\s*/, '').replace(/<script type="module" src="\.\/app\.mjs"><\/script>\s*/, '')
  .replace(/<header[\s\S]*?<\/header>/,`<header class="header"><a class="brand" href="./"><img class="brand-icon" src="./favicon.svg" width="40" height="40" alt=""><span>フネヨミ<span class="brand-small">ボートレース・競艇予想</span></span></a><nav aria-label="メイン"><a href="./">今日の予想</a><a href="./guide/">予想の見方</a><a href="./about/">運営情報</a></nav></header>`)
  .replace(/<main>[\s\S]*?<\/main>/,`<main><article class="information-page"><h1>${escape(page.title)}</h1>${page.content}</article></main>`)
- .replace(/<nav class="venue-seo-links"[\s\S]*?<\/nav>/,'');
+ .replace(/<nav class="venue-seo-links"[\s\S]*?<\/nav>/,'')
+ .replace('</head>',(page.module?`<script type="module" src="${page.module}"></script>`:'')+'</head>');
 }

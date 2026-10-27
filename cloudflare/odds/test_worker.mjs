@@ -13,6 +13,7 @@ class Storage {
   async get(key){return Array.isArray(key)?new Map(key.filter(k=>this.data.has(k)).map(k=>[k,structuredClone(this.data.get(k))])):structuredClone(this.data.get(key));}
   async put(key,value){for(const [k,v] of typeof key==='string'?[[key,value]]:Object.entries(key))this.data.set(k,structuredClone(v));}
   async deleteAll(){this.data.clear();}
+  async delete(key){return this.data.delete(key);}
   async setAlarm(value){this.alarm=value;}
   async deleteAlarm(){this.alarm=null;}
   async list({prefix}){return new Map([...this.data].filter(([k])=>k.startsWith(prefix)));}

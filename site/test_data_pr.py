@@ -9,7 +9,7 @@ spec.loader.exec_module(module)
 
 class DataPrSecurity(unittest.TestCase):
     def test_daily_and_monthly_data_only(self):
-        self.assertTrue(module.allowed_changes(['models/annual/current.json']))
+        self.assertTrue(module.allowed_changes(['models/annual/current.json','models/course2-escape/current.json']))
         self.assertTrue(module.allowed_changes(['models/exhibition-st/records.json',
             'models/monthly-candidates/2026-10/previous-coefficients.json',
             'site/releases.json', '.github/publication.json']))

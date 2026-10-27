@@ -6,7 +6,7 @@ const key=r=>`${r.date}/${r.venue_code}/${r.race_no}`;
 const today=now=>new Date(now+9*3600000).toISOString().slice(0,10);
 const requireValue=(ok,message)=>{if(!ok)throw Error(message);};
 function compactProposal(p){
- const fields=['schema_version','date','venue_code','race_no','deadline_at','cutoff_at','proposal_saved_at','prediction_saved_at','input_fetched_at','prediction_key','model_id','model_coefficient_id','model_name','frozen_at','context','history_window','entries_fetched_at','exhibition_fetched_at'];
+ const fields=['schema_version','date','venue_code','race_no','deadline_at','cutoff_at','proposal_saved_at','prediction_saved_at','input_fetched_at','prediction_key','model_id','model_coefficient_id','model_name','frozen_at','context','history_window','entries_fetched_at','exhibition_fetched_at','environment','confidence'];
  const entryFields=['lane','racer_id','name','class','participation_status','avg_st','exhibition_time','exhibition_st','exhibition_st_status','exhibition_course','annual_lane'];
  return {entries:(p.entries||[]).map(e=>Object.fromEntries(entryFields.filter(k=>e[k]!==undefined).map(k=>[k,e[k]]))),history:{lanes:(p.history?.lanes||[]).map(h=>({lane:h.lane,exhibition_st_gap:h.exhibition_st_gap||null,data_details:h.data_details||null}))},...Object.fromEntries(fields.filter(k=>p[k]!==undefined).map(k=>[k,p[k]])),probabilities:p.probabilities.map(({combo,probability,rank})=>({combo,probability,rank})),odds:p.odds};
 }

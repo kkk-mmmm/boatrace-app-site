@@ -1,4 +1,4 @@
-import {migrateHistory,saveEnvironment,saveHistoryRecord,historyRecords,rolloverHistory} from './history-store.mjs';
+import {migrateHistory,saveEnvironment,saveHistoryRecord,historyRecords,rolloverHistory,savePublicArchive,publicArchiveRows} from './history-store.mjs';
 import {loadTide} from './tides.mjs';
 import {verificationRow,verificationResponse} from '../../site/public/verification-data.mjs';
 import {scenarioProbabilities} from '../../site/public/view.mjs';
@@ -332,7 +332,7 @@ export class OddsCoordinator {
     try{const url=new URL(this.env.VERIFICATION_ARCHIVE_URL);if(url.origin!==new URL(this.env.SITE_ORIGIN).origin||url.pathname!=='/data/verification.json')throw Error('Invalid archive origin');
       const body=JSON.parse(await fetchText(url.href,fetch,8*1024*1024));
       if(body.kind!=='PUBLIC_VERIFICATION_ARCHIVE'||body.public_days!==7||!Array.isArray(body.records)||body.records.length>4032||!Number.isFinite(Date.parse(body.generated_at))||Date.parse(body.generated_at)>now+60000)throw Error('Invalid verification archive');
-      next={...next,archive:body};
+      await savePublicArchive(storage,body.records);next={attempted_at:iso(now),generated_at:body.generated_at,from:body.from,through:body.through};
     }catch(error){next.issue=String(error.message).slice(0,160);}
     await storage.put('verification-archive',next);
   }
@@ -342,8 +342,8 @@ export class OddsCoordinator {
     const identity=r=>`${r.date}/${r.venue_code}/${r.race_no}`;
     for(const {kind,record} of records)(kind==='proposal'?proposals:results).set(identity(record),record);
     const rows=[...new Set([...proposals.keys(),...results.keys()])].map(k=>verificationRow(proposals.get(k),results.get(k),now));
-    const archive=(await storage.get('verification-archive'))?.archive;
-    try{return json(verificationResponse([...(archive?.records||[]),...rows],{date:url.searchParams.get('date'),venue:url.searchParams.get('venue'),offset:Number(url.searchParams.get('offset')||0),limit:Number(url.searchParams.get('limit')||20),now,generated_at:archive?.generated_at||iso(now)}));}
+    const archive=await storage.get('verification-archive'),archivedRows=await publicArchiveRows(storage,from,today);
+    try{return json(verificationResponse([...archivedRows,...rows],{date:url.searchParams.get('date'),venue:url.searchParams.get('venue'),offset:Number(url.searchParams.get('offset')||0),limit:Number(url.searchParams.get('limit')||20),now,generated_at:archive?.generated_at||iso(now)}));}
     catch(error){return json({error:String(error.message)},400);}
   }
   async snapshot(url) {

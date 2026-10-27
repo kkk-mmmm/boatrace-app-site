@@ -19,7 +19,7 @@ function draw(){
  const u=new URL(location.href);u.searchParams.set('date',data.date);venue?u.searchParams.set('venue',venue):u.searchParams.delete('venue');history.replaceState(null,'',u);
 }
 async function load(offset=0){
- if(loading)return;loading=true;const id=++sequence;$('verification-status').textContent='保存記録を確認しています。';
+ if(loading)return;loading=true;const id=++sequence;$('verification-status').textContent='日別の保存予想・結果を確認しています。';
  try{
   let next,sourceLabel=api?'Cloudflareの共有記録':'公開時点の保存版';
   if(api){try{const url=new URL(api);if(date)url.searchParams.set('date',date);if(venue)url.searchParams.set('venue',venue);url.searchParams.set('offset',String(offset));url.searchParams.set('limit','20');const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('API '+response.status);next=await response.json();if(next.kind!=='PUBLIC_SAVED_FORECAST_VERIFICATION')throw Error('Invalid API data');}catch{const response=await fetch('./data/verification.json',{cache:'no-store'});if(!response.ok)throw Error('保存版も取得できません');archive=await response.json();next=verificationResponse(archive.records,{date,venue,offset,generated_at:archive.generated_at});sourceLabel='Cloudflareの通信失敗のため公開時点の保存版を表示';}}

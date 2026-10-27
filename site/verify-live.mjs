@@ -288,8 +288,22 @@ try{
  if(upcoming.length){const target=upcoming.at(-1);await run(`document.querySelector('[data-upcoming-venue="${target.venue}"][data-upcoming-race="${target.race}"]').click()`);await wait(`document.getElementById('venue-select').value==='${target.venue}' && document.querySelector('[data-race="${target.race}"]')?.getAttribute('aria-pressed')==='true'`);assert.equal(await run("document.getElementById('live-view').hidden"),false);}
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
  const upcomingReport={checked_at:new Date().toISOString(),races:upcoming,navigation_verified:upcoming.length>0,mobile_overflow:false,errors};fs.writeFileSync(path.join(output,'upcoming.json'),JSON.stringify(upcomingReport,null,2)+'\n');console.log('::notice title=Published upcoming races verification::'+JSON.stringify(upcomingReport));
+ await run("document.getElementById('live-tab').click()");
+ await run("document.querySelector('.prediction-table')?.scrollIntoView({block:'center',behavior:'instant'})");
+ if(await run("!!document.querySelector('.prediction-table')")){
+  await wait("!document.getElementById('mobile-race-context').hidden");
+  assert.equal(await run("getComputedStyle(document.getElementById('mobile-race-context')).position"),'fixed');
+  assert.ok((await run("document.getElementById('mobile-race-name').textContent")).includes('R'));
+  await run("document.getElementById('mobile-suji-jump').click()");assert.equal(await run("document.activeElement.id"),'related-title');
+ }
  await send('Page.navigate',{url:base+'#archive'});
  await wait("document.querySelectorAll('#experiment-content .study').length>0 && document.querySelector('[data-study-count]')?.textContent.includes('条件に合う記録')");
+ assert.equal(await run("document.getElementById('archive-tab').textContent"),'検証企画・記事');
+ assert.equal(await run("document.querySelector('.study').querySelectorAll('.study-metrics .study-metric').length"),4);
+ assert.equal(await run("document.querySelector('.study-method').open"),false);
+ assert.equal(await run("document.getElementById('mobile-race-context').hidden"),true);
+ await run("document.getElementById('experiments-refresh').click()");
+ await wait("!document.getElementById('experiments-refresh').disabled && document.getElementById('experiments-status').textContent.includes('画面確認')");
  const studyResponse=await get('data/experiments.json'),studies=await studyResponse.json();assert.equal(studies.kind,'STRATEGY_EXPERIMENT_ARCHIVE');
  const study=studies.experiments.find(s=>s.definition.id==='ev-top10-four-box-20261027');assert.ok(study);assert.equal(study.definition.venue_codes.length,24);assert.equal(study.definition.through,'2026-11-26');assert.equal(study.records.length,0);
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);

@@ -256,9 +256,10 @@ try{
  if(workerOdds){
   await wait("!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length>0");
   if(!morning)await run("window.__uxPanel=document.getElementById('entries-panel');window.__uxWater=document.getElementById('development-water');window.__uxButton=document.getElementById('entries-tab');window.__uxDetails=document.querySelector('.score-section details');if(window.__uxDetails)window.__uxDetails.open=true;window.__uxButton.scrollIntoView({block:'center'});window.__uxButton.focus({preventScroll:true});window.__uxTop=window.__uxButton.getBoundingClientRect().top");
+  if(!morning)await wait("!document.getElementById('mobile-race-context').hidden");
   const before=await run('window.__cloudflareReads.length');
   for(let n=1;n<=2;n++){
-   await run("document.getElementById('refresh-button').click()");
+   await run(n===1?"document.getElementById('mobile-refresh-button').click()":"document.getElementById('refresh-button').click()");
    await wait(`!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length===${before+n}`);
   }
   if(!morning){
@@ -311,6 +312,9 @@ try{
  if(await run("!!document.querySelector('.prediction-table')")){
   await wait("!document.getElementById('mobile-race-context').hidden");
   assert.equal(await run("getComputedStyle(document.getElementById('mobile-race-context')).position"),'fixed');
+  assert.equal(await run("document.getElementById('mobile-refresh-label').textContent"),'データ更新');
+  assert.ok(await run("(()=>{const r=document.getElementById('mobile-refresh-button').getBoundingClientRect();return r.width>=44&&r.height>=44&&r.right<=innerWidth;})()"));
+
   assert.ok((await run("document.getElementById('mobile-race-name').textContent")).includes('R'));
   await run("document.getElementById('mobile-suji-jump').click()");assert.equal(await run("document.activeElement.id"),'related-title');
  }

@@ -152,7 +152,7 @@ function clearCurrent() {
   $('meeting-title').textContent = `${venueName()}の開催情報を確認中`;
   $('meeting-detail').textContent = '出走表・オッズを読み込んでいます。';
   $('live-content').textContent = '情報を読み込んでいます。';
-  $('current-date').textContent = `${japanDate(Date.now())} / 日本時間`;
+  $('current-date').textContent = `${japanDate(Date.now())}`;
   $('official-link').href = `https://www.boatrace.jp/owpc/pc/race/raceindex?hd=${japanDate(Date.now()).replaceAll('-', '')}&jcd=${selectedVenue}`;
   notify(null);renderArchive();
 }
@@ -181,7 +181,7 @@ async function loadExperiments({force=false}={}){
    }
   }
   preserveViewport(()=>renderExperimentArchive($('experiment-content'),data,{preserveState:force,prefetchedDays}));experimentsLoaded=true;
-  if(status)status.textContent=`データ集計：${clock(data.generated_at)} / 画面確認：${clock(new Date().toISOString())}（日本時間）。公開済みの記録を再取得しました。`;
+  if(status)status.textContent=`データ集計：${clock(data.generated_at)} / 画面確認：${clock(new Date().toISOString())}。公開済みの記録を再取得しました。`;
  } catch {
   if(!experimentsLoaded)$('experiment-content').textContent='検証企画を読み込めませんでした。更新ボタンで再確認してください。';
   if(status)status.textContent=experimentsLoaded?'更新に失敗しました。直前に確認できた記録を表示しています。更新ボタンで再確認してください。':'記録を取得できませんでした。更新ボタンで再確認してください。';
@@ -199,7 +199,7 @@ function updateRaceContext(){
  const mobile=matchMedia('(max-width:650px)').matches,rect=card?.getBoundingClientRect();
  mobileRaceContext.hidden=!(mobile&&view==='live'&&race&&rect&&rect.top<0&&rect.bottom>88);
  if(!race)return;
- const label=`${current.venue} ${race.race_no}R`,deadline=Number.isFinite(Date.parse(race.deadline_at))?`${Date.now()>=Date.parse(race.deadline_at)?'締切済み':'締切'} ${shortClock(race.deadline_at)}（日本時間）`:'締切 未確認';
+ const label=`${current.venue} ${race.race_no}R`,deadline=Number.isFinite(Date.parse(race.deadline_at))?`${Date.now()>=Date.parse(race.deadline_at)?'締切済み':'締切'} ${shortClock(race.deadline_at)}`:'締切 未確認';
  if($('mobile-race-name').textContent!==label)$('mobile-race-name').textContent=label;
  if($('mobile-race-deadline').textContent!==deadline)$('mobile-race-deadline').textContent=deadline;
  const count=predictionRaceKey===`${race.date}/${race.venue_code}/${race.race_no}`?chosenCombos.size:0;
@@ -271,11 +271,11 @@ function renderCurrentContent() {
   const successTime = Date.parse(current.update.last_success_at);
   const fresh = sameDay && ['OK','PARTIAL'].includes(current.update.status) && Number.isFinite(successTime)
     && successTime <= now + 60000 && now - successTime <= 10 * 60000;
-  $('updated-at').textContent = `${current.source_kind==='CLOUDFLARE_SCHEDULED_PROGRAM'?'Cloudflare配信確認':'公式データの確認'}：${clock(current.update.last_success_at)}（日本時間）`;
+  $('updated-at').textContent = `${current.source_kind==='CLOUDFLARE_SCHEDULED_PROGRAM'?'Cloudflare配信確認':'公式データの確認'}：${clock(current.update.last_success_at)}`;
   $('update-status').textContent = fresh ? current.update.reason==='INITIAL_COLLECTION_PENDING' ? '本日の出走表・予想は初回取得待ちです' : current.update.status === 'PARTIAL' ? '一部レースの取得に失敗' : '' : '最新データを確認できていません';
   $('update-status').hidden=!$('update-status').textContent;
   $('update-dot').classList.toggle('ok', fresh && current.update.status === 'OK');
-  $('current-date').textContent = `${today} / 日本時間`;
+  $('current-date').textContent = `${today}`;
   $('official-link').href = `https://www.boatrace.jp/owpc/pc/race/raceindex?hd=${today.replaceAll('-', '')}&jcd=${selectedVenue}`;
   if (!sameDay) {
     notify('日付が変わりました。本日の情報は更新待ちです。');
@@ -293,7 +293,7 @@ function renderCurrentContent() {
     notify(current.update.status === 'PARTIAL' ? current.update.message : null);
     const next = current.races.find(r => Date.parse(r.deadline_at) > now);
     $('meeting-title').textContent = next ? `次の締切予定 ${next.race_no}R` : current.races.length ? '本日の締切は終了しました' : '本日の出走表は更新待ちです';
-    $('meeting-detail').textContent = next ? `${clock(next.deadline_at)}（日本時間）` : current.races.length ? '保存済みの予想は参考として確認できます。' : current.update.message || '取得できた出走表から表示します。';
+    $('meeting-detail').textContent = next ? `${clock(next.deadline_at)}` : current.races.length ? '保存済みの予想は参考として確認できます。' : current.update.message || '取得できた出走表から表示します。';
   }
   if (!sameDay || current.races.length === 0) {
     patchHTML($('live-content'), `<div class="empty"><div class="empty-mark">≋</div><h3>${fresh && current.meeting_status === 'NO_MEETING' ? '次の開催で、また記録を。' : '本日の予想はまだ表示できません'}</h3><p>${fresh && current.meeting_status === 'NO_MEETING' ? `本日は${e(name)}の開催が確認できていません。保存済みの検証結果がある場合は、検証記録からご覧いただけます。` : '最新の出走表や必須データが確認できたレースから表示します。過去の記録やサンプルを、本日の予想として使うことはありません。'}</p><button id="empty-archive" class="text-button">これまでの検証記録を見る ↗</button></div>`);
@@ -364,7 +364,7 @@ function renderCurrentContent() {
     ${race.model_status==='EXPERIMENTAL'?`<p class="small-note">${correctionPending?'履歴は集計済み・予想への補正は未適用です。表示中の予想は固定式で計算しています。':'履歴補正は検証中です。'}</p>`:''}
     `
     : `<div class="empty"><h3>このレースの予想は未取得です</h3><p>${e(race.issue || '必須データが確認できていません。')}</p></div>`;
-  patchHTML($('live-content'), `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span>${confidenceHTML(r,true)}</button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3>${confidenceHTML(race)}<p>締切予定 ${e(clock(race.deadline_at))}（日本時間）</p></div><span class="status ${status.currentOdds ? '' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${selectionToolbar}${entryAlerts}${sheetTabs}${forecast}${scores}${market}${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`);
+  patchHTML($('live-content'), `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span>${confidenceHTML(r,true)}</button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3>${confidenceHTML(race)}<p>締切予定 ${e(clock(race.deadline_at))}</p></div><span class="status ${status.currentOdds ? '' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${selectionToolbar}${entryAlerts}${sheetTabs}${forecast}${scores}${market}${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`);
   mountRadar(race);
   if($('jump-to-suji'))$('jump-to-suji').onclick=jumpToSuji;
   $('entries-tab').onclick=(()=>{entryTab='entries';renderCurrent();});

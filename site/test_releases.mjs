@@ -3,6 +3,7 @@ import {readReleases,validateReleases,renderReleases} from './releases.mjs';impo
 const release=version=>({version,date:'2026-10-23',title:'Feature',changes:['User-facing change']});
 test('履歴は版の重複・日付不正・空の変更点を拒否し、表示内容をHTMLとして実行させない',()=>{
  const data=readReleases();assert.ok(data.releases.length>=7);assert.match(renderReleases(data),/55,477/);
+ const original=JSON.stringify(data);assert.doesNotMatch(renderReleases(data),/日本時間/);assert.equal(JSON.stringify(data),original);
  for(const bad of [{...release('1.0.0'),date:'2026-02-30'},{...release('1.0.0'),changes:[]},{...release('1.0.0'),notes:'invalid'}])assert.throws(()=>validateReleases({schema_version:1,releases:[bad]}));
  assert.throws(()=>validateReleases({schema_version:1,releases:[release('1.0.0'),release('1.0.0')]}));
  assert.throws(()=>validateReleases({schema_version:1,releases:[release('1.0.0'),release('1.1.0')]}));

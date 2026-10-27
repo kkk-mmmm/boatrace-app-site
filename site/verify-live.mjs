@@ -146,6 +146,11 @@ try{
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
  assert.equal(await run("document.getElementById('exhibition-tab').textContent"),'展示情報');
+ assert.equal(await run("document.body.textContent.includes('日本時間')"),false);
+ assert.equal(await run("document.getElementById('featured-details').open"),false);
+ await run("document.querySelector('#featured-details>summary').click()");
+ assert.ok((await run("document.getElementById('featured-details').textContent")).includes('高率は70%以上'));
+ await run("document.querySelector('#featured-details>summary').click()");
  assert.equal(await run("document.getElementById('entry-statistics-details').open"),false);
  await run("document.querySelector('#entry-statistics-details>summary').click()");
  assert.ok((await run("document.getElementById('entry-statistics-details').textContent")).includes('枠別統計：'));
@@ -324,10 +329,11 @@ try{
  fs.writeFileSync(path.join(output,'study.json'),JSON.stringify(studyReport,null,2)+'\n');console.log('::notice title=Published strategy study verification::'+JSON.stringify(studyReport));
  const sharedHeaderLabels=await run("[...document.querySelector('header nav').children].map(x=>x.textContent)");
  await send('Page.navigate',{url:base+'verification/'});
- await wait("document.querySelectorAll('[data-verification-date]').length===7 && document.getElementById('verification-status').textContent.includes('日本時間')");
+ await wait("document.querySelectorAll('[data-verification-date]').length===7 && document.getElementById('verification-status').textContent.includes('更新確認')");
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
  assert.deepEqual(await run("[...document.querySelector('header nav').children].map(x=>x.textContent)"),sharedHeaderLabels);
  assert.equal(await run("document.querySelectorAll('header nav a').length"),4);
+ assert.equal(await run("document.body.textContent.includes('日本時間')"),false);
  const verificationReport={days:7,visible_records:await run("document.querySelectorAll('.verification-record').length"),status:await run("document.getElementById('verification-status').textContent"),mobile_overflow:false};
  const verificationURL=new URL(oddsConfig.api_url);verificationURL.pathname='/v1/verification';verificationURL.search='';
  const verificationAPI=await fetch(verificationURL,{headers:{Origin:new URL(base).origin},signal:AbortSignal.timeout(20000)});assert.equal(verificationAPI.status,200);const response=await verificationAPI.json();assert.equal(response.kind,'PUBLIC_SAVED_FORECAST_VERIFICATION');assert.equal(response.days.length,7);

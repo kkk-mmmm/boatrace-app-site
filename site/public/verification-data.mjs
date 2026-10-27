@@ -21,7 +21,7 @@ export function verificationRow(proposal,result,now=Date.now(),cohort='WORKER_RE
 }
 export function verificationResponse(rows,{date=null,venue=null,offset=0,limit=20,now=Date.now(),generated_at=new Date(now).toISOString()}={}){
  const today=day(now),dates=Array.from({length:7},(_,i)=>new Date(Date.parse(today)-(6-i)*86400000).toISOString().slice(0,10)).reverse();
- if(date&&!dates.includes(date))throw Error('公開対象は日本時間の直近7日分です');
+ if(date&&!dates.includes(date))throw Error('公開対象は直近7日分です');
  if(venue&&!/^(0[1-9]|1\d|2[0-4])$/.test(venue)||!Number.isInteger(offset)||offset<0||offset>300||!Number.isInteger(limit)||limit<1||limit>50)throw Error('Invalid verification filters');
  const unique=new Map();for(const row of rows)if(row&&dates.includes(row.date)&&/^(0[1-9]|1\d|2[0-4])$/.test(row.venue_code)&&Number.isInteger(row.race_no)&&row.race_no>=1&&row.race_no<=12){const previous=unique.get(row.key);if(!previous||previous.cohort!=='RECEIPT_BEFORE_CUTOFF'&&row.cohort==='RECEIPT_BEFORE_CUTOFF'||previous.status!=='SETTLED'&&row.status==='SETTLED')unique.set(row.key,row);}
  const records=[...unique.values()].filter(r=>!venue||r.venue_code===venue);

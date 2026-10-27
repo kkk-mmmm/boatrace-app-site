@@ -42,6 +42,8 @@ test('登録前の過去予想を後付けせず、再実行で固定買い目�
 test('払戻欠損・Fは回収率へ入れず、条件買い目や元予想の改変を検出する',t=>{
  const dir=setup(t);results(dir,{payout:null});let r=conditionalReport(dir,definition,{now:now+86400000});assert.equal(condition(r).pending,1);assert.equal(condition(r).stake_yen,0);assert.equal(condition(r).recovery_percent,null);
  results(dir,{flying:true});r=conditionalReport(dir,definition,{now:now+86400000});assert.equal(condition(r).excluded,1);assert.equal(condition(r).stake_yen,0);
+ results(dir);const rf=path.join(dir,'results',date+'.json'),bad=JSON.parse(fs.readFileSync(rf));bad[0].source.url='https://www1.mbrace.or.jp/od2/K/203001/k300102.lzh';bad[0].payout.source_url=bad[0].source.url;const bytes=JSON.stringify(bad);fs.writeFileSync(rf,bytes);fs.writeFileSync(rf.replace('.json','.sha256'),hash(bytes));
+ assert.equal(condition(conditionalReport(dir,definition,{now:now+86400000})).excluded,1);results(dir);
  const f=predictionFile(dir),original=fs.readFileSync(f,'utf8'),changed=JSON.parse(original);changed.conditions[0].combos=['6-5-4'];fs.writeFileSync(f,JSON.stringify(changed));assert.throws(()=>conditionalReport(dir,definition,{now:now+86400000}),/変更/);fs.writeFileSync(f,original);
  const saved=JSON.parse(original),sfile=path.join(dir,'snapshots',date,'01','R1',saved.source_snapshot_id+'.json'),source=JSON.parse(fs.readFileSync(sfile));
  assert.throws(()=>conditionalSelection(source,definition,{now:freeze+1000,activatedAt:new Date(now+1000).toISOString()}),/有効化前/);

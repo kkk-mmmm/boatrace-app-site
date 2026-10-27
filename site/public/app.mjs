@@ -214,7 +214,7 @@ function showView(name) {
   view = name;
   updateRaceContext();
   $('releases-view').hidden = name !== 'releases';
-  for(const selector of ['.venue-picker','.update-bar','.meeting-summary','#message'])document.querySelector(selector)?.toggleAttribute('hidden',name==='releases' || selector==='#message'&&!$('message').textContent);
+  for(const selector of ['.venue-picker','.update-bar','.meeting-summary','#message'])document.querySelector(selector)?.toggleAttribute('hidden',name==='releases' || name==='archive'&&selector!=='.venue-picker' || selector==='#message'&&!$('message').textContent);
   $('live-view').hidden = name !== 'live';
   $('archive-view').hidden = name !== 'archive';
   $('opportunities-section').hidden = name !== 'live';
@@ -228,7 +228,7 @@ function showView(name) {
   identifyVenue();
 }
 
-function notify(message) { $('message').textContent = message; $('message').hidden = !message || view==='releases'; }
+function notify(message) { $('message').textContent = message; $('message').hidden = !message || view!=='live'; }
 
 
 function renderOpportunities() {return preserveViewport(renderOpportunitiesContent);}

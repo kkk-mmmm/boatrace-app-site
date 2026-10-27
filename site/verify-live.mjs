@@ -288,6 +288,13 @@ try{
  if(upcoming.length){const target=upcoming.at(-1);await run(`document.querySelector('[data-upcoming-venue="${target.venue}"][data-upcoming-race="${target.race}"]').click()`);await wait(`document.getElementById('venue-select').value==='${target.venue}' && document.querySelector('[data-race="${target.race}"]')?.getAttribute('aria-pressed')==='true'`);assert.equal(await run("document.getElementById('live-view').hidden"),false);}
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
  const upcomingReport={checked_at:new Date().toISOString(),races:upcoming,navigation_verified:upcoming.length>0,mobile_overflow:false,errors};fs.writeFileSync(path.join(output,'upcoming.json'),JSON.stringify(upcomingReport,null,2)+'\n');console.log('::notice title=Published upcoming races verification::'+JSON.stringify(upcomingReport));
+ await send('Page.navigate',{url:base+'#archive'});
+ await wait("document.querySelectorAll('#experiment-content .study').length>0 && document.querySelector('[data-study-count]')?.textContent.includes('条件に合う記録')");
+ const studyResponse=await get('data/experiments.json'),studies=await studyResponse.json();assert.equal(studies.kind,'STRATEGY_EXPERIMENT_ARCHIVE');
+ const study=studies.experiments.find(s=>s.definition.id==='ev-top10-four-box-20261027');assert.ok(study);assert.equal(study.definition.venue_codes.length,24);assert.equal(study.definition.through,'2026-11-26');assert.equal(study.records.length,0);
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);assert.deepEqual(errors,[]);
+ const studyReport={status:study.status,activated_at:study.activated_at,summary:study.summary,days:study.record_days.length,mobile_overflow:false};
+ fs.writeFileSync(path.join(output,'study.json'),JSON.stringify(studyReport,null,2)+'\n');console.log('::notice title=Published strategy study verification::'+JSON.stringify(studyReport));
  await send('Page.navigate',{url:base+'verification/'});
  await wait("document.querySelectorAll('[data-verification-date]').length===7 && document.getElementById('verification-status').textContent.includes('日本時間')");
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);

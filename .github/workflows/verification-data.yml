@@ -29,7 +29,7 @@ jobs:
           node-version: 24
       - name: Check immutable record and payout handling
         run: |
-          node --test tools/prediction/test_prospective.mjs
+          node --test tools/prediction/test_prospective.mjs tools/prediction/test_experiments.mjs
           python -B tools/site/test_verification_results.py
       - name: Check approved runtime
         run: node site/check-approval.mjs | grep -x approved=true
@@ -59,10 +59,12 @@ jobs:
         run: |
           if [ "$MODE" = capture ]; then
             node tools/prediction/prospective.mjs capture site/staging /tmp/boatrace-verification
+            node tools/prediction/experiments.mjs capture /tmp/boatrace-verification site/experiments.json site/staging
           elif [ "$MODE" = evaluate ]; then
             python tools/site/verification_results.py --verification-directory /tmp/boatrace-verification
             mkdir -p /tmp/boatrace-verification/results
             node tools/prediction/prospective.mjs evaluate /tmp/boatrace-verification /tmp/boatrace-verification/results
+            node tools/prediction/experiments.mjs finalize /tmp/boatrace-verification site/experiments.json
           else
             echo 'Unknown evaluation mode'
             exit 1

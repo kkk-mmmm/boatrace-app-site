@@ -146,6 +146,11 @@ try{
  const metrics=await send('Page.getLayoutMetrics');
  fs.writeFileSync(path.join(output,'desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:1440,height:metrics.cssContentSize.height,scale:1}})).data,'base64'));
  assert.equal(await run("document.getElementById('exhibition-tab').textContent"),'展示情報');
+ assert.equal(await run("document.getElementById('entry-statistics-details').open"),false);
+ await run("document.querySelector('#entry-statistics-details>summary').click()");
+ assert.ok((await run("document.getElementById('entry-statistics-details').textContent")).includes('枠別統計：'));
+ await run("document.querySelector('#entry-statistics-details>summary').click()");
+
  assert.equal(await run("document.getElementById('prediction-details').open"),false);
  assert.equal(await run("document.querySelector('.time-note').closest('details').id"),'prediction-details');
  const closedPredictionDetailsHeight=await run("document.getElementById('prediction-details').getBoundingClientRect().height");assert.ok(closedPredictionDetailsHeight<80);

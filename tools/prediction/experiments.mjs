@@ -89,7 +89,7 @@ export function experimentReport(directory,definition,{now=Date.now()}={}){
  if(fs.existsSync(definitionFile))assert(digest(read(definitionFile))===digest(d),'登録済みの検証ルールを変更できません');
  const article=path.join(root,'article.json');if(fs.existsSync(article)){const a=read(article),{integrity_sha256,...body}=a;assert(integrity_sha256===digest(body)&&a.definition_sha256===digest(d),'記事原本の変更を検出');return a;}
  const activationFile=path.join(root,'activation.json'),activatedAt=fs.existsSync(activationFile)?read(activationFile).activated_at:null;
- const results=verifiedResults(directory,{from:d.from,through:d.through}),rows=[];
+ const results=verifiedResults(directory,{from:d.from,through:d.through,now}),rows=[];
  for(const file of walk(path.join(root,'predictions'))){
   const row=read(file),{integrity_sha256,...body}=row;assert(integrity_sha256===digest(body)&&row.definition_sha256===digest(d),'検証選定記録の変更を検出');
   const sourceFile=path.join(directory,'snapshots',row.date,row.venue_code,`R${row.race_no}`,row.source_snapshot_id+'.json');
@@ -100,12 +100,12 @@ export function experimentReport(directory,definition,{now=Date.now()}={}){
  }
  const seen=new Set(rows.map(r=>r.key));for(const file of walk(path.join(root,'inventory'))){const p=read(file),key=`${p.date}/${p.venue_code}/${p.race_no}`;if(!seen.has(key)&&Date.parse(p.deadline_at)<=now)rows.push({...p,key,status:'MISSING_PROPOSAL',reason:'有効な締切前の4艇BOX記録がありません'});}
  rows.sort((a,b)=>b.date.localeCompare(a.date)||a.venue_code.localeCompare(b.venue_code)||a.race_no-b.race_no);
- const summary=summarizeExperiment(rows),ended=jst(now)>d.through,status=!activatedAt?'PENDING_ACTIVATION':jst(now)<d.from?'SCHEDULED':!ended?'RECORDING':summary.pending?'AWAITING_RESULTS':'COMPLETED';
+ const summary=summarizeExperiment(rows),ended=jst(now)>d.through,archivePending=rows.some(r=>r.selected_lanes&&(!results.get(r.key)?.source||results.get(r.key)?.source_conflict)),status=!activatedAt?'PENDING_ACTIVATION':jst(now)<d.from?'SCHEDULED':!ended?'RECORDING':summary.pending?'AWAITING_RESULTS':archivePending?'AWAITING_ARCHIVE':'COMPLETED';
  const report={schema_version:1,kind:'PROSPECTIVE_STRATEGY_EXPERIMENT',definition:d,activated_at:activatedAt,definition_sha256:digest(d),generated_at:new Date(now).toISOString(),status,summary,by_date:groups(rows,r=>r.date),by_venue:groups(rows,r=>r.venue_code),by_grade:groups(rows,r=>r.grade||'未確認'),by_in_probability:groups(rows,r=>band(r.in_probability)),by_favorite_probability:groups(rows,r=>band(r.first_probabilities?.length?Math.max(...r.first_probabilities.map(x=>x.probability)):null)),by_model:groups(rows,r=>r.model_coefficient_id||r.model_id||'未確認'),coverage:{known_venues:walk(path.join(root,'venues')).map(read),inventory_races:walk(path.join(root,'inventory')).length,notes:'全24場を対象。取得できなかった開催・レースは全数を保証できず、既知の出走予定に対する記録欠損を別表示します。'},records:rows};
  return report;
 }
 export function finalizeExperiments(directory,definitions,{now=Date.now()}={}){
- for(const d of definitions){if(fs.existsSync(path.join(directory,'experiments',d.id,'article.json')))continue;const report=experimentReport(directory,d,{now});if(report.status==='COMPLETED'&&report.summary.settled>0)immutable(path.join(directory,'experiments',d.id,'article.json'),seal({...report,article_archived_at:new Date(now).toISOString()}));}
+ for(const d of definitions){if(jst(now)<=d.through||fs.existsSync(path.join(directory,'experiments',d.id,'article.json')))continue;const report=experimentReport(directory,d,{now});if(report.status==='COMPLETED'&&report.summary.settled>0)immutable(path.join(directory,'experiments',d.id,'article.json'),seal({...report,article_archived_at:new Date(now).toISOString()}));}
 }
 export function publicExperiments(directory,definitions,{now=Date.now()}={}){return {schema_version:1,kind:'STRATEGY_EXPERIMENT_ARCHIVE',generated_at:new Date(now).toISOString(),experiments:definitions.map(d=>experimentReport(directory,d,{now}))};}
 export function writePublicExperiments(directory,definitions,outputDirectory,{now=Date.now()}={}){

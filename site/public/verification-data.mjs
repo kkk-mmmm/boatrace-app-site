@@ -8,6 +8,7 @@ export function verificationRow(proposal,result,now=Date.now(),cohort='WORKER_RE
  const probability=[...proposal.probabilities].sort((a,b)=>b.probability-a.probability||a.combo.localeCompare(b.combo)),values=rankExpectedValue(probability,proposal.odds.items),quote=new Map(proposal.odds.items.map(o=>[o.combo,o.odds]));
  const rows=a=>a.slice(0,10).map(x=>({combo:x.combo,probability:x.probability,odds:quote.get(x.combo)??null,value:quote.has(x.combo)?x.probability*quote.get(x.combo):null}));
  const saved={...base,model_id:proposal.model_id,model_name:proposal.model_name,proposal_saved_at:proposal.proposal_saved_at,odds_fetched_at:proposal.odds.fetched_at,cutoff_at:proposal.cutoff_at,probability_top10:rows(probability),value_top10:rows(values)};
+ if(result?.source_conflict)return {...saved,status:'EXCLUDED',reason:'取得元の間で結果・払戻が一致しないため、確認が必要です'};
  if(!result||result.status!=='CONFIRMED')return {...saved,status:'MISSING_RESULT',reason:'確定結果は未取得・照合待ちです'};
  const archive=result.kind==='OFFICIAL_ARCHIVE'&&/^https:\/\/www1\.mbrace\.or\.jp\/od2\/K\/\d{6}\/k\d{6}\.lzh$/.test(result.source_url||'')&&/^[a-f0-9]{64}$/.test(result.source_sha256||'');
  if(!archive&&!validResult(result,result.date,now))return {...saved,status:'EXCLUDED',reason:'結果の出典・時刻を検証できません'};

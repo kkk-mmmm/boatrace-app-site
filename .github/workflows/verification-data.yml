@@ -1,5 +1,7 @@
 name: Preserve forecasts and evaluate completed results
 on:
+  schedule:
+    - cron: '15 * * * *'
   workflow_call:
     inputs:
       mode:
@@ -9,10 +11,11 @@ on:
     inputs:
       mode:
         type: choice
-        options: [capture, evaluate]
+        options: [capture, evaluate, hourly]
         default: capture
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: verification-data-store
   cancel-in-progress: false
@@ -20,6 +23,9 @@ jobs:
   preserve:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Reusable callers may themselves be scheduled; explicit mode always wins.
+      MODE: ${{ inputs.mode || 'hourly' }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -29,7 +35,7 @@ jobs:
           node-version: 24
       - name: Check immutable record and payout handling
         run: |
-          node --test tools/prediction/test_prospective.mjs tools/prediction/test_experiments.mjs
+          node --test tools/prediction/test_prospective.mjs tools/prediction/test_experiments.mjs tools/prediction/test_hourly_verification.mjs
           python -B tools/site/test_verification_results.py
       - name: Check approved runtime
         run: node site/check-approval.mjs | grep -x approved=true
@@ -38,24 +44,22 @@ jobs:
           git fetch origin verification-data
           git worktree add --detach /tmp/boatrace-verification FETCH_HEAD
       - uses: actions/download-artifact@v4
-        if: inputs.mode == 'capture' && github.event_name != 'workflow_dispatch'
+        if: env.MODE == 'capture' && github.event_name != 'workflow_dispatch'
         with:
           name: venues-current
           path: site/staging
       - name: Capture current Worker data on explicit manual run
-        if: inputs.mode == 'capture' && github.event_name == 'workflow_dispatch'
+        if: env.MODE == 'capture' && github.event_name == 'workflow_dispatch'
         run: |
           export BOATRACE_ODDS_API_URL="$(node site/odds-provider.mjs)"
           node site/collect-cloudflare.mjs
       - uses: actions/cache/restore@v4
-        if: inputs.mode == 'evaluate'
+        if: env.MODE == 'evaluate'
         with:
           path: site/cache/annual-history
           key: annual-history-verification-${{ github.run_id }}
           restore-keys: annual-history-
       - name: Preserve observations or match completed official results
-        env:
-          MODE: ${{ inputs.mode }}
         run: |
           if [ "$MODE" = capture ]; then
             node tools/prediction/prospective.mjs capture site/staging /tmp/boatrace-verification
@@ -65,23 +69,35 @@ jobs:
             mkdir -p /tmp/boatrace-verification/results
             node tools/prediction/prospective.mjs evaluate /tmp/boatrace-verification /tmp/boatrace-verification/results
             node tools/prediction/experiments.mjs finalize /tmp/boatrace-verification site/experiments.json
+          elif [ "$MODE" = hourly ]; then
+            node tools/prediction/hourly_verification.mjs /tmp/boatrace-verification site/experiments.json
           else
             echo 'Unknown evaluation mode'
             exit 1
           fi
       - name: Commit new records without overwriting earlier observations
+        id: store
         run: |
           cd /tmp/boatrace-verification
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add .
-          git diff --cached --quiet && exit 0
-          git commit -m 'Preserve forecast observations and completed-day evaluation'
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m 'Preserve immutable forecasts and verified race results'
           git push origin HEAD:verification-data
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Publish only after new result records have been saved
+        if: env.MODE != 'capture' && steps.store.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update-pages.yml --ref main
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: operational-review-${{ inputs.mode }}
+          name: operational-review-${{ env.MODE }}
           path: /tmp/boatrace-verification/reports/
           if-no-files-found: ignore
           retention-days: 30

@@ -1,3 +1,5 @@
+import {WorkflowMonitor} from './monitor.mjs';
+export {WorkflowMonitor};
 import {migrateHistory,saveEnvironment,saveHistoryRecord,historyRecords,rolloverHistory,savePublicArchive,publicArchiveRows} from './history-store.mjs';
 import {loadTide} from './tides.mjs';
 import {verificationRow,verificationResponse} from '../../site/public/verification-data.mjs';
@@ -49,6 +51,7 @@ export function opportunityRows(targets, records, now, {featured=false}={}) {
 
 export default {
   async scheduled(event,env,ctx) {
+    if(env.WORKFLOW_MONITOR)ctx.waitUntil(env.WORKFLOW_MONITOR.get(env.WORKFLOW_MONITOR.idFromName('production-v1')).fetch('https://internal/tick',{method:'POST'}).then(r=>{if(!r.ok)throw Error('Workflow monitor failed');}));
     ctx.waitUntil((async()=>{
       const response=await stub(env).fetch('https://internal/start',{method:'POST',body:JSON.stringify({scheduled_at:event.scheduledTime})});
       if(!response.ok)throw Error('定期更新の開始に失敗: '+await response.text());
@@ -59,9 +62,14 @@ export default {
     const allowedOrigins=new Set([env.SITE_ORIGIN,...(env.EXTRA_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean)]);
     const cors={'Access-Control-Allow-Origin':origin&&allowedOrigins.has(origin)?origin:env.SITE_ORIGIN,'Vary':'Origin','Access-Control-Allow-Methods':'GET, OPTIONS'};
     if(origin && !allowedOrigins.has(origin))return json({error:'許可されていないオリジンです'},403);
-    if(!['/v1/odds','/v1/verification'].includes(url.pathname))return json({error:'Not found'},404,cors);
+    if(!['/v1/odds','/v1/verification','/v1/health'].includes(url.pathname))return json({error:'Not found'},404,cors);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     if(request.method!=='GET')return json({error:'Method not allowed'},405,{...cors,Allow:'GET, OPTIONS'});
+    if(url.pathname==='/v1/health'){
+      if(url.search)return json({error:'Invalid parameters'},400,cors);
+      try{const r=await env.WORKFLOW_MONITOR.get(env.WORKFLOW_MONITOR.idFromName('production-v1')).fetch('https://internal/status');return new Response(r.body,{status:r.status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});}
+      catch{return json({status:'UNAVAILABLE'},503,cors);}
+    }
     if(url.pathname==='/v1/verification'){
       const keys=[...url.searchParams.keys()];
       if(keys.some(k=>!['date','venue','offset','limit'].includes(k))||keys.some(k=>url.searchParams.getAll(k).length!==1))return json({error:'Invalid verification parameters'},400,cors);

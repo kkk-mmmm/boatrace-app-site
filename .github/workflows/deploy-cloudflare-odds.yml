@@ -21,10 +21,16 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_MONITOR_TOKEN: ${{ secrets.GH_MONITOR_TOKEN }}
           WRANGLER_SEND_METRICS: 'false'
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo 'CloudflareのAPIトークンとアカウントIDをGitHub Secretsへ設定してください。'
             exit 1
+          fi
+          if [ -n "$GITHUB_MONITOR_TOKEN" ]; then
+            printf '%s' "$GITHUB_MONITOR_TOKEN" | npx wrangler secret put GITHUB_MONITOR_TOKEN
+          else
+            echo '::warning::GITHUB_MONITOR_TOKEN未設定。監視は動作しますが実行漏れの自動復旧には専用トークン登録後の再デプロイが必要です。'
           fi
           npm run deploy

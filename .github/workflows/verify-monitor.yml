@@ -1,0 +1,20 @@
+name: Verify independent schedule monitor
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Observe monitor and recovery without changing production
+        env:
+          MONITOR_WAIT_MS: '720000'
+        run: node site/verify-monitor.mjs

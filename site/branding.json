@@ -1,6 +1,11 @@
 {
-  "name": "フネヨミ",
-  "tagline": "ボートレース・競艇予想",
+  "name": "フネヨミ | ボートレース予想とオッズ",
+  "tagline": "ボートレース予想とオッズ",
   "base_url": "https://funeyomi.win/",
-  "theme_color": "#087bb4"
+  "theme_color": "#087bb4",
+  "short_name": "フネヨミ",
+  "alternate_names": [
+    "フネヨミ",
+    "フネヨミ｜ボートレース・競艇予想"
+  ]
 }

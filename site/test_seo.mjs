@@ -52,3 +52,24 @@ test('ヘッダーの4項目は全ページで同じ順番を保ち、独立画�
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('検索向けサイト名はホームのWebSite・タイトル・H1と全ページのOGPで一致し、略称を保持する',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-site-name-'));
+ try{
+  writeSeoPages(dir,template,[],now);
+  assert.equal(branding.name,'フネヨミ | ボートレース予想とオッズ');
+  for(const route of ['',...venues.map(v=>`venues/${v.code}/`),...informationPages().map(p=>p.slug+'/')]){
+   const html=fs.readFileSync(path.join(dir,route,'index.html'),'utf8');
+   const graph=JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'];
+   const websites=graph.filter(n=>n['@type']==='WebSite');
+   assert.equal(websites.length,route?0:1,route||'home');
+   assert.ok(html.includes(`property="og:site_name" content="${branding.name}"`));
+   const svg=html.match(/<link rel="icon" href="([^"]+)" type="image\/svg\+xml">/)[1];
+   assert.equal(svg,html.match(/class="brand-icon" src="([^"]+)"/)[1]);
+   assert.ok(html.includes('<link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">'));
+   if(!route){assert.equal(websites[0].name,branding.name);assert.equal(websites[0].url,branding.base_url);assert.ok(websites[0].alternateName.includes('フネヨミ'));assert.ok(html.includes(`<title>${branding.name}</title>`));assert.ok(html.includes(`<h1 class="seo-page-title">${branding.name}</h1>`));}
+  }
+  const manifest=JSON.parse(fs.readFileSync(path.join(dir,'site.webmanifest')));assert.equal(manifest.name,branding.name);assert.equal(manifest.short_name,'フネヨミ');
+  const robots=fs.readFileSync(path.join(dir,'robots.txt'),'utf8');assert.match(robots,/User-agent: \*\nAllow: \//);assert.doesNotMatch(robots,/Disallow:/);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

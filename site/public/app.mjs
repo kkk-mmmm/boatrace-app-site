@@ -1,6 +1,7 @@
 import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups, raceEntryAlerts, renderVenueSummary, renderRaceResult, upcomingRaceList, renderEnvironment, renderCourse2} from './view.mjs';
 import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveFeaturedRaces, proposalRace, PROPOSAL_LEAD_MS, resultComparison} from './odds-live.mjs';
 import {renderDevelopment} from './development.mjs';
+import {renderExperimentArchive} from './experiments-view.mjs';
 import {confidenceHTML,radarHTML,mountRadar} from './charts.mjs';
 // Update matching DOM nodes in place so reading and interaction state survive polling.
 function patchHTML(root,html) {
@@ -157,7 +158,15 @@ function clearCurrent() {
 }
 const table = (headers, rows) => `<div class="table-wrap"><table><thead><tr>${headers.map(h => `<th scope="col">${e(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
+let experimentsLoaded=false,experimentsLoading=false;
+async function loadExperiments(){
+ if(experimentsLoaded||experimentsLoading)return;experimentsLoading=true;
+ try {const response=await fetch(new URL('./data/experiments.json',document.baseURI));if(!response.ok)throw Error('企画取得失敗');renderExperimentArchive($('experiment-content'),await response.json());experimentsLoaded=true;}
+ catch {$('experiment-content').textContent='検証企画を読み込めませんでした。検証記録タブを押して再確認してください。';}
+ finally{experimentsLoading=false;}
+}
 function showView(name) {
+  if(name==='archive')loadExperiments();
   view = name;
   $('releases-view').hidden = name !== 'releases';
   for(const selector of ['.venue-picker','.update-bar','.meeting-summary','#message'])document.querySelector(selector)?.toggleAttribute('hidden',name==='releases' || selector==='#message'&&!$('message').textContent);

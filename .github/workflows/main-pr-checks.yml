@@ -20,7 +20,7 @@ jobs:
           node-version: 24
       - name: Verify public runtime, data guards and model update rules
         run: |
-          node --test tools/prediction/test_strategies.mjs tools/prediction/test_return_filter.mjs site/test_validation_review.mjs cloudflare/odds/test_monitor.mjs tools/prediction/test_hourly_verification.mjs tools/prediction/test_experiments.mjs site/test_race_metrics.mjs site/test_race_context.mjs site/test_verification_data.mjs site/test_data.mjs site/test_seo.mjs site/test_update.mjs site/test_approval.mjs site/test_releases.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs tools/prediction/test_history_updates.mjs tools/prediction/test_monthly_promotion.mjs tools/prediction/test_prospective.mjs
+          node --test tools/prediction/test_conditional_records.mjs tools/prediction/test_strategies.mjs tools/prediction/test_return_filter.mjs site/test_validation_review.mjs cloudflare/odds/test_monitor.mjs tools/prediction/test_hourly_verification.mjs tools/prediction/test_experiments.mjs site/test_race_metrics.mjs site/test_race_context.mjs site/test_verification_data.mjs site/test_data.mjs site/test_seo.mjs site/test_update.mjs site/test_approval.mjs site/test_releases.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs tools/prediction/test_history_updates.mjs tools/prediction/test_monthly_promotion.mjs tools/prediction/test_prospective.mjs
           python -B site/test_data_pr.py
           node site/check-approval.mjs | grep -x approved=true
       - name: Verify append-only release notes

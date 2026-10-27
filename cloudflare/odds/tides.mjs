@@ -1,3 +1,4 @@
+const tideLoads=new WeakMap();
 // Reference stations, not water-level gauges inside the race course.
 export const TIDE_STATIONS={
  '03':['TK','東京'],'04':['TK','東京'],'06':['MI','舞阪'],'07':['G4','三河'],'08':['ZD','鬼崎'],'09':['TB','鳥羽'],
@@ -32,7 +33,11 @@ export async function loadTide(storage,venue,date,deadline,fetchText,now=Date.no
  const [station,name]=mapping,key=`jma:${date}:${station}`,source_url=tideSource(station,date.slice(0,4));let previous=await storage.get(key);
  if(previous?.issue&&now-Date.parse(previous.attempted_at)<300000)return previous.issue;
  try{
-  if(!previous?.day){const text=await fetchText(source_url,fetch,128*1024);previous={day:parseTideYear(text,date,station),fetched_at:new Date(now).toISOString()};await storage.put(key,previous);}
+  if(!previous?.day){
+   let loads=tideLoads.get(storage);if(!loads){loads=new Map();tideLoads.set(storage,loads);}let pending=loads.get(key);
+   if(!pending){pending=(async()=>{const text=await fetchText(source_url,fetch,128*1024),value={day:parseTideYear(text,date,station),fetched_at:new Date(now).toISOString()};await storage.put(key,value);return value;})();loads.set(key,pending);}
+   try{previous=await pending;}finally{if(loads.get(key)===pending)loads.delete(key);}
+  }
   return tideAt(previous.day,deadline,{name,source_url,fetched_at:previous.fetched_at});
  }catch(e){const issue={status:'UNAVAILABLE',kind:'PREDICTED_REFERENCE',station_code:station,station_name:name,source_url,reason:String(e.message).slice(0,160)};await storage.put(key,{issue,attempted_at:new Date(now).toISOString()});return issue;}
 }

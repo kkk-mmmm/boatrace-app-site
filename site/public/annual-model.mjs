@@ -121,7 +121,7 @@ export function annualDataDetails(race,model,e){
 }
 export function annualHistory(race,model){
  const conditional=s=>({samples:s?.[4]||0,st_mean:s?.[4]?meanST(s):null,st_sd:s?.[4]>1?sdST(s):null});
- return {trained_from:model.trained_from,trained_through:model.trained_through,venue:annualVenueSummary(race,model),course2_escape:course2Stats(race,model.profiles),context_features_applied:model.engine_version===CONTEXT_ANNUAL_ENGINE,lanes:race.entries.map(e=>{
+ return {trained_from:model.trained_from,trained_through:model.trained_through,venue:annualVenueSummary(race,model),course2_escape:course2Stats(race,model.profiles),context_features_applied:model.engine_version===CONTEXT_ANNUAL_ENGINE,context_usage:Object.fromEntries(['course2_escape','course2_sashi','wind_speed','wind_direction','tide','tide_trend'].map((key,i)=>[key,model.engine_version===CONTEXT_ANNUAL_ENGINE&&Math.abs(model.coefficients[17+i])>1e-10])),lanes:race.entries.map(e=>{
   const p=model.profiles.players[e.racer_id]||{},s=p['l'+e.lane];
   return {lane:e.lane,data_details:annualDataDetails(race,model,e),exhibition_rank:exhibitionRank(race.entries,e.lane),day:conditional(p['d'+race.context?.meeting_day]),phase:conditional(p['p'+race.context?.phase]),
    exhibition_rank_gap:s?.[10]?{n:s[10],mean:s[11]/s[10],rmse:Math.sqrt((s[12]||0)/s[10])}:null,exhibition_st_gap:pairedExhibitionGap(model,e.racer_id,race.date),pressure:{status:'UNCONFIRMED'}};

@@ -28,11 +28,18 @@ export async function historyRecords(storage,from,through){
 export async function rolloverHistory(storage,date){
  const from=new Date(Date.parse(date)-29*86400000).toISOString().slice(0,10);
  // Never use storage.deleteAll(): that would erase SQL history at midnight.
- const rows=await storage.list({prefix:''});
- for(const [key,value] of rows){
-  if(value?.date>=from&&key.startsWith('proposal:'))await saveHistoryRecord(storage,'proposal',value);
-  if(value?.date>=from&&key.startsWith('result:')&&value.status==='CONFIRMED')await saveHistoryRecord(storage,'result',value);
-  if(!key.startsWith('history:')||value.date<from){if(storage.delete)await storage.delete(key);}
+ let cursor;
+ while(true){
+  const batch=await storage.list({prefix:'',limit:128,...(cursor?{startAfter:cursor}:{})});
+  const rows=[...batch].filter(([key])=>!cursor||key>cursor).sort(([a],[b])=>a<b?-1:a>b?1:0);
+  if(!rows.length)break;
+  for(const [key,value] of rows){
+   if(value?.date>=from&&key.startsWith('proposal:'))await saveHistoryRecord(storage,'proposal',value);
+   if(value?.date>=from&&key.startsWith('result:')&&value.status==='CONFIRMED')await saveHistoryRecord(storage,'result',value);
+   if(!key.startsWith('history:')||value.date<from){if(storage.delete)await storage.delete(key);}
+  }
+  cursor=rows.at(-1)[0];if(batch.size<128)break;
  }
+
  if(storage.sql){storage.sql.exec('DELETE FROM race_environment WHERE date<?',from);storage.sql.exec('DELETE FROM verification_records WHERE date<?',from);}
 }

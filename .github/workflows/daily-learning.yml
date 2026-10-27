@@ -102,6 +102,7 @@ jobs:
     needs: learning
     permissions:
       contents: write
+      actions: write
     uses: ./.github/workflows/verification-data.yml
     with:
       mode: evaluate

@@ -157,6 +157,7 @@ jobs:
     if: needs.approval.outputs.approved == 'true'
     permissions:
       contents: write
+      actions: write
     uses: ./.github/workflows/verification-data.yml
     with:
       mode: capture

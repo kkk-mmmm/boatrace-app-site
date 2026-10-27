@@ -11,7 +11,7 @@
     "VERIFICATION_ARCHIVE_URL": "https://funeyomi.win/data/verification.json",
     "TARGETS_URL": "https://funeyomi.win/data/odds-targets.json"
   },
-  "durable_objects": {"bindings": [{"name": "ODDS", "class_name": "OddsCoordinator"}]},
-  "migrations": [{"tag": "v1", "new_sqlite_classes": ["OddsCoordinator"]}],
+  "durable_objects": {"bindings": [{"name": "ODDS", "class_name": "OddsCoordinator"}, {"name":"WORKFLOW_MONITOR","class_name":"WorkflowMonitor"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["OddsCoordinator"]}, {"tag":"v2-workflow-monitor","new_sqlite_classes":["WorkflowMonitor"]}],
   "observability": {"enabled": true}
 }

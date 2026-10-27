@@ -11,3 +11,14 @@ test('Workersの公式気象パースとSQLite移行・日付変更後の記録�
  const weather=await(await mf.dispatchFetch('https://example.test/weather',{method:'POST',body:html})).json();assert.equal(weather.wind_speed_mps,5);assert.equal(weather.wind_direction_code,11);assert.equal(weather.wave_height_cm,4);assert.equal(weather.air_temperature_c,21);assert.match(weather.measurement_label,/11R/);
  const db=await(await mf.dispatchFetch('https://example.test/db')).json();assert.equal(db.environment.length,1);assert.equal(db.environment[0].wind_speed_mps,0);assert.equal(db.records.length,1);assert.equal(JSON.parse(db.records[0].payload).token,'original');assert.equal(db.programRemoved,true);assert.equal(db.archiveCount,204);
 });
+test('独立監視DOをSQLite bindingで実行し、保存状態の読み取りはGitHubを再取得しない',{timeout:30000},async t=>{
+ const source=`import {WorkflowMonitor} from './monitor.mjs';
+ export class MonitorProbe extends WorkflowMonitor {async github(path){if(!path.includes('/runs?'))throw Error('Unexpected write');const now=new Date().toISOString();return {workflow_runs:[{id:42,head_branch:'main',event:'schedule',status:'completed',conclusion:'success',created_at:now,updated_at:now}]};}}
+ export default{fetch(request,env){return env.MONITOR.get(env.MONITOR.idFromName('test')).fetch(request);}};`;
+ const output=await build({stdin:{contents:source,resolveDir:directory},format:'esm',platform:'browser',bundle:true,write:false});
+ const mf=new Miniflare({modules:true,script:output.outputFiles[0].text,compatibilityDate:'2026-06-11',durableObjects:{MONITOR:{className:'MonitorProbe',useSQLite:true}}});t.after(()=>mf.dispose());
+ const first=await(await mf.dispatchFetch('https://internal/tick',{method:'POST'})).json();assert.equal(first.status,'OK');assert.equal(first.workflows.length,3);
+ const status=await(await mf.dispatchFetch('https://internal/status')).json();assert.deepEqual(status,first);
+ const repeated=await(await mf.dispatchFetch('https://internal/tick',{method:'POST'})).json();assert.deepEqual(repeated,first);
+ assert.equal((await mf.dispatchFetch('https://internal/retry',{method:'POST'})).status,404);
+});

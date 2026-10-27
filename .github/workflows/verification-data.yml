@@ -1,4 +1,5 @@
 name: Preserve forecasts and evaluate completed results
+run-name: Verification data (${{ inputs.mode || 'hourly' }})
 on:
   schedule:
     - cron: '15 * * * *'

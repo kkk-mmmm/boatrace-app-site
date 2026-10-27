@@ -72,6 +72,17 @@ export function scenarioProbabilities(rows) {
     other: rows.filter(row => !row.combo.startsWith('1-')).reduce((sum, row) => sum + row.probability, 0)};
 }
 export const RETURN_CANDIDATE_RULE=Object.freeze({minimum_odds:50,minimum_probability:.01});
+// Keep race-level probabilities unconditional: never recalculate them after a ticket filter.
+export function firstPlaceProbabilities(rows){
+ if(!scenarioProbabilities(rows)||rows.some(p=>!/^([1-6])-([1-6])-([1-6])$/.test(p.combo)||new Set(p.combo.split('-')).size!==3||!Number.isFinite(p.probability)||p.probability<0||p.probability>1))return null;
+ const lanes=Array(6).fill(0);for(const p of rows)lanes[Number(p.combo[0])-1]+=p.probability;return lanes;
+}
+export function conditionalRanking(rows,quotes,{scenario='all',currentOdds=false,base='return',maximum_in=null,lane=null,minimum_first=.2,relation='head'}={}){
+ if(!['return','value'].includes(base)||!['head','any'].includes(relation)||maximum_in!==null&&(!Number.isFinite(maximum_in)||maximum_in<0||maximum_in>1)||!Number.isFinite(minimum_first)||minimum_first<0||minimum_first>1)return [];
+ const lanes=firstPlaceProbabilities(rows);
+ if(!lanes||maximum_in!==null&&!(lanes[0]<maximum_in)||lane!==null&&(!Number.isInteger(lane)||lane<2||lane>6||!(lanes[lane-1]>=minimum_first)))return [];
+ return predictionRanking(rows,quotes,{scenario,tab:base,currentOdds}).filter(p=>lane===null||(relation==='head'?Number(p.combo[0])===lane:p.combo.split('-').includes(String(lane))));
+}
 export function predictionRanking(rows, quotes, {scenario = 'all', tab = 'probability', currentOdds = false} = {}) {
   const prices = new Map(quotes.filter(row => Number.isFinite(row.odds) && row.odds > 0).map(row => [row.combo, row.odds]));
   const byValue=tab==='value'||tab==='return';

@@ -154,6 +154,15 @@ try{
  if(!returnRows.length)assert.ok(await run("!!document.querySelector('.empty-value')"));
  // Check the published scenario filters and full incremental list, using
  // probability order so unavailable market quotes cannot hide combinations.
+ assert.equal(await run("document.getElementById('condition-tab').textContent"),'条件別検証');
+ await run("document.getElementById('condition-tab').click()");
+ assert.equal(await run("document.getElementById('prediction-panel').getAttribute('aria-labelledby')"),'condition-tab');
+ assert.equal(await run("document.getElementById('condition-preset').value"),'in50');
+ assert.ok(await run("document.querySelectorAll('.prediction-table tbody tr').length<=10"));
+ await run("document.getElementById('condition-limit').value='20';document.getElementById('condition-limit').dispatchEvent(new Event('change'))");
+ assert.equal(await run("document.getElementById('condition-limit').value"),'20');
+ assert.ok(await run("document.querySelectorAll('.prediction-table tbody tr').length<=20"));
+ assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
  await run("document.getElementById('probability-tab').click();document.querySelector('[data-scenario=in]').click()");
  const scenarioIn=await run("document.querySelector('[data-scenario=in] strong').textContent");assert.notEqual(scenarioIn,'—');
  await run("document.getElementById('more-predictions').click()");

@@ -190,3 +190,8 @@
 .information-page .validation-quality{padding:20px}.validation-quality label{min-width:0}.validation-quality select{width:100%;min-width:0;box-sizing:border-box}.validation-quality th,.validation-quality td{white-space:nowrap}.validation-quality .table-wrap{max-width:100%;min-width:0}@media(max-width:650px){.information-page .validation-quality{padding:14px}.validation-quality th,.validation-quality td{white-space:nowrap}}
 
 .prediction-tabs button{flex:1;min-width:0;min-height:44px}.return-rule{margin:10px 0 14px;line-height:1.8}
+
+/* Four short tabs stay legible on narrow screens; controls keep 44px targets. */
+.prediction-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.prediction-tabs button{white-space:normal;line-height:1.4}
+.condition-controls{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 10px}.condition-controls label{display:flex;flex-direction:column;gap:6px;font-size:12px;flex:1;min-width:140px}.condition-controls select{width:100%;min-height:44px;padding:8px;border:1px solid #aad0e6;border-radius:6px;background:#fff;color:var(--ink);font:inherit}.condition-status{font-weight:700;margin:10px 0}
+@media(max-width:420px){.prediction-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.prediction-tabs button{padding:10px 7px;font-size:12px}.condition-controls{gap:8px}.condition-controls label{min-width:120px}.condition-controls label:first-child{flex-basis:100%}}

@@ -191,20 +191,20 @@ function jumpToSuji(){
  const target=$('related-title');if(!target)return;target.tabIndex=-1;
  target.focus({preventScroll:true});target.closest('.related-bets').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
 }
-const mobileRaceContext=document.createElement('aside');mobileRaceContext.id='mobile-race-context';mobileRaceContext.className='mobile-race-context';mobileRaceContext.hidden=true;mobileRaceContext.setAttribute('aria-label','閲覧中のレースと買い目の選択');
-mobileRaceContext.innerHTML='<div><strong id="mobile-race-name"></strong><span id="mobile-race-deadline"></span></div><button id="mobile-suji-jump" type="button"><span id="mobile-selection-count">選択中 0点</span><span>スジ候補へ ↓</span></button>';
+const mobileRaceContext=document.createElement('aside');mobileRaceContext.id='mobile-race-context';mobileRaceContext.className='mobile-race-context';mobileRaceContext.hidden=true;mobileRaceContext.setAttribute('aria-label','今日の予想の更新と閲覧中のレース');
+mobileRaceContext.innerHTML='<div><strong id="mobile-race-name"></strong><span id="mobile-race-deadline"></span></div><button id="mobile-refresh-button" type="button" aria-label="出走表・展示・予想・オッズの表示データを更新" title="Cloudflareが保持する最新の出走表・展示・予想・オッズを再取得します"><span class="refresh-icon" aria-hidden="true">↻</span><span id="mobile-refresh-label">データ更新</span></button><button id="mobile-suji-jump" type="button"><span id="mobile-selection-count">選択中 0点</span><span>スジ候補へ ↓</span></button><span id="mobile-refresh-feedback" class="mobile-refresh-feedback" role="status" hidden></span>';
 document.body.append(mobileRaceContext);$('mobile-suji-jump').onclick=jumpToSuji;
 function updateRaceContext(){
- const card=document.querySelector('.race-card'),race=current?.date===japanDate(Date.now())?current.races?.find(r=>r.race_no===selected):null;
- const mobile=matchMedia('(max-width:650px)').matches,rect=card?.getBoundingClientRect();
- mobileRaceContext.hidden=!(mobile&&view==='live'&&race&&rect&&rect.top<0&&rect.bottom>88);
- if(!race)return;
- const label=`${current.venue} ${race.race_no}R`,deadline=Number.isFinite(Date.parse(race.deadline_at))?`${Date.now()>=Date.parse(race.deadline_at)?'締切済み':'締切'} ${shortClock(race.deadline_at)}`:'締切 未確認';
+ const race=current?.date===japanDate(Date.now())?current.races?.find(r=>r.race_no===selected):null;
+ const mobile=matchMedia('(max-width:650px)').matches,header=document.querySelector('.header');
+ mobileRaceContext.hidden=!(mobile&&view==='live'&&header&&header.getBoundingClientRect().bottom<=0);
+ const label=race?`${current.venue} ${race.race_no}R`:selectedVenue?venueName():'今日の予想',deadline=!race?'最新の取得データを確認':Number.isFinite(Date.parse(race.deadline_at))?`${Date.now()>=Date.parse(race.deadline_at)?'締切済み':'締切'} ${shortClock(race.deadline_at)}`:'締切 未確認';
  if($('mobile-race-name').textContent!==label)$('mobile-race-name').textContent=label;
  if($('mobile-race-deadline').textContent!==deadline)$('mobile-race-deadline').textContent=deadline;
- const count=predictionRaceKey===`${race.date}/${race.venue_code}/${race.race_no}`?chosenCombos.size:0;
+ const count=race&&predictionRaceKey===`${race.date}/${race.venue_code}/${race.race_no}`?chosenCombos.size:0;
  const selectionLabel=`選択中 ${count}点`;if($('mobile-selection-count').textContent!==selectionLabel)$('mobile-selection-count').textContent=selectionLabel;
- $('mobile-suji-jump').disabled=!$('related-title');
+ $('mobile-suji-jump').hidden=!race||!$('related-title');
+ $('mobile-suji-jump').disabled=!race||!$('related-title');
 }
 let raceContextFrame=null;
 const scheduleRaceContext=()=>{if(raceContextFrame!==null)return;raceContextFrame=requestAnimationFrame(()=>{raceContextFrame=null;updateRaceContext();});};
@@ -438,12 +438,26 @@ function renderArchive() {
     + '<p class="small-note">分類：締切前のローカル保存記録（第三者の時刻証明なし）。少数の検証で将来の収益性やモデルの優位性は結論づけられません。</p>';
 }
 
+let refreshFocusTarget=null;
+function setRefreshBusy(busy){
+ if(busy)refreshFocusTarget=['refresh-button','mobile-refresh-button'].includes(document.activeElement?.id)?document.activeElement:null;
+ for(const id of ['refresh-button','mobile-refresh-button']){
+  const button=$(id);button.disabled=busy;button.setAttribute('aria-busy',String(busy));
+ }
+ $('refresh-button').innerHTML=busy?'更新中…':'表示を更新 <span aria-hidden="true">↻</span>';
+ $('mobile-refresh-label').textContent=busy?'更新中…':'データ更新';
+ if(busy){$('mobile-refresh-feedback').hidden=true;$('mobile-refresh-feedback').textContent='';}
+ else{
+  if(refreshFocusTarget?.isConnected&&document.activeElement===document.body&&refreshFocusTarget.getClientRects().length)refreshFocusTarget.focus({preventScroll:true});
+  refreshFocusTarget=null;
+ }
+}
+
 async function load({forceOdds=false}={}) {
   const version = ++loadVersion;
   const requestedVenue = selectedVenue;
-  $('refresh-button').disabled = true;
-  $('refresh-button').setAttribute('aria-busy','true');
-  $('refresh-button').textContent='更新中…';
+  setRefreshBusy(true);
+  let failed=false;
   try {
     // Manual refresh reads the shared Cloudflare snapshot directly once connected,
     // preserving the displayed entries and saved proposals if that request fails.
@@ -480,6 +494,7 @@ async function load({forceOdds=false}={}) {
     applyOddsState();renderOpportunities();
     renderCurrent();
   } catch (error) {
+    failed=true;
     if (version !== loadVersion) return;
     if (current) current = {...current, update:{...current.update,status:'FAILED',message:'表示データの再取得に失敗しました。'}};
     renderCurrent();
@@ -492,9 +507,12 @@ async function load({forceOdds=false}={}) {
     $('update-dot').classList.remove('ok');
     notify(error.message + '。公式サイトも確認してください。');
   } finally { if (version === loadVersion) {
-    $('refresh-button').disabled = false;
-    $('refresh-button').setAttribute('aria-busy','false');
-    $('refresh-button').innerHTML='表示を更新 <span>↻</span>';
+    setRefreshBusy(false);
+    if(forceOdds){
+      const feedback=$('mobile-refresh-feedback');feedback.hidden=false;feedback.classList.toggle('is-error',failed||Boolean(oddsFailure));
+      feedback.textContent=failed||oddsFailure?'更新に失敗しました。もう一度お試しください。':'最新の取得データを表示しました。';
+    }
+    updateRaceContext();
   } }
 }
 for(const button of document.querySelectorAll('[data-featured-tab]'))button.addEventListener('click',()=>{featuredTab=button.dataset.featuredTab;renderOpportunities();});
@@ -511,6 +529,7 @@ $('releases-tab').addEventListener('click',()=>showView('releases'));
 const routeView=()=>showView(location.hash==='#releases'?'releases':location.hash==='#archive'?'archive':'live');
 window.addEventListener('popstate',routeView);window.addEventListener('hashchange',routeView);routeView();
 $('refresh-button').addEventListener('click',()=>load({forceOdds:true}));
+$('mobile-refresh-button').addEventListener('click',()=>$('refresh-button').click());
 await load();
 try {
   const response = await fetch(new URL('./data/archive.json', document.baseURI));

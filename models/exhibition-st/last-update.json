@@ -1,1 +1,1 @@
-{"through": "2026-10-25", "failures": [{"date": "2026-10-24", "venue_code": "17", "race_no": 9, "error": "スタート情報の艇番・STを確認できません"}], "paired_starts": 9783, "collection": {"lookback_days": 7, "max_races": 300, "attempted_races": 168, "deferred_races": 0}}
+{"through": "2026-10-27", "failures": [], "paired_starts": 11578, "collection": {"lookback_days": 7, "max_races": 300, "attempted_races": 300, "deferred_races": 13}}

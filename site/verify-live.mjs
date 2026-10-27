@@ -11,7 +11,7 @@ process.on('uncaughtException',error=>{
 });
 const output=path.resolve(process.env.SITE_VERIFY_OUTPUT || '/tmp/boatrace-public-check');fs.mkdirSync(output,{recursive:true});
 const base=branding.base_url;
-const get=async path=>{const response=await fetch(new URL(path,base),{signal:AbortSignal.timeout(20000),cache:'no-store'});assert.equal(response.status,200,path);return response;};
+const get=async(path,options={})=>{const response=await fetch(new URL(path,base),{signal:AbortSignal.timeout(20000),cache:'no-store',...options});assert.equal(response.status,200,path);return response;};
 const current=await(await get('data/current.json')).json();
 assert.equal(current.date,new Date(Date.now()+9*3600000).toISOString().slice(0,10));
 assert.equal(current.venues.length,24);assert.equal(new Set(current.venues.map(v=>v.code)).size,24);
@@ -20,14 +20,25 @@ assert.ok((await get('style.css')).headers.get('content-type').includes('text/cs
 await get('app.mjs');await get('view.mjs');
 await get('odds-live.mjs');await get('development.mjs');
 // Verify search metadata without relying on JavaScript rendering.
-assert.ok(html.includes('name="application-name" content="フネヨミ"'));
+assert.ok(html.includes(`name="application-name" content="${branding.name}"`));
+assert.ok(html.includes(`<title>${branding.name}</title>`));
+assert.ok(html.includes(`property="og:site_name" content="${branding.name}"`));
+const website=JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'].filter(n=>n['@type']==='WebSite');
+assert.equal(website.length,1);assert.equal(website[0].name,branding.name);assert.equal(website[0].url,base);assert.ok(website[0].alternateName.includes('フネヨミ'));
+assert.equal(html.match(/<link rel="icon" href="([^"]+)" type="image\/svg\+xml">/)[1],html.match(/class="brand-icon" src="([^"]+)"/)[1]);
+for(const [file,type] of [['favicon.svg','image/svg+xml'],['icon-192.png','image/png']]){
+ const icon=await get(file,{headers:{'User-Agent':'Googlebot-Image/1.0'}});assert.ok(icon.headers.get('content-type').includes(type));assert.ok(!/noindex|noimageindex/i.test(icon.headers.get('x-robots-tag')||''));
+ if(type==='image/png'){const bytes=Buffer.from(await icon.arrayBuffer());assert.equal(bytes.readUInt32BE(16),192);assert.equal(bytes.readUInt32BE(20),192);}
+}
+assert.ok((await(await get('robots.txt')).text()).includes('Allow: /'));
+
 assert.ok(html.includes('<link rel="canonical" href="'+base+'">'));
 if(new URL(base).pathname==='/')assert.ok((await(await get('robots.txt')).text()).includes(base+'sitemap.xml'));
 const sitemap=await(await get('sitemap.xml')).text();assert.equal((sitemap.match(/<loc>/g)||[]).length,28);
 for(const slug of ['about','guide','verification']){const page=await(await get(slug+'/')).text();assert.ok(page.includes(`<link rel="canonical" href="${base}${slug}/">`));assert.ok(page.includes('予想の見方'));if(slug==='about'){assert.ok(page.includes('フネヨミ運営者'));if(contact.verified){assert.ok(page.includes(`mailto:${contact.email}`));assert.ok(!page.includes('お問い合わせ用メールアドレスは準備中'));}}}
 for(const file of ['favicon.svg','favicon-32.png','apple-touch-icon.png','social-card.png','site.webmanifest'])await get(file);
-for(let i=1;i<=24;i++){const code=String(i).padStart(2,'0'),pageHtml=await(await get(`venues/${code}/`)).text();assert.ok(pageHtml.includes(`data-venue="${code}"`));assert.ok(pageHtml.includes(`<link rel="canonical" href="${base}venues/${code}/">`));assert.ok(pageHtml.includes('application/ld+json'));}
-console.log('::notice title=Published SEO verification::'+JSON.stringify({site_name:'フネヨミ',pages:28,sitemap:true,favicon:true,ogp:true,structured_data:true}));
+for(let i=1;i<=24;i++){const code=String(i).padStart(2,'0'),pageHtml=await(await get(`venues/${code}/`)).text();assert.ok(pageHtml.includes(`data-venue="${code}"`));assert.ok(pageHtml.includes(`<link rel="canonical" href="${base}venues/${code}/">`));assert.ok(pageHtml.includes('application/ld+json'));assert.equal(JSON.parse(pageHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'].some(n=>n['@type']==='WebSite'),false);}
+console.log('::notice title=Published SEO verification::'+JSON.stringify({site_name:branding.name,website_home_only:true,favicon_brand_match:true,favicon_png_size:192,googlebot_image_access:true,pages:28,sitemap:true,favicon:true,ogp:true,structured_data:true}));
 const oddsConfig=await(await get('data/odds-config.json')).json();
 assert.equal(oddsConfig.interval_seconds,60);
 let workerOdds=null;

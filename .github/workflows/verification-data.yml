@@ -36,7 +36,7 @@ jobs:
           node-version: 24
       - name: Check immutable record and payout handling
         run: |
-          node --test tools/prediction/test_prospective.mjs tools/prediction/test_experiments.mjs tools/prediction/test_hourly_verification.mjs
+          node --test tools/prediction/test_conditional_records.mjs tools/prediction/test_prospective.mjs tools/prediction/test_experiments.mjs tools/prediction/test_hourly_verification.mjs
           python -B tools/site/test_verification_results.py
       - name: Check approved runtime
         run: node site/check-approval.mjs | grep -x approved=true
@@ -76,6 +76,8 @@ jobs:
             echo 'Unknown evaluation mode'
             exit 1
           fi
+      - name: Preserve all conditional tickets and reconcile their returns
+        run: node tools/prediction/conditional_records.mjs /tmp/boatrace-verification site/conditional-strategies.json
       - name: Commit new records without overwriting earlier observations
         id: store
         run: |

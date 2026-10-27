@@ -146,7 +146,7 @@ function renderVenueFiltersContent() {
   });
 }
 function clearCurrent() {
-  current = null;selected = null;entryTab='entries';predictionRaceKey=null;identifyVenue();
+  current = null;selected = null;entryTab='entries';predictionRaceKey=null;chosenCombos.clear();updateRaceContext();identifyVenue();
   $('update-status').hidden=false;$('update-status').textContent = `${venueName()}の情報を取得中`;
   $('update-dot').classList.remove('ok');$('updated-at').textContent = '—';
   $('meeting-title').textContent = `${venueName()}の開催情報を確認中`;
@@ -159,17 +159,62 @@ function clearCurrent() {
 const table = (headers, rows) => `<div class="table-wrap"><table><thead><tr>${headers.map(h => `<th scope="col">${e(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
 let experimentsLoaded=false,experimentsLoading=false;
-async function loadExperiments(){
- if(experimentsLoaded||experimentsLoading)return;experimentsLoading=true;
- try {const response=await fetch(new URL('./data/experiments.json',document.baseURI));if(!response.ok)throw Error('企画取得失敗');renderExperimentArchive($('experiment-content'),await response.json());experimentsLoaded=true;}
- catch {$('experiment-content').textContent='検証企画を読み込めませんでした。検証記録タブを押して再確認してください。';}
- finally{experimentsLoading=false;}
+async function loadExperiments({force=false}={}){
+ if((experimentsLoaded&&!force)||experimentsLoading)return;
+ experimentsLoading=true;const button=$('experiments-refresh'),status=$('experiments-status');
+ if(button){button.disabled=true;button.setAttribute('aria-busy','true');}
+ if(status)status.textContent='検証企画の保存記録を確認しています。';
+ try {
+  const response=await fetch(new URL('./data/experiments.json',document.baseURI),{cache:'no-store',signal:AbortSignal.timeout(15000)});
+  if(!response.ok)throw Error('企画取得失敗');const data=await response.json();
+  if(data.kind!=='STRATEGY_EXPERIMENT_ARCHIVE'||!Array.isArray(data.experiments)||!Number.isFinite(Date.parse(data.generated_at)))throw Error('企画形式が不正です');
+  const prefetchedDays=new Map();
+  // Verify the visible day's response before replacing a working archive on refresh.
+  if(force)for(const study of data.experiments){
+   const card=document.getElementById('study-'+study.definition.id),requested=card?.querySelector('[data-study-date]')?.value;
+   const dates=study.record_days||[],date=requested!==undefined&&(requested===''||dates.some(d=>d.date===requested))?requested:dates[0]?.date;
+   for(const day of dates.filter(d=>!date||d.date===date)){
+    const url=new URL(day.url,document.baseURI);if(url.origin!==location.origin||!/^\/.*data\/experiments\/[a-z0-9-]+\/\d{4}-\d{2}-\d{2}\.json$/.test(url.pathname))throw Error('記録URLが不正です');
+    const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('日別記録取得失敗');const body=await response.json();
+    if(body.kind!=='EXPERIMENT_DAY_RECORDS'||body.experiment_id!==study.definition.id||body.date!==day.date||!Array.isArray(body.records))throw Error('日別記録の対象が違います');
+    prefetchedDays.set(study.definition.id+'/'+day.date,body.records);
+   }
+  }
+  preserveViewport(()=>renderExperimentArchive($('experiment-content'),data,{preserveState:force,prefetchedDays}));experimentsLoaded=true;
+  if(status)status.textContent=`データ集計：${clock(data.generated_at)} / 画面確認：${clock(new Date().toISOString())}（日本時間）。公開済みの記録を再取得しました。`;
+ } catch {
+  if(!experimentsLoaded)$('experiment-content').textContent='検証企画を読み込めませんでした。更新ボタンで再確認してください。';
+  if(status)status.textContent=experimentsLoaded?'更新に失敗しました。直前に確認できた記録を表示しています。更新ボタンで再確認してください。':'記録を取得できませんでした。更新ボタンで再確認してください。';
+ } finally{experimentsLoading=false;if(button){button.disabled=false;button.setAttribute('aria-busy','false');}}
 }
+function jumpToSuji(){
+ const target=$('related-title');if(!target)return;target.tabIndex=-1;
+ target.focus({preventScroll:true});target.closest('.related-bets').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
+}
+const mobileRaceContext=document.createElement('aside');mobileRaceContext.id='mobile-race-context';mobileRaceContext.className='mobile-race-context';mobileRaceContext.hidden=true;mobileRaceContext.setAttribute('aria-label','閲覧中のレースと買い目の選択');
+mobileRaceContext.innerHTML='<div><strong id="mobile-race-name"></strong><span id="mobile-race-deadline"></span></div><button id="mobile-suji-jump" type="button"><span id="mobile-selection-count">選択中 0点</span><span>スジ候補へ ↓</span></button>';
+document.body.append(mobileRaceContext);$('mobile-suji-jump').onclick=jumpToSuji;
+function updateRaceContext(){
+ const card=document.querySelector('.race-card'),race=current?.date===japanDate(Date.now())?current.races?.find(r=>r.race_no===selected):null;
+ const mobile=matchMedia('(max-width:650px)').matches,rect=card?.getBoundingClientRect();
+ mobileRaceContext.hidden=!(mobile&&view==='live'&&race&&rect&&rect.top<0&&rect.bottom>88);
+ if(!race)return;
+ const label=`${current.venue} ${race.race_no}R`,deadline=Number.isFinite(Date.parse(race.deadline_at))?`${Date.now()>=Date.parse(race.deadline_at)?'締切済み':'締切'} ${shortClock(race.deadline_at)}（日本時間）`:'締切 未確認';
+ if($('mobile-race-name').textContent!==label)$('mobile-race-name').textContent=label;
+ if($('mobile-race-deadline').textContent!==deadline)$('mobile-race-deadline').textContent=deadline;
+ const count=predictionRaceKey===`${race.date}/${race.venue_code}/${race.race_no}`?chosenCombos.size:0;
+ const selectionLabel=`選択中 ${count}点`;if($('mobile-selection-count').textContent!==selectionLabel)$('mobile-selection-count').textContent=selectionLabel;
+ $('mobile-suji-jump').disabled=!$('related-title');
+}
+let raceContextFrame=null;
+const scheduleRaceContext=()=>{if(raceContextFrame!==null)return;raceContextFrame=requestAnimationFrame(()=>{raceContextFrame=null;updateRaceContext();});};
+window.addEventListener('scroll',scheduleRaceContext,{passive:true});window.addEventListener('resize',scheduleRaceContext);
 function showView(name) {
   if(name==='archive')loadExperiments();
   view = name;
+  updateRaceContext();
   $('releases-view').hidden = name !== 'releases';
-  for(const selector of ['.venue-picker','.update-bar','.meeting-summary','#message'])document.querySelector(selector)?.toggleAttribute('hidden',name==='releases' || selector==='#message'&&!$('message').textContent);
+  for(const selector of ['.venue-picker','.update-bar','.meeting-summary','#message'])document.querySelector(selector)?.toggleAttribute('hidden',name==='releases' || name==='archive'&&selector!=='.venue-picker' || selector==='#message'&&!$('message').textContent);
   $('live-view').hidden = name !== 'live';
   $('archive-view').hidden = name !== 'archive';
   $('opportunities-section').hidden = name !== 'live';
@@ -183,7 +228,7 @@ function showView(name) {
   identifyVenue();
 }
 
-function notify(message) { $('message').textContent = message; $('message').hidden = !message || view==='releases'; }
+function notify(message) { $('message').textContent = message; $('message').hidden = !message || view!=='live'; }
 
 
 function renderOpportunities() {return preserveViewport(renderOpportunitiesContent);}
@@ -214,7 +259,7 @@ function renderUpcoming() {
  for(const button of document.querySelectorAll('[data-upcoming-venue]'))button.onclick=()=>openListedRace(button.dataset.upcomingVenue,Number(button.dataset.upcomingRace),rows.find(r=>r.venue_code===button.dataset.upcomingVenue&&r.race_no===Number(button.dataset.upcomingRace)));
 }
 
-function renderCurrent() {return preserveViewport(renderCurrentContent);}
+function renderCurrent() {return preserveViewport(()=>{try{return renderCurrentContent();}finally{updateRaceContext();}});}
 function renderCurrentContent() {
   const previousWater=$('development-water');
   const previousMotion=previousWater && !$('development-panel').hidden ? {key:previousWater.dataset.raceKey,time:previousWater.getCurrentTime(),paused:previousWater.animationsPaused()}:null;
@@ -298,6 +343,7 @@ function renderCurrentContent() {
   const scenarios=`<div class="prediction-scenarios" role="group" aria-label="1着の傾向で絞り込み"><button data-scenario="all" aria-pressed="${predictionScenario==='all'}"><span>すべて</span><strong>${scenarioMass?'100%':'—'}</strong></button>${[['in','イン逃げ想定','1号艇が1着'],['other','それ以外','1号艇以外が1着']].map(([key,label,detail])=>`<button data-scenario="${key}" aria-pressed="${predictionScenario===key}"><span>${label}</span><strong>${pct(scenarioMass?.[key])}</strong><small>${detail}</small></button>`).join('')}</div><p class="small-note scenario-note">${scenarioMass?'全120通りの推定確率を集計。イン逃げ想定は1号艇1着として分類し、実際の進入・決まり手の確率を示すものではありません。':'全120通りの確率を確認できないため、傾向別の確率は表示できません。'}</p>`;
   const unavailableReason=!canRank?`期待値上位は表示できません：${status.text}。${cutoffReached?'締切3分前以前の保存記録を確認できません。':'締切前で新鮮なオッズの取得をお待ちください。'}`:'期待値を計算できる買い目がありません。';
   const chosen = pool.filter(row=>chosenCombos.has(row.combo));
+  const selectionToolbar=pool.length?`<div class="selection-toolbar" aria-label="買い目の選択状態"><strong id="bet-selection-count" role="status" aria-live="polite">選択中 ${chosen.length}点</strong><button id="jump-to-suji" type="button">スジ候補へ ↓</button><span>選択は仮の検討用です</span></div>`:'';
   const related=sujiCandidates(pool,race.odds?.items || [],[...chosenCombos],{scenario:predictionScenario,currentOdds:canRank});
   const relatedBlock=`<section class="related-bets" aria-labelledby="related-title"><h4 id="related-title">選んだ買い目から、スジの候補（最大10点）</h4>${chosen.length?`<div class="related-selection"><span>選択中 ${chosen.length}点</span>${chosen.map(row=>`<button class="combo-select" data-combo="${e(row.combo)}" aria-pressed="true" aria-label="${e(row.combo)}の選択を解除"><strong>${e(row.combo)}</strong><small>確率 ${pct(row.probability)} / 期待値 ${canRank && oddsMap.has(row.combo)?(row.probability*oddsMap.get(row.combo)).toFixed(3)+'倍':'—'}</small></button>`).join('')}<button id="clear-bets" class="text-button">選択をクリア</button></div>${related.length?table(['買い目 / スジ','推定確率','オッズ','期待値'],related.map(row=>[`<button class="combo-select" data-combo="${e(row.combo)}" aria-pressed="false" aria-label="${e(row.combo)}を追加選択">${e(row.combo)}</button><small class="suji-reason">${e(row.reason)}<br>軸：${row.based_on.slice(0,2).map(e).join('、')}${row.based_on.length>2?' ほか'+(row.based_on.length-2)+'点':''}</small>`,pct(row.probability),`${row.odds.toFixed(1)}倍`,`${row.value.toFixed(3)}倍`])):`<p class="related-empty" role="status">${canRank?'選択中の傾向で、未選択かつオッズを確認できるスジ候補はありません。':`現在は候補の提案を休止しています：${e(status.text)}。締切前の新鮮なオッズが必要です。`}</p>`}<p class="small-note">複数の選択買い目から、同じ1着を軸に2・3着の入れ替え、または相手を1艇以上残した相手替えを集め、選択済みと重複を除いた期待値上位10点を提案します。表示中の傾向で絞り込みます。決まり手を推定したスジではありません。期待値は各1点の値で、1.0倍未満なら推定払戻が購入額を下回ります。複数の買い目が同時に的中するものではありません。</p>`:'<p class="related-empty">買い目を複数押して選択してください。同じ買い目をもう一度押すと解除でき、選択済みを除くスジ候補を重複なし・最大10点で提案します。</p>'}</section>`;
   const forecast = race.items.length ? `<div class="time-note"><span>予想入力取得：${e(clock(race.input_fetched_at))}</span><span>予想保存：${e(clock(race.prediction_saved_at))}</span><span>オッズ取得：${e(clock(race.odds?.fetched_at))}</span></div>
@@ -313,8 +359,9 @@ function renderCurrentContent() {
     ${race.model_status==='EXPERIMENTAL'?`<p class="small-note">${correctionPending?'履歴は集計済み・予想への補正は未適用です。表示中の予想は固定式で計算しています。':'履歴補正は検証中です。'}</p>`:''}
     <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目は複数選択・解除でき、選択内容から関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。オッズ更新の目安は締切30分以内が1分、それより先が5分です。提案は締切3分前以前の最新成功記録を当日中保持します。処理の遅延や保存欠損が生じる場合があります。</p>`
     : `<div class="empty"><h3>このレースの予想は未取得です</h3><p>${e(race.issue || '必須データが確認できていません。')}</p></div>`;
-  patchHTML($('live-content'), `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span>${confidenceHTML(r,true)}</button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3>${confidenceHTML(race)}<p>締切予定 ${e(clock(race.deadline_at))}（日本時間）</p></div><span class="status ${status.currentOdds ? '' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${entryAlerts}${sheetTabs}${forecast}${scores}${market}${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`);
+  patchHTML($('live-content'), `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span>${confidenceHTML(r,true)}</button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3>${confidenceHTML(race)}<p>締切予定 ${e(clock(race.deadline_at))}（日本時間）</p></div><span class="status ${status.currentOdds ? '' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${selectionToolbar}${entryAlerts}${sheetTabs}${forecast}${scores}${market}${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`);
   mountRadar(race);
+  if($('jump-to-suji'))$('jump-to-suji').onclick=jumpToSuji;
   $('entries-tab').onclick=(()=>{entryTab='entries';renderCurrent();});
   $('exhibition-tab').onclick=(()=>{entryTab='exhibition';renderCurrent();});
   $('assessment-tab').onclick=(()=>{entryTab='assessment';renderCurrent();});
@@ -339,7 +386,7 @@ function renderCurrentContent() {
     const combo=button.dataset.developmentCombo;
     if(!pool.some(r=>r.combo===combo))return;
     predictionScenario='all';chosenCombos.add(combo);renderCurrent();
-    const target=$('related-title');target.tabIndex=-1;target.focus({preventScroll:true});target.closest('.related-bets').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
+    jumpToSuji();
   });
   for(const ids of [['entries-tab','exhibition-tab','development-tab','result-tab'],['probability-tab','value-tab']]){
     const active=ids.length===4?['entries','exhibition','development','result'].indexOf(entryTab):predictionTab==='probability'?0:1;
@@ -454,6 +501,7 @@ $('venue-select').addEventListener('change', () => {
 });
 $('live-tab').addEventListener('click', () => showView('live'));
 $('archive-tab').addEventListener('click', () => showView('archive'));
+$('experiments-refresh')?.addEventListener('click',()=>loadExperiments({force:true}));
 $('releases-tab').addEventListener('click',()=>showView('releases'));
 const routeView=()=>showView(location.hash==='#releases'?'releases':location.hash==='#archive'?'archive':'live');
 window.addEventListener('popstate',routeView);window.addEventListener('hashchange',routeView);routeView();

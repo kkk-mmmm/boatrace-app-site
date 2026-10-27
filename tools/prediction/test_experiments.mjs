@@ -55,3 +55,15 @@ test('4位の頻度同数は期待値合計で決定し、全120通り未取得�
 test('公開書き出しは日付単位に分割し、通常の目次へ全買い目を載せない',t=>{
  const dir=setup(t);results(dir);const out=path.join(dir,'public'),data=writePublicExperiments(dir,[definition],out,{now:now+86400000});const study=data.experiments[0];assert.equal(study.records.length,0);assert.equal(study.record_days.length,1);const day=JSON.parse(fs.readFileSync(path.join(out,study.record_days[0].url)));assert.equal(day.records[0].box.length,24);assert.equal(day.records[0].value_top10.length,10);assert.equal(day.experiment_id,definition.id);assert.equal(study.summary.settled,1);
 });
+
+test('成績カードを先に表示し、検証条件を初期状態で閉じ、記録と記事を保持する',t=>{
+ const dir=setup(t);results(dir);const report=experimentReport(dir,definition,{now:now+86400000}),html=studyHTML(report);
+ assert.ok(html.indexOf('class="study-metrics"')<html.indexOf('class="study-method"'));
+ const metrics=html.match(/<dl class="study-metrics"[^>]*>([\s\S]*?)<\/dl>/)[1];
+ for(const label of ['検証状況','検証中','照合済み','仮想回収率','事前予想との差'])assert.ok(metrics.includes(label));
+ assert.match(html,/<details class="study-method">/);assert.doesNotMatch(html,/<details class="study-method"[^>]*\sopen/);
+ assert.ok(html.includes('期待値合計→艇番順'));assert.ok(html.includes('両者は同じ照合済みレースで比較します'));
+ for(const control of ['data-study-venue','data-study-grade','data-study-date','data-study-records','data-study-more'])assert.ok(html.includes(control));
+ const pending=studyHTML(experimentReport(setup(t),definition,{now:freeze+1000}));assert.ok(pending.includes('照合後に表示'));assert.ok(!pending.match(/<dt>仮想回収率<\/dt><dd>0/));
+ const archived=studyHTML({...report,status:'COMPLETED',article_archived_at:new Date(end).toISOString()});assert.ok(archived.includes('検証終了・記事アーカイブ'));assert.ok(archived.includes('検証記事・全記録を読む'));assert.match(archived,/<details class="study-results" >/);
+});

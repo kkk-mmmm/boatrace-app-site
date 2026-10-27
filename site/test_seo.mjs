@@ -9,6 +9,9 @@ test('全28ページに自己canonical・場名タイトル・OGP・CSPで許可
  const ld=html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1];assert.equal(JSON.parse(ld)['@context'],'https://schema.org');assert.ok(html.includes('sha256-'+crypto.createHash('sha256').update(ld).digest('base64')));
  if(venue){assert.ok(html.includes(`${venue.name}のボートレース`));assert.ok(html.includes('<base href="../../">'));assert.ok(html.includes('data-venue="'+venue.code+'"'));assert.ok(html.includes('取得待ち'));}
  }
+ const daily=fs.readFileSync(path.join(dir,'verification/index.html'),'utf8');
+ assert.match(daily,/<h1>日別の予想実績（直近7日）<\/h1>/);assert.match(daily,/実際の購入履歴の成績ではありません/);assert.match(daily,/href="\.\/#archive">検証企画・記事/);
+ const home=fs.readFileSync(path.join(dir,'index.html'),'utf8');assert.match(home,/id="archive-tab"[^>]*>検証企画・記事/);assert.match(home,/href="\.\/verification\/">日別の予想実績/);assert.match(home,/id="experiments-refresh"/);assert.match(home,/id="experiments-status"[^>]*role="status"/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('静的な場ページの出走情報は鮮度を確認して表示し、欠損時刻を捏造しない',()=>{

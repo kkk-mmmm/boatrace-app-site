@@ -5,6 +5,7 @@ export function informationPages(settings=contact){
  const email=String(settings.email||'');
  if(settings.verified&&!/^[a-z0-9._+-]+@funeyomi\.win$/i.test(email))throw Error('公開用メールアドレスを確認してください');
  return [
+ {slug:'strategies',title:'条件別検証の成績・データ充足率',description:'固定した条件別買い目の仮想成績と、予想・オッズ・展示・結果のデータ充足率を確認できます。',module:'./strategy-page.mjs',content:`<p>締切3分前基準の保存予想を各点100円で仮想購入した記録です。結果待ち・欠損・異常結果は損失に含めません。将来の利益を保証するものではありません。</p><div class="condition-controls strategy-controls">${[['date','日付'],['venue','場コード'],['grade','グレード'],['coefficient','係数版']].map(([k,l])=>`<label>${l}<select id="strategy-${k}"><option value="">すべて</option></select></label>`).join('')}<label>傾向<select id="strategy-scenario"><option value="all">すべて</option><option value="in">イン</option><option value="other">それ以外</option></select></label><label>点数上限<select id="strategy-limit"><option value="">10点・20点</option><option value="10">10点</option><option value="20">20点</option></select></label></div><button id="strategy-refresh">集計を更新</button><p id="strategy-status" role="status"></p><div id="strategy-report"></div><details><summary>確率補正の候補検証</summary><p>元の確率を変更せず、係数版・受信区分ごとに過去の日付前半で候補を選び、後半で未補正と比較します。採用は自動では行いません。</p><div id="strategy-calibration" role="status">候補集計を確認しています。</div><a href="./data/calibration.json">候補検証の集計JSON</a></details>`},
  {slug:'about',title:'運営情報・お問い合わせ',description:'フネヨミの運営者、提供する情報とお問い合わせ窓口をご案内します。',content:`
  <section><h2>運営について</h2><dl><dt>サイト名</dt><dd>フネヨミ｜ボートレース・競艇予想</dd><dt>運営者</dt><dd>${escape(settings.operator)}</dd></dl><p>全国24場の出走表・展示情報・3連単オッズと、統計モデルによるAI予想を掲載する非公式の情報サイトです。BOAT RACEの公式サービスではありません。投票・購入機能はありません。</p></section>
  <section><h2>お問い合わせ</h2>${settings.verified?`<p>ご意見や表示・データの不具合は <a href="mailto:${escape(email)}">${escape(email)}</a> へお寄せください。</p><p>不具合のご連絡には、開催日・場名・レース番号・閲覧端末・表示された内容を添えていただくと確認がスムーズです。パスワードや決済情報などは送らないでください。</p>`:'<p>お問い合わせ用メールアドレスは準備中です。開設・受信確認後に掲載します。</p>'}</section>
@@ -12,7 +13,7 @@ export function informationPages(settings=contact){
  {slug:'verification',title:'予想実績・確率と期待値の検証',description:'締切前の保存予想と公式結果を照合。直近7日のレース別実績と、30完了日の確率・期待値・仮想回収率の検証を確認できます。実際の購入履歴ではありません。',module:'./verification-page.mjs',content:`
  <p>保存した予想を各点100円で購入したと仮定した、直近7日のレース別実績と30完了日の確率・期待値の検証です。記録のあるレースだけを表示し、未保存・未照合を不的中に含めません。全レースや実際の購入履歴の成績ではありません。</p>
  <p class="small-note">条件を固定して期間を通して調べる企画と終了記事は、<a href="./#archive">検証企画・記事</a>から確認できます。</p>
- <p id="validation-quality-status" class="small-note" role="status"></p>
+ <p><a href="./strategies/">条件別検証の成績・データ充足率を見る</a></p><p id="validation-quality-status" class="small-note" role="status"></p>
  <section id="validation-quality" class="validation-quality" aria-label="確率と期待値の検証">確率・期待値の検証を確認しています。</section>
  <h2>日別の保存予想と結果（直近7日）</h2>
  <div class="verification-controls"><label>開催場 <select id="verification-venue" aria-label="検証する開催場"></select></label><button id="verification-refresh">表示を更新 ↻</button></div>

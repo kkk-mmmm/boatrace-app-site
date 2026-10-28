@@ -77,7 +77,7 @@ jobs:
             exit 1
           fi
       - name: Preserve all conditional tickets and reconcile their returns
-        run: node tools/prediction/conditional_records.mjs /tmp/boatrace-verification site/conditional-strategies.json
+        run: node tools/prediction/conditional_records.mjs /tmp/boatrace-verification site/conditional-strategies.json site/staging
       - name: Commit new records without overwriting earlier observations
         id: store
         run: |

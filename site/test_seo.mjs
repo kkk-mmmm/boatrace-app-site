@@ -2,8 +2,8 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import fs
 import {informationPages,contact} from './info-pages.mjs';
 import {seoPage,writeSeoPages,branding} from './seo.mjs';import {venues} from '../tools/prerace/venues.mjs';
 const template=fs.readFileSync(new URL('./public/index.html',import.meta.url),'utf8'),now=Date.parse('2030-01-01T01:00:00Z');
-test('全28ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,28);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
+test('全29ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,29);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
  for(const venue of [null,...venues]){const html=fs.readFileSync(path.join(dir,venue?`venues/${venue.code}/index.html`:'index.html'),'utf8'),canonical=new URL(venue?`venues/${venue.code}/`:'',branding.base_url).href;
  assert.ok(html.includes(`<link rel="canonical" href="${canonical}">`));assert.ok(html.includes(`property="og:url" content="${canonical}"`));assert.ok(html.includes('AI予想'));assert.ok(html.includes('競艇'));assert.ok(html.includes('フネヨミ'));assert.equal((html.match(/<h1\b/g)||[]).length,1);
  assert.doesNotMatch(html,/日本時間/);
@@ -34,8 +34,8 @@ test('運営情報とガイドは独立HTML・自己canonicalで公開し、未�
 
 test('受信確認済みの公開メールだけを案内し、不正なリンクを拒否する',()=>{
  const settings={operator:'フネヨミ運営者',email:'contact@funeyomi.win',verified:false};
- assert.doesNotMatch(informationPages(settings)[0].content,/mailto:|contact@/);
- assert.match(informationPages({...settings,verified:true})[0].content,/mailto:contact@funeyomi.win/);
+ assert.doesNotMatch(informationPages(settings).find(p=>p.slug==='about').content,/mailto:|contact@/);
+ assert.match(informationPages({...settings,verified:true}).find(p=>p.slug==='about').content,/mailto:contact@funeyomi.win/);
  assert.throws(()=>informationPages({...settings,email:'x@example.com',verified:true}),/公開用/);
  assert.throws(()=>informationPages({...settings,email:'" onmouseover=alert(1)',verified:true}),/公開用/);
 });

@@ -60,8 +60,9 @@ function probabilityOutcome(p,r,now){
  if(payouts.length>1||payouts.length===1&&(payouts[0].combo!==actual_combo||!Number.isSafeInteger(payouts[0].payout_yen_per_100)||payouts[0].payout_yen_per_100<=0))return {status:'EXCLUDED'};
  return {status:'SETTLED',actual_combo,payout_yen_per_100:payouts[0]?.payout_yen_per_100??null};
 }
-export function validationObservations(directory,{now=Date.now()}={}){
- const through=day(now-86400000),from=day(now-VALIDATION_POLICY.days*86400000),selected=new Map(),coverage={snapshot_files:0,invalid:0,duplicates:0,selected:0,settled:0,pending:0,excluded:0,partial_odds:0,missing_payout:0},groups=new Map();
+export function validationObservations(directory,{now=Date.now(),days=VALIDATION_POLICY.days}={}){
+ if(!Number.isInteger(days)||days<1||days>365)throw Error("Invalid evaluation window");
+ const through=day(now-86400000),from=day(now-days*86400000),selected=new Map(),coverage={snapshot_files:0,invalid:0,duplicates:0,selected:0,settled:0,pending:0,excluded:0,partial_odds:0,missing_payout:0},groups=new Map();
  const root=path.join(directory,'snapshots');
  for(const date of !fs.existsSync(root)?[]:fs.readdirSync(root).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=from&&d<=through))for(const f of walk(path.join(root,date))){coverage.snapshot_files++;try{
   const r=validateRecord(JSON.parse(fs.readFileSync(f)),now),p=r.proposal;if(p.date!==date)throw Error('Snapshot date mismatch');

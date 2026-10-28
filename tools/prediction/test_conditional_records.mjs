@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import crypto from 'node:crypto';
 import {captureProspective} from './prospective.mjs';import {proposalCandidate} from '../../site/public/odds-live.mjs';
-import {captureConditionalRecords,conditionalReport,runConditionalRecords,conditionalSelection} from './conditional_records.mjs';
+import {captureConditionalRecords,conditionalReport,runConditionalRecords,conditionalSelection,recordConditionalInventory} from './conditional_records.mjs';
 const now=Date.parse('2030-01-01T01:00Z'),freeze=now+5*60000,date='2030-01-01';
 const definition={...JSON.parse(fs.readFileSync(new URL('../../site/conditional-strategies.json',import.meta.url))),registered_at:new Date(now-60000).toISOString()};
 const hash=text=>crypto.createHash('sha256').update(text).digest('hex');
@@ -48,4 +48,12 @@ test('払戻欠損・Fは回収率へ入れず、条件買い目や元予想の�
  const saved=JSON.parse(original),sfile=path.join(dir,'snapshots',date,'01','R1',saved.source_snapshot_id+'.json'),source=JSON.parse(fs.readFileSync(sfile));
  assert.throws(()=>conditionalSelection(source,definition,{now:freeze+1000,activatedAt:new Date(now+1000).toISOString()}),/有効化前/);
  source.proposal.probabilities[0].probability=.9;fs.writeFileSync(sfile,JSON.stringify(source));assert.throws(()=>conditionalReport(dir,definition,{now:now+86400000}),/変更/);
+});
+
+test('既知予定だけを締切前に保存し、充足率の分母と欠損を検出する',async t=>{
+ const {strategyDashboard}=await import('../../site/strategy-dashboard.mjs');const dir=setup(t),snapshot=fixture();snapshot.update={status:'OK',last_success_at:new Date(now).toISOString()};snapshot.meeting_status='OPEN';
+ assert.equal(recordConditionalInventory(dir,definition,[snapshot],{now}),1);assert.equal(recordConditionalInventory(dir,definition,[snapshot],{now}),0);
+ let r=strategyDashboard(dir,definition,{now:freeze+1000});assert.equal(r.coverage.denominator,1);assert.equal(r.coverage.prediction,1);assert.equal(r.coverage.odds,1);assert.equal(r.coverage.exhibition,0);assert.equal(r.coverage.result,0);
+ const missing=structuredClone(snapshot);missing.races[0].race_no=2;recordConditionalInventory(dir,definition,[missing],{now});r=strategyDashboard(dir,definition,{now:freeze+1000});assert.equal(r.coverage.denominator,2);assert.equal(r.coverage.prediction,1);
+ assert.equal(recordConditionalInventory(dir,definition,[{...snapshot,venue_code:'02',update:{status:'FAILED'}}],{now}),0);
 });

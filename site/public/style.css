@@ -195,3 +195,5 @@
 .prediction-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.prediction-tabs button{white-space:normal;line-height:1.4}
 .condition-controls{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 10px}.condition-controls label{display:flex;flex-direction:column;gap:6px;font-size:12px;flex:1;min-width:140px}.condition-controls select{width:100%;min-height:44px;padding:8px;border:1px solid #aad0e6;border-radius:6px;background:#fff;color:var(--ink);font:inherit}.condition-status{font-weight:700;margin:10px 0}
 @media(max-width:420px){.prediction-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.prediction-tabs button{padding:10px 7px;font-size:12px}.condition-controls{gap:8px}.condition-controls label{min-width:120px}.condition-controls label:first-child{flex-basis:100%}}
+
+.strategy-controls label{flex:1 1 180px;min-width:0;max-width:100%}.strategy-controls select{min-width:0}#strategy-report .gap-period,#strategy-calibration{overflow-wrap:anywhere}#strategy-report th{white-space:nowrap}#strategy-refresh{min-height:44px}

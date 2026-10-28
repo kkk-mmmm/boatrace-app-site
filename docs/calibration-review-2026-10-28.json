@@ -1,0 +1,575 @@
+{
+  "kind": "OFFLINE_CALIBRATION_REVIEW",
+  "generated_at": "2026-10-28T01:36:08.965Z",
+  "from": "2026-07-30",
+  "through": "2026-10-27",
+  "inputs_sha256": "c55e45fc8c816d03eb1f948807245d12593c706c852ac77a8134d2c0f54452ee",
+  "groups": [
+    {
+      "id": "WORKER_REPORTED_ONLY/UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "cohort": "WORKER_REPORTED_ONLY",
+      "coefficient_id": "UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-23",
+      "selected": 48,
+      "pending": 0,
+      "excluded": 3,
+      "split_date": null,
+      "training_candidates": [
+        {
+          "temperature": 1,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 0.7,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 1.3,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 1.7,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 2,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        }
+      ],
+      "selected_temperature": 1,
+      "baseline": {
+        "races": 0,
+        "days": 0,
+        "log_loss": null,
+        "brier": null,
+        "stake_yen": 0,
+        "return_yen": 0,
+        "recovery_percent": null
+      },
+      "candidate": {
+        "races": 0,
+        "days": 0,
+        "log_loss": null,
+        "brier": null,
+        "stake_yen": 0,
+        "return_yen": 0,
+        "recovery_percent": null
+      },
+      "readiness": "INSUFFICIENT_DATA",
+      "promotion": false
+    },
+    {
+      "id": "WORKER_REPORTED_ONLY/annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "cohort": "WORKER_REPORTED_ONLY",
+      "coefficient_id": "annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-24",
+      "selected": 267,
+      "pending": 0,
+      "excluded": 11,
+      "split_date": "2026-10-24",
+      "training_candidates": [
+        {
+          "temperature": 1,
+          "score": {
+            "races": 106,
+            "days": 1,
+            "log_loss": 3.88107077671977,
+            "brier": 0.9567456475268151,
+            "stake_yen": 106000,
+            "return_yen": 58700,
+            "recovery_percent": 55.37735849056604
+          }
+        },
+        {
+          "temperature": 1.3,
+          "score": {
+            "races": 106,
+            "days": 1,
+            "log_loss": 3.8958270512370783,
+            "brier": 0.9605772505762905,
+            "stake_yen": 106000,
+            "return_yen": 22770,
+            "recovery_percent": 21.4811320754717
+          }
+        },
+        {
+          "temperature": 1.7,
+          "score": {
+            "races": 106,
+            "days": 1,
+            "log_loss": 3.967810405881164,
+            "brier": 0.9661941544038599,
+            "stake_yen": 106000,
+            "return_yen": 22770,
+            "recovery_percent": 21.4811320754717
+          }
+        },
+        {
+          "temperature": 0.7,
+          "score": {
+            "races": 106,
+            "days": 1,
+            "log_loss": 4.008981636238951,
+            "brier": 0.9595118288953232,
+            "stake_yen": 106000,
+            "return_yen": 58450,
+            "recovery_percent": 55.14150943396226
+          }
+        },
+        {
+          "temperature": 2,
+          "score": {
+            "races": 106,
+            "days": 1,
+            "log_loss": 4.02744557518249,
+            "brier": 0.9696382227733525,
+            "stake_yen": 106000,
+            "return_yen": 22770,
+            "recovery_percent": 21.4811320754717
+          }
+        }
+      ],
+      "selected_temperature": 1,
+      "baseline": {
+        "races": 150,
+        "days": 1,
+        "log_loss": 3.879528175485072,
+        "brier": 0.962939816446396,
+        "stake_yen": 150000,
+        "return_yen": 54630,
+        "recovery_percent": 36.42
+      },
+      "candidate": {
+        "races": 150,
+        "days": 1,
+        "log_loss": 3.879528175485072,
+        "brier": 0.962939816446396,
+        "stake_yen": 150000,
+        "return_yen": 54630,
+        "recovery_percent": 36.42
+      },
+      "readiness": "INSUFFICIENT_DATA",
+      "promotion": false
+    },
+    {
+      "id": "RECEIPT_BEFORE_CUTOFF/UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "cohort": "RECEIPT_BEFORE_CUTOFF",
+      "coefficient_id": "UNKNOWN:annual-v3-ccaff686fa9aa3288bd6061e271a5e8f2590786223dd732983b8afba5a9d56ef",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-23",
+      "selected": 7,
+      "pending": 0,
+      "excluded": 0,
+      "split_date": null,
+      "training_candidates": [
+        {
+          "temperature": 1,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 0.7,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 1.3,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 1.7,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        },
+        {
+          "temperature": 2,
+          "score": {
+            "races": 0,
+            "days": 0,
+            "log_loss": null,
+            "brier": null,
+            "stake_yen": 0,
+            "return_yen": 0,
+            "recovery_percent": null
+          }
+        }
+      ],
+      "selected_temperature": 1,
+      "baseline": {
+        "races": 0,
+        "days": 0,
+        "log_loss": null,
+        "brier": null,
+        "stake_yen": 0,
+        "return_yen": 0,
+        "recovery_percent": null
+      },
+      "candidate": {
+        "races": 0,
+        "days": 0,
+        "log_loss": null,
+        "brier": null,
+        "stake_yen": 0,
+        "return_yen": 0,
+        "recovery_percent": null
+      },
+      "readiness": "INSUFFICIENT_DATA",
+      "promotion": false
+    },
+    {
+      "id": "RECEIPT_BEFORE_CUTOFF/annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "cohort": "RECEIPT_BEFORE_CUTOFF",
+      "coefficient_id": "annual-coeff-324bca4e19abfd137f7940bc4de0cfc44de52cfd1cda2b28f09e74af8d8ce156",
+      "model_name": "直近1年・選手履歴モデル v3",
+      "last_observed_date": "2026-10-24",
+      "selected": 7,
+      "pending": 0,
+      "excluded": 0,
+      "split_date": "2026-10-24",
+      "training_candidates": [
+        {
+          "temperature": 0.7,
+          "score": {
+            "races": 3,
+            "days": 1,
+            "log_loss": 3.357078859620426,
+            "brier": 0.976612246347381,
+            "stake_yen": 3000,
+            "return_yen": 16070,
+            "recovery_percent": 535.6666666666666
+          }
+        },
+        {
+          "temperature": 1,
+          "score": {
+            "races": 3,
+            "days": 1,
+            "log_loss": 3.425698800302341,
+            "brier": 0.9546653807449648,
+            "stake_yen": 3000,
+            "return_yen": 16070,
+            "recovery_percent": 535.6666666666666
+          }
+        },
+        {
+          "temperature": 1.3,
+          "score": {
+            "races": 3,
+            "days": 1,
+            "log_loss": 3.545245323235273,
+            "brier": 0.9547111081048064,
+            "stake_yen": 3000,
+            "return_yen": 16070,
+            "recovery_percent": 535.6666666666666
+          }
+        },
+        {
+          "temperature": 1.7,
+          "score": {
+            "races": 3,
+            "days": 1,
+            "log_loss": 3.697902669813858,
+            "brier": 0.9601263027239139,
+            "stake_yen": 3000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        },
+        {
+          "temperature": 2,
+          "score": {
+            "races": 3,
+            "days": 1,
+            "log_loss": 3.796474681292686,
+            "brier": 0.9641200544942395,
+            "stake_yen": 3000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        }
+      ],
+      "selected_temperature": 0.7,
+      "baseline": {
+        "races": 4,
+        "days": 1,
+        "log_loss": 3.6171257498990457,
+        "brier": 0.9818104724372431,
+        "stake_yen": 4000,
+        "return_yen": 0,
+        "recovery_percent": 0
+      },
+      "candidate": {
+        "races": 4,
+        "days": 1,
+        "log_loss": 3.7176557159784815,
+        "brier": 1.0024985059868174,
+        "stake_yen": 4000,
+        "return_yen": 0,
+        "recovery_percent": 0
+      },
+      "readiness": "INSUFFICIENT_DATA",
+      "promotion": false
+    },
+    {
+      "id": "WORKER_REPORTED_ONLY/annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "cohort": "WORKER_REPORTED_ONLY",
+      "coefficient_id": "annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "model_name": "直近1年・選手履歴＋場別傾向モデル v3.1",
+      "last_observed_date": "2026-10-27",
+      "selected": 489,
+      "pending": 1,
+      "excluded": 26,
+      "split_date": "2026-10-26",
+      "training_candidates": [
+        {
+          "temperature": 1,
+          "score": {
+            "races": 166,
+            "days": 2,
+            "log_loss": 3.7450831805221267,
+            "brier": 0.9525960493532077,
+            "stake_yen": 166000,
+            "return_yen": 38280,
+            "recovery_percent": 23.06024096385542
+          }
+        },
+        {
+          "temperature": 0.7,
+          "score": {
+            "races": 166,
+            "days": 2,
+            "log_loss": 3.772706485939937,
+            "brier": 0.9490888595128028,
+            "stake_yen": 166000,
+            "return_yen": 81000,
+            "recovery_percent": 48.795180722891565
+          }
+        },
+        {
+          "temperature": 1.3,
+          "score": {
+            "races": 166,
+            "days": 2,
+            "log_loss": 3.810376413821061,
+            "brier": 0.9589313812133902,
+            "stake_yen": 166000,
+            "return_yen": 1490,
+            "recovery_percent": 0.8975903614457832
+          }
+        },
+        {
+          "temperature": 1.7,
+          "score": {
+            "races": 166,
+            "days": 2,
+            "log_loss": 3.917964644851228,
+            "brier": 0.965827808772843,
+            "stake_yen": 166000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        },
+        {
+          "temperature": 2,
+          "score": {
+            "races": 166,
+            "days": 2,
+            "log_loss": 3.9928277159350842,
+            "brier": 0.9696415989209587,
+            "stake_yen": 166000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        }
+      ],
+      "selected_temperature": 1,
+      "baseline": {
+        "races": 296,
+        "days": 2,
+        "log_loss": 3.8641664821567736,
+        "brier": 0.9607906150374043,
+        "stake_yen": 296000,
+        "return_yen": 318510,
+        "recovery_percent": 107.60472972972973
+      },
+      "candidate": {
+        "races": 296,
+        "days": 2,
+        "log_loss": 3.8641664821567736,
+        "brier": 0.9607906150374043,
+        "stake_yen": 296000,
+        "return_yen": 318510,
+        "recovery_percent": 107.60472972972973
+      },
+      "readiness": "INSUFFICIENT_DATA",
+      "promotion": false
+    },
+    {
+      "id": "RECEIPT_BEFORE_CUTOFF/annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "cohort": "RECEIPT_BEFORE_CUTOFF",
+      "coefficient_id": "annual-coeff-c746132e010cf018f053e0fdc88ea63aa22c43aa543a7edd8e83a79a73762a85",
+      "model_name": "直近1年・選手履歴＋場別傾向モデル v3.1",
+      "last_observed_date": "2026-10-27",
+      "selected": 44,
+      "pending": 0,
+      "excluded": 3,
+      "split_date": "2026-10-26",
+      "training_candidates": [
+        {
+          "temperature": 0.7,
+          "score": {
+            "races": 8,
+            "days": 2,
+            "log_loss": 3.169950882995226,
+            "brier": 0.939472353748158,
+            "stake_yen": 8000,
+            "return_yen": 520,
+            "recovery_percent": 6.5
+          }
+        },
+        {
+          "temperature": 1,
+          "score": {
+            "races": 8,
+            "days": 2,
+            "log_loss": 3.314675470098351,
+            "brier": 0.9439383131731237,
+            "stake_yen": 8000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        },
+        {
+          "temperature": 1.3,
+          "score": {
+            "races": 8,
+            "days": 2,
+            "log_loss": 3.472734011859166,
+            "brier": 0.9515223702457664,
+            "stake_yen": 8000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        },
+        {
+          "temperature": 1.7,
+          "score": {
+            "races": 8,
+            "days": 2,
+            "log_loss": 3.6529956529771574,
+            "brier": 0.9597740568815837,
+            "stake_yen": 8000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        },
+        {
+          "temperature": 2,
+          "score": {
+            "races": 8,
+            "days": 2,
+            "log_loss": 3.763610362350271,
+            "brier": 0.9643788225443353,
+            "stake_yen": 8000,
+            "return_yen": 0,
+            "recovery_percent": 0
+          }
+        }
+      ],
+      "selected_temperature": 0.7,
+      "baseline": {
+        "races": 33,
+        "days": 2,
+        "log_loss": 3.816071453105957,
+        "brier": 0.9543765198064964,
+        "stake_yen": 33000,
+        "return_yen": 3220,
+        "recovery_percent": 9.757575757575758
+      },
+      "candidate": {
+        "races": 33,
+        "days": 2,
+        "log_loss": 3.812790070240773,
+        "brier": 0.9451634513325287,
+        "stake_yen": 33000,
+        "return_yen": 19180,
+        "recovery_percent": 58.12121212121212
+      },
+      "readiness": "INSUFFICIENT_DATA",
+      "promotion": false
+    }
+  ],
+  "promotion": false,
+  "notes": "係数版・受信区分別に日付前半だけで温度を選び、後半で未補正と比較。過去記録での探索であり将来の未使用期間の証明ではありません。20日・2,000件ずつの学習/評価データが揃っても自動採用せず追加審査します。90完了日窓で蓄積し、長期の未使用期間による追加評価も必要です。確率・係数・保存予想は変更しません。"
+}

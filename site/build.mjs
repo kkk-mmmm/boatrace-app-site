@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import {strategyDashboard} from './strategy-dashboard.mjs';
+import {calibrationReview} from '../tools/prediction/calibration_review.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {allLiveData, archiveData, root, modelHash, japanDate, liveData} from './data.mjs';
@@ -41,7 +43,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   const current = {...snapshots[0], upcoming_races:upcomingRaceList(snapshots.flatMap(s=>[...(s.upcoming_races||[]),...s.races]),now,288),opportunities:opportunityList(snapshots,now),featured_races:featuredRaceList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
     meeting_status:s.meeting_status,meeting:s.meeting,update:s.update,race_count:s.races.length, data_url:`./data/venues/${s.venue_code}.json`}))};
   fs.mkdirSync(path.join(outputDirectory, 'data/venues'), {recursive: true});
-  for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs', 'development.mjs','race-context.mjs','race-metrics.mjs','charts.mjs','verification-data.mjs','verification-page.mjs','validation-view.mjs','experiments-view.mjs','favicon.svg','favicon-32.png','apple-touch-icon.png','icon-192.png','icon-512.png','social-card.png']) {
+  for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs', 'development.mjs','race-context.mjs','race-metrics.mjs','charts.mjs','verification-data.mjs','verification-page.mjs','strategy-page.mjs','validation-view.mjs','experiments-view.mjs','favicon.svg','favicon-32.png','apple-touch-icon.png','icon-192.png','icon-512.png','social-card.png']) {
     fs.copyFileSync(path.join(root, 'site/public', file), path.join(outputDirectory, file));
   }
   const indexHtml=path.join(outputDirectory,'index.html');
@@ -70,6 +72,9 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   }
   fs.writeFileSync(path.join(outputDirectory,'data/verification.json'),JSON.stringify(publicVerificationArchive(process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification'),{now})));
   fs.writeFileSync(path.join(outputDirectory,'data/validation.json'),JSON.stringify(buildValidationReview(process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification'),{now})));
+  const recordsDirectory=process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification');
+  fs.writeFileSync(path.join(outputDirectory,'data/strategies.json'),JSON.stringify(strategyDashboard(recordsDirectory,JSON.parse(fs.readFileSync(path.join(root,'site/conditional-strategies.json'))),{now})));
+  fs.writeFileSync(path.join(outputDirectory,'data/calibration.json'),JSON.stringify(calibrationReview(recordsDirectory,{now})));
   writePublicExperiments(process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification'),JSON.parse(fs.readFileSync(path.join(root,'site/experiments.json'),'utf8')).experiments,outputDirectory,{now});
   fs.writeFileSync(path.join(outputDirectory, 'data/archive.json'), JSON.stringify(archiveData(), null, 2) + '\n');
   return {date: current.date, status: current.update.status, races: current.races.length, venues:snapshots.length,

@@ -13,6 +13,7 @@ export function seoPage(html,{venue=null,snapshot=null,page=null,historyModel=nu
  const description=page?page.description:`${branding.short_name}で${venue?venue.name+'の':'全国24場の'}ボートレース・競艇予想を確認。過去1年の選手・場別データを学習した統計モデルによるAI予想、3連単オッズ、展示情報、確定結果と保存予想の比較を掲載。取得時刻・締切・更新状態も確認できます。`;
  const canonical=url(page?`${page.slug}/`:venue?`venues/${venue.code}/`:''),image=url('social-card.png');
  const graph=[...(!venue&&!page?[{'@type':'WebSite','@id':url('#website'),url:branding.base_url,name:branding.name,alternateName:branding.alternate_names,inLanguage:'ja'}]:[]), {'@type':'WebPage','@id':canonical+'#page',url:canonical,name:title,description,inLanguage:'ja',isPartOf:{'@id':url('#website')}}];
+ if(page?.article)graph.push({'@type':'Article',headline:page.title,mainEntityOfPage:{'@id':canonical+'#page'},datePublished:page.published_on,author:{'@type':'Organization',name:'フネヨミ運営者'},publisher:{'@type':'Organization',name:branding.short_name},inLanguage:'ja'});
  if(page)graph.push({'@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:branding.name,item:branding.base_url},{'@type':'ListItem',position:2,name:page.title,item:canonical}]});
  if(venue)graph.push({'@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:branding.name,item:branding.base_url},{'@type':'ListItem',position:2,name:venue.name+'の予想',item:canonical}]});
  const ld=JSON.stringify({'@context':'https://schema.org','@graph':graph}).replaceAll('<','\\u003c');

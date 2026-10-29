@@ -28,11 +28,12 @@ export function seoPage(html,{venue=null,snapshot=null,page=null,historyModel=nu
  html=html.replace('</main>',overview+`<section class="venue-overview" id="venue-predictions"><h2>${venue.name}の保存予想とオッズ</h2><p>ページ生成 ${escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(now)))}。この欄は公開時点の保存版です。取得時点で締切前・鮮度確認済みのオッズだけを載せます。現在の締切・最新オッズは上の今日のレースと公式情報で確認してください。</p>${fresh?staticPredictions(snapshot,venue,now):'<p>予想・オッズの取得を確認できません。</p>'}</section><section class="venue-overview" id="venue-history"><h2>${venue.name}の過去データから見る特徴</h2>${venueHistory(venue,historyModel,now)}</section>`+'</main>');}
  return html;
 }
-export function writeSeoPages(directory,html,snapshots,now,historyModel=null){
+export function writeSeoPages(directory,html,snapshots,now,historyModel=null,reviewContext={}){
+ const pages=informationPages(undefined,{...reviewContext,now});
  fs.writeFileSync(path.join(directory,'index.html'),seoPage(html,{now}));
  for(const venue of venues){const dir=path.join(directory,'venues',venue.code);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),seoPage(html,{venue,snapshot:snapshots.find(s=>s.venue_code===venue.code),historyModel,now}));}
- for(const page of informationPages()){const dir=path.join(directory,page.slug);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),seoPage(informationTemplate(html,page),{page,now}));}
- fs.writeFileSync(path.join(directory,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+['',...informationPages().map(p=>`${p.slug}/`),...venues.map(v=>`venues/${v.code}/`)].map(p=>`<url><loc>${url(p)}</loc></url>`).join('')+'</urlset>');
+ for(const page of pages){const dir=path.join(directory,page.slug);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),seoPage(informationTemplate(html,page),{page,now}));}
+ fs.writeFileSync(path.join(directory,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+['',...pages.map(p=>`${p.slug}/`),...venues.map(v=>`venues/${v.code}/`)].map(p=>`<url><loc>${url(p)}</loc></url>`).join('')+'</urlset>');
  if(new URL(branding.base_url).hostname!=='kkk-mmmm.github.io')fs.writeFileSync(path.join(directory,'CNAME'),new URL(branding.base_url).hostname+'\n');
  if(new URL(branding.base_url).pathname==='/')fs.writeFileSync(path.join(directory,'robots.txt'),'User-agent: *\nAllow: /\nSitemap: '+url('sitemap.xml')+'\n');
  fs.writeFileSync(path.join(directory,'site.webmanifest'),JSON.stringify({name:branding.name,short_name:branding.short_name,lang:'ja',start_url:branding.base_url,scope:new URL(branding.base_url).pathname,display:'browser',theme_color:branding.theme_color,background_color:'#f3faff',icons:[{src:url('icon-192.png'),sizes:'192x192',type:'image/png'},{src:url('icon-512.png'),sizes:'512x512',type:'image/png'}]}));

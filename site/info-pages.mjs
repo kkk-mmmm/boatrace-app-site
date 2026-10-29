@@ -1,14 +1,16 @@
+import {interimArticle} from './interim-article.mjs';
 import {articlePages} from './articles.mjs';
 import {venues} from '../tools/prerace/venues.mjs';
 import fs from 'node:fs';
 import {escape} from './public/view.mjs';
 export const contact=JSON.parse(fs.readFileSync(new URL('./contact.json',import.meta.url)));
-export function informationPages(settings=contact){
+export function informationPages(settings=contact,context={}){
  const email=String(settings.email||'');
  if(settings.verified&&!/^[a-z0-9._+-]+@funeyomi\.win$/i.test(email))throw Error('公開用メールアドレスを確認してください');
  return [
+ interimArticle(context.strategyReport,{now:context.now}),
  ...articlePages(),
- {slug:'strategies',title:'条件別検証の成績・データ充足率',description:'固定した条件別買い目の仮想成績と、予想・オッズ・展示・結果のデータ充足率を確認できます。',module:'./strategy-page.mjs',content:`<p>締切3分前基準の保存予想を各点100円で仮想購入した記録です。結果待ち・欠損・異常結果は損失に含めません。将来の利益を保証するものではありません。</p><div class="condition-controls strategy-controls">${[['date','日付'],['venue','場コード'],['grade','グレード'],['coefficient','係数版']].map(([k,l])=>`<label>${l}<select id="strategy-${k}"><option value="">すべて</option></select></label>`).join('')}<label>傾向<select id="strategy-scenario"><option value="all">すべて</option><option value="in">イン</option><option value="other">それ以外</option></select></label><label>点数上限<select id="strategy-limit"><option value="">10点・20点</option><option value="10">10点</option><option value="20">20点</option></select></label></div><button id="strategy-refresh">集計を更新</button><p id="strategy-status" role="status"></p><div id="strategy-report"></div><details><summary>確率補正の候補検証</summary><p>元の確率を変更せず、係数版・受信区分ごとに過去の日付前半で候補を選び、後半で未補正と比較します。採用は自動では行いません。</p><div id="strategy-calibration" role="status">候補集計を確認しています。</div><a href="./data/calibration.json">候補検証の集計JSON</a></details>`},
+ {slug:'strategies',title:'条件別検証の成績・データ充足率',description:'固定した条件別買い目の仮想成績と、予想・オッズ・展示・結果のデータ充足率を確認できます。',module:'./strategy-page.mjs',content:`<p><a href="./conditional-forecast-review/">条件別予想の検証・途中経過を読む</a></p><p>締切3分前基準の保存予想を各点100円で仮想購入した記録です。結果待ち・欠損・異常結果は損失に含めません。将来の利益を保証するものではありません。</p><div class="condition-controls strategy-controls">${[['date','日付'],['venue','場コード'],['grade','グレード'],['coefficient','係数版']].map(([k,l])=>`<label>${l}<select id="strategy-${k}"><option value="">すべて</option></select></label>`).join('')}<label>傾向<select id="strategy-scenario"><option value="all">すべて</option><option value="in">イン</option><option value="other">それ以外</option></select></label><label>点数上限<select id="strategy-limit"><option value="">10点・20点</option><option value="10">10点</option><option value="20">20点</option></select></label></div><button id="strategy-refresh">集計を更新</button><p id="strategy-status" role="status"></p><div id="strategy-report"></div><details><summary>確率補正の候補検証</summary><p>元の確率を変更せず、係数版・受信区分ごとに過去の日付前半で候補を選び、後半で未補正と比較します。採用は自動では行いません。</p><div id="strategy-calibration" role="status">候補集計を確認しています。</div><a href="./data/calibration.json">候補検証の集計JSON</a></details>`},
  {slug:'about',title:'運営情報・お問い合わせ',description:'フネヨミの運営者、提供する情報とお問い合わせ窓口をご案内します。',content:`
  <section><h2>運営について</h2><dl><dt>サイト名</dt><dd>フネヨミ｜ボートレース・競艇予想</dd><dt>運営者</dt><dd>${escape(settings.operator)}</dd></dl><p>全国24場の出走表・展示情報・3連単オッズと、統計モデルによるAI予想を掲載する非公式の情報サイトです。BOAT RACEの公式サービスではありません。投票・購入機能はありません。</p></section>
  <section><h2>お問い合わせ</h2>${settings.verified?`<p>ご意見や表示・データの不具合は <a href="mailto:${escape(email)}">${escape(email)}</a> へお寄せください。</p><p>不具合のご連絡には、開催日・場名・レース番号・閲覧端末・表示された内容を添えていただくと確認がスムーズです。パスワードや決済情報などは送らないでください。</p>`:'<p>お問い合わせ用メールアドレスは準備中です。開設・受信確認後に掲載します。</p>'}</section>

@@ -1,0 +1,1908 @@
+{
+  "kind": "LOCAL_MOBILE_LAB_COMPARISON",
+  "baseline_commit": "b0e732d",
+  "data_source": "same copied static artifact; no current live race forecasts",
+  "summary": [
+    {
+      "route": "/",
+      "before": {
+        "fcp_ms": 1178.0,
+        "lcp_ms": 2094.0,
+        "cls": 0.25213666364734816,
+        "long_task_ms": 167.5
+      },
+      "after": {
+        "fcp_ms": 1160.0,
+        "lcp_ms": 2054.0,
+        "cls": 0.018987883364894355,
+        "long_task_ms": 133.5
+      }
+    },
+    {
+      "route": "venues/24/",
+      "before": {
+        "fcp_ms": 1346.0,
+        "lcp_ms": 2236.0,
+        "cls": 0.2127001729304926,
+        "long_task_ms": 147.5
+      },
+      "after": {
+        "fcp_ms": 1292.0,
+        "lcp_ms": 2210.0,
+        "cls": 0.0011785020314527457,
+        "long_task_ms": 70.5
+      }
+    },
+    {
+      "route": "strategies/",
+      "before": {
+        "fcp_ms": 836.0,
+        "lcp_ms": 836.0,
+        "cls": 0.0,
+        "long_task_ms": 189.0
+      },
+      "after": {
+        "fcp_ms": 832.0,
+        "lcp_ms": 832.0,
+        "cls": 0.0,
+        "long_task_ms": 209.0
+      }
+    },
+    {
+      "route": "expected-value/",
+      "before": {
+        "fcp_ms": 840.0,
+        "lcp_ms": 840.0,
+        "cls": 0.0,
+        "long_task_ms": 0.0
+      },
+      "after": {
+        "fcp_ms": 860.0,
+        "lcp_ms": 860.0,
+        "cls": 0.0,
+        "long_task_ms": 92.5
+      }
+    }
+  ],
+  "before": {
+    "kind": "LOCAL_MOBILE_LAB",
+    "base": "http://127.0.0.1:4185/",
+    "settings": {
+      "width": 390,
+      "height": 844,
+      "cpu_slowdown": 4,
+      "latency_ms": 150,
+      "download_mbps": 1.6,
+      "cache": "disabled"
+    },
+    "runs": [
+      {
+        "route": "/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 2084,
+        "cls": 0.25213666364734816,
+        "shifts": [
+          {
+            "value": 0.00021518223321866548,
+            "sources": [
+              {
+                "node": "refresh-button",
+                "previous": {
+                  "x": 286.5,
+                  "y": 806.59375,
+                  "width": 70.5,
+                  "height": 28.890625,
+                  "top": 806.59375,
+                  "right": 357,
+                  "bottom": 835.484375,
+                  "left": 286.5
+                },
+                "current": {
+                  "x": 317,
+                  "y": 812.53125,
+                  "width": 40,
+                  "height": 17,
+                  "top": 812.53125,
+                  "right": 357,
+                  "bottom": 829.53125,
+                  "left": 317
+                }
+              }
+            ]
+          },
+          {
+            "value": 0.2519214814141295,
+            "sources": [
+              {
+                "node": "venue-picker",
+                "previous": {
+                  "x": 20,
+                  "y": 463.578125,
+                  "width": 350,
+                  "height": 296.46875,
+                  "top": 463.578125,
+                  "right": 370,
+                  "bottom": 760.046875,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 592.328125,
+                  "width": 350,
+                  "height": 251.671875,
+                  "top": 592.328125,
+                  "right": 370,
+                  "bottom": 844,
+                  "left": 20
+                }
+              },
+              {
+                "node": "upcoming-section",
+                "previous": {
+                  "x": 20,
+                  "y": 369.484375,
+                  "width": 350,
+                  "height": 68.09375,
+                  "top": 369.484375,
+                  "right": 370,
+                  "bottom": 437.578125,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 457.25,
+                  "width": 350,
+                  "height": 109.078125,
+                  "top": 457.25,
+                  "right": 370,
+                  "bottom": 566.328125,
+                  "left": 20
+                }
+              },
+              {
+                "node": "featured-details",
+                "previous": {
+                  "x": 20,
+                  "y": 294.296875,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 294.296875,
+                  "right": 370,
+                  "bottom": 339.484375,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 382.0625,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 382.0625,
+                  "right": 370,
+                  "bottom": 427.25,
+                  "left": 20
+                }
+              },
+              {
+                "node": "update-bar",
+                "previous": {
+                  "x": 20,
+                  "y": 784.046875,
+                  "width": 350,
+                  "height": 59.953125,
+                  "top": 784.046875,
+                  "right": 370,
+                  "bottom": 844,
+                  "left": 20
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-results-heading",
+                "previous": {
+                  "x": 36,
+                  "y": 655.359375,
+                  "width": 318,
+                  "height": 30,
+                  "top": 655.359375,
+                  "right": 354,
+                  "bottom": 685.359375,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 158,
+        "fcp_ms": 1164,
+        "dom_content_loaded_ms": 1745.199999988079,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 750.4000000059605
+          },
+          {
+            "url": "https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js",
+            "bytes": 0,
+            "duration_ms": 28.299999982118607
+          },
+          {
+            "url": "http://127.0.0.1:4185/app.mjs",
+            "bytes": 71429,
+            "duration_ms": 879.9000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 177.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 183.39999997615814
+          },
+          {
+            "url": "http://127.0.0.1:4185/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 552.2999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4185/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 528.9000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4185/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 446.40000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4185/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 476.90000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4185/charts.mjs",
+            "bytes": 4341,
+            "duration_ms": 265.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 214.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 223.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 153.7999999821186
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 277435,
+        "pending_requests": 1,
+        "failed": [
+          "net::ERR_CERT_AUTHORITY_INVALID"
+        ]
+      },
+      {
+        "route": "/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 2104,
+        "cls": 0.25213666364734816,
+        "shifts": [
+          {
+            "value": 0.00021518223321866548,
+            "sources": [
+              {
+                "node": "refresh-button",
+                "previous": {
+                  "x": 286.5,
+                  "y": 806.59375,
+                  "width": 70.5,
+                  "height": 28.890625,
+                  "top": 806.59375,
+                  "right": 357,
+                  "bottom": 835.484375,
+                  "left": 286.5
+                },
+                "current": {
+                  "x": 317,
+                  "y": 812.53125,
+                  "width": 40,
+                  "height": 17,
+                  "top": 812.53125,
+                  "right": 357,
+                  "bottom": 829.53125,
+                  "left": 317
+                }
+              }
+            ]
+          },
+          {
+            "value": 0.2519214814141295,
+            "sources": [
+              {
+                "node": "venue-picker",
+                "previous": {
+                  "x": 20,
+                  "y": 463.578125,
+                  "width": 350,
+                  "height": 296.46875,
+                  "top": 463.578125,
+                  "right": 370,
+                  "bottom": 760.046875,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 592.328125,
+                  "width": 350,
+                  "height": 251.671875,
+                  "top": 592.328125,
+                  "right": 370,
+                  "bottom": 844,
+                  "left": 20
+                }
+              },
+              {
+                "node": "upcoming-section",
+                "previous": {
+                  "x": 20,
+                  "y": 369.484375,
+                  "width": 350,
+                  "height": 68.09375,
+                  "top": 369.484375,
+                  "right": 370,
+                  "bottom": 437.578125,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 457.25,
+                  "width": 350,
+                  "height": 109.078125,
+                  "top": 457.25,
+                  "right": 370,
+                  "bottom": 566.328125,
+                  "left": 20
+                }
+              },
+              {
+                "node": "featured-details",
+                "previous": {
+                  "x": 20,
+                  "y": 294.296875,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 294.296875,
+                  "right": 370,
+                  "bottom": 339.484375,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 382.0625,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 382.0625,
+                  "right": 370,
+                  "bottom": 427.25,
+                  "left": 20
+                }
+              },
+              {
+                "node": "update-bar",
+                "previous": {
+                  "x": 20,
+                  "y": 784.046875,
+                  "width": 350,
+                  "height": 59.953125,
+                  "top": 784.046875,
+                  "right": 370,
+                  "bottom": 844,
+                  "left": 20
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-results-heading",
+                "previous": {
+                  "x": 36,
+                  "y": 655.359375,
+                  "width": 318,
+                  "height": 30,
+                  "top": 655.359375,
+                  "right": 354,
+                  "bottom": 685.359375,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 177,
+        "fcp_ms": 1192,
+        "dom_content_loaded_ms": 1751.5999999940395,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 760.8000000119209
+          },
+          {
+            "url": "https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js",
+            "bytes": 0,
+            "duration_ms": 36.400000005960464
+          },
+          {
+            "url": "http://127.0.0.1:4185/app.mjs",
+            "bytes": 71429,
+            "duration_ms": 894.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 179.69999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 184.19999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 546.4000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4185/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 523
+          },
+          {
+            "url": "http://127.0.0.1:4185/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 469.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 439.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4185/charts.mjs",
+            "bytes": 4341,
+            "duration_ms": 266
+          },
+          {
+            "url": "http://127.0.0.1:4185/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 214
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 221.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 153.2999999821186
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 277435,
+        "pending_requests": 1,
+        "failed": [
+          "net::ERR_CERT_AUTHORITY_INVALID"
+        ]
+      },
+      {
+        "route": "venues/24/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 2196,
+        "cls": 0.2127001729304926,
+        "shifts": [
+          {
+            "value": 0.2127001729304926,
+            "sources": [
+              {
+                "node": "venue-picker",
+                "previous": {
+                  "x": 20,
+                  "y": 541.578125,
+                  "width": 350,
+                  "height": 296.46875,
+                  "top": 541.578125,
+                  "right": 370,
+                  "bottom": 838.046875,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 670.328125,
+                  "width": 350,
+                  "height": 173.671875,
+                  "top": 670.328125,
+                  "right": 370,
+                  "bottom": 844,
+                  "left": 20
+                }
+              },
+              {
+                "node": "upcoming-section",
+                "previous": {
+                  "x": 20,
+                  "y": 447.484375,
+                  "width": 350,
+                  "height": 68.09375,
+                  "top": 447.484375,
+                  "right": 370,
+                  "bottom": 515.578125,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 535.25,
+                  "width": 350,
+                  "height": 109.078125,
+                  "top": 535.25,
+                  "right": 370,
+                  "bottom": 644.328125,
+                  "left": 20
+                }
+              },
+              {
+                "node": "featured-details",
+                "previous": {
+                  "x": 20,
+                  "y": 372.296875,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 372.296875,
+                  "right": 370,
+                  "bottom": 417.484375,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 460.0625,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 460.0625,
+                  "right": 370,
+                  "bottom": 505.25,
+                  "left": 20
+                }
+              },
+              {
+                "node": "venue-results-heading",
+                "previous": {
+                  "x": 36,
+                  "y": 733.359375,
+                  "width": 318,
+                  "height": 30,
+                  "top": 733.359375,
+                  "right": 354,
+                  "bottom": 763.359375,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-direct",
+                "previous": {
+                  "x": 36,
+                  "y": 789.359375,
+                  "width": 318,
+                  "height": 29.6875,
+                  "top": 789.359375,
+                  "right": 354,
+                  "bottom": 819.046875,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 134,
+        "fcp_ms": 1304,
+        "dom_content_loaded_ms": 1860,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 812.9000000059605
+          },
+          {
+            "url": "https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js",
+            "bytes": 0,
+            "duration_ms": 71.09999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/app.mjs",
+            "bytes": 71429,
+            "duration_ms": 942.8000000119209
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 178.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 183.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4185/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 549.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 525.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 444.19999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 473.19999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/charts.mjs",
+            "bytes": 4341,
+            "duration_ms": 262.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 217.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 222.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/venues/24.json",
+            "bytes": 1199,
+            "duration_ms": 161.2999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 156.59999999403954
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 285430,
+        "pending_requests": 1,
+        "failed": [
+          "net::ERR_CERT_AUTHORITY_INVALID"
+        ]
+      },
+      {
+        "route": "venues/24/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 2276,
+        "cls": 0.2127001729304926,
+        "shifts": [
+          {
+            "value": 0.2127001729304926,
+            "sources": [
+              {
+                "node": "venue-picker",
+                "previous": {
+                  "x": 20,
+                  "y": 541.578125,
+                  "width": 350,
+                  "height": 296.46875,
+                  "top": 541.578125,
+                  "right": 370,
+                  "bottom": 838.046875,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 670.328125,
+                  "width": 350,
+                  "height": 173.671875,
+                  "top": 670.328125,
+                  "right": 370,
+                  "bottom": 844,
+                  "left": 20
+                }
+              },
+              {
+                "node": "upcoming-section",
+                "previous": {
+                  "x": 20,
+                  "y": 447.484375,
+                  "width": 350,
+                  "height": 68.09375,
+                  "top": 447.484375,
+                  "right": 370,
+                  "bottom": 515.578125,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 535.25,
+                  "width": 350,
+                  "height": 109.078125,
+                  "top": 535.25,
+                  "right": 370,
+                  "bottom": 644.328125,
+                  "left": 20
+                }
+              },
+              {
+                "node": "featured-details",
+                "previous": {
+                  "x": 20,
+                  "y": 372.296875,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 372.296875,
+                  "right": 370,
+                  "bottom": 417.484375,
+                  "left": 20
+                },
+                "current": {
+                  "x": 20,
+                  "y": 460.0625,
+                  "width": 350,
+                  "height": 45.1875,
+                  "top": 460.0625,
+                  "right": 370,
+                  "bottom": 505.25,
+                  "left": 20
+                }
+              },
+              {
+                "node": "venue-results-heading",
+                "previous": {
+                  "x": 36,
+                  "y": 733.359375,
+                  "width": 318,
+                  "height": 30,
+                  "top": 733.359375,
+                  "right": 354,
+                  "bottom": 763.359375,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-direct",
+                "previous": {
+                  "x": 36,
+                  "y": 789.359375,
+                  "width": 318,
+                  "height": 29.6875,
+                  "top": 789.359375,
+                  "right": 354,
+                  "bottom": 819.046875,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 161,
+        "fcp_ms": 1388,
+        "dom_content_loaded_ms": 1960.5999999940395,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 767.9000000059605
+          },
+          {
+            "url": "https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js",
+            "bytes": 0,
+            "duration_ms": 24.400000005960464
+          },
+          {
+            "url": "http://127.0.0.1:4185/app.mjs",
+            "bytes": 71429,
+            "duration_ms": 896.4000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 182.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 182.69999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 549
+          },
+          {
+            "url": "http://127.0.0.1:4185/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 526.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 473.69999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 439.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/charts.mjs",
+            "bytes": 4341,
+            "duration_ms": 258.90000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4185/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 214.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 227.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/venues/24.json",
+            "bytes": 1199,
+            "duration_ms": 161.60000002384186
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 157.5
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 285430,
+        "pending_requests": 1,
+        "failed": [
+          "net::ERR_CERT_AUTHORITY_INVALID"
+        ]
+      },
+      {
+        "route": "strategies/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 836,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 208,
+        "fcp_ms": 836,
+        "dom_content_loaded_ms": 846,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 463.2999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4185/strategy-page.mjs",
+            "bytes": 8204,
+            "duration_ms": 250.2999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 173.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 179.90000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4185/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 302.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/strategies.json",
+            "bytes": 1437943,
+            "duration_ms": 7396.199999988079
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/calibration.json",
+            "bytes": 10436,
+            "duration_ms": 254.69999998807907
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 1533721,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "strategies/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 836,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 170,
+        "fcp_ms": 836,
+        "dom_content_loaded_ms": 847.8000000119209,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 462.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/strategy-page.mjs",
+            "bytes": 8204,
+            "duration_ms": 253.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 175.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 175.19999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 295.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/strategies.json",
+            "bytes": 1437943,
+            "duration_ms": 7396
+          },
+          {
+            "url": "http://127.0.0.1:4185/data/calibration.json",
+            "bytes": 10436,
+            "duration_ms": 253.60000002384186
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 1533721,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "expected-value/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 804,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 0,
+        "fcp_ms": 804,
+        "dom_content_loaded_ms": 222,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 395.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 159.09999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 169.59999999403954
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 59926,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "expected-value/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 876,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 0,
+        "fcp_ms": 876,
+        "dom_content_loaded_ms": 257.2000000178814,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4185/style.css",
+            "bytes": 46446,
+            "duration_ms": 395.5
+          },
+          {
+            "url": "http://127.0.0.1:4185/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 165.69999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4185/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 169.90000000596046
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 59926,
+        "pending_requests": 0,
+        "failed": []
+      }
+    ],
+    "limitations": [
+      "Local HTTP and saved data; not production HTTPS or real user measurements.",
+      "No INP measurement. LCP/CLS are observed for this navigation, not field percentiles."
+    ]
+  },
+  "after": {
+    "kind": "LOCAL_MOBILE_LAB",
+    "base": "http://127.0.0.1:4186/",
+    "settings": {
+      "width": 390,
+      "height": 844,
+      "cpu_slowdown": 4,
+      "latency_ms": 150,
+      "download_mbps": 1.6,
+      "cache": "disabled"
+    },
+    "runs": [
+      {
+        "route": "/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 2048,
+        "cls": 0.018987883364894355,
+        "shifts": [
+          {
+            "value": 0.018987883364894355,
+            "sources": [
+              {
+                "node": "venue-summary",
+                "previous": {
+                  "x": 36,
+                  "y": 740.765625,
+                  "width": 318,
+                  "height": 17,
+                  "top": 740.765625,
+                  "right": 354,
+                  "bottom": 757.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 36,
+                  "y": 801.328125,
+                  "width": 318,
+                  "height": 17,
+                  "top": 801.328125,
+                  "right": 354,
+                  "bottom": 818.328125,
+                  "left": 36
+                }
+              },
+              {
+                "node": "venue-results-heading",
+                "previous": {
+                  "x": 36,
+                  "y": 783.765625,
+                  "width": 318,
+                  "height": 30,
+                  "top": 783.765625,
+                  "right": 354,
+                  "bottom": 813.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-results",
+                "previous": {
+                  "x": 36,
+                  "y": 821.765625,
+                  "width": 318,
+                  "height": 6,
+                  "top": 821.765625,
+                  "right": 354,
+                  "bottom": 827.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-direct",
+                "previous": {
+                  "x": 36,
+                  "y": 839.765625,
+                  "width": 318,
+                  "height": 4.234375,
+                  "top": 839.765625,
+                  "right": 354,
+                  "bottom": 844,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 139,
+        "fcp_ms": 1144,
+        "dom_content_loaded_ms": 1717.7999999821186,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 772.7999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/app.mjs",
+            "bytes": 71567,
+            "duration_ms": 906.3000000119209
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 177
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 186.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 550
+          },
+          {
+            "url": "http://127.0.0.1:4186/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 534.2999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 473.7999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 451.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/charts.mjs",
+            "bytes": 5253,
+            "duration_ms": 301.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 199.09999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 229.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 164.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 158.09999999403954
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 279156,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 2060,
+        "cls": 0.018987883364894355,
+        "shifts": [
+          {
+            "value": 0.018987883364894355,
+            "sources": [
+              {
+                "node": "venue-summary",
+                "previous": {
+                  "x": 36,
+                  "y": 740.765625,
+                  "width": 318,
+                  "height": 17,
+                  "top": 740.765625,
+                  "right": 354,
+                  "bottom": 757.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 36,
+                  "y": 801.328125,
+                  "width": 318,
+                  "height": 17,
+                  "top": 801.328125,
+                  "right": 354,
+                  "bottom": 818.328125,
+                  "left": 36
+                }
+              },
+              {
+                "node": "venue-results-heading",
+                "previous": {
+                  "x": 36,
+                  "y": 783.765625,
+                  "width": 318,
+                  "height": 30,
+                  "top": 783.765625,
+                  "right": 354,
+                  "bottom": 813.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-results",
+                "previous": {
+                  "x": 36,
+                  "y": 821.765625,
+                  "width": 318,
+                  "height": 6,
+                  "top": 821.765625,
+                  "right": 354,
+                  "bottom": 827.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              },
+              {
+                "node": "venue-direct",
+                "previous": {
+                  "x": 36,
+                  "y": 839.765625,
+                  "width": 318,
+                  "height": 4.234375,
+                  "top": 839.765625,
+                  "right": 354,
+                  "bottom": 844,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 128,
+        "fcp_ms": 1176,
+        "dom_content_loaded_ms": 1744.300000011921,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 759
+          },
+          {
+            "url": "http://127.0.0.1:4186/app.mjs",
+            "bytes": 71567,
+            "duration_ms": 893.5
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 176.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 182.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 558.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4186/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 452.69999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4186/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 475.7999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 535.9000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4186/charts.mjs",
+            "bytes": 5253,
+            "duration_ms": 303.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 197.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 224
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 154.10000002384186
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 278518,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "venues/24/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 2176,
+        "cls": 0.0011785020314527457,
+        "shifts": [
+          {
+            "value": 0.0011785020314527457,
+            "sources": [
+              {
+                "node": "venue-summary",
+                "previous": {
+                  "x": 36,
+                  "y": 818.765625,
+                  "width": 318,
+                  "height": 17,
+                  "top": 818.765625,
+                  "right": 354,
+                  "bottom": 835.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 68,
+        "fcp_ms": 1260,
+        "dom_content_loaded_ms": 1852.2999999821186,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 790.4000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4186/app.mjs",
+            "bytes": 71567,
+            "duration_ms": 923.2999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 178
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 183.90000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 554.1999999880791
+          },
+          {
+            "url": "http://127.0.0.1:4186/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 449.40000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 471.09999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 531.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4186/charts.mjs",
+            "bytes": 5253,
+            "duration_ms": 299.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 204.7999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 221.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/venues/24.json",
+            "bytes": 1199,
+            "duration_ms": 159.7000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 155.90000000596046
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 286513,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "venues/24/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 2244,
+        "cls": 0.0011785020314527457,
+        "shifts": [
+          {
+            "value": 0.0011785020314527457,
+            "sources": [
+              {
+                "node": "venue-summary",
+                "previous": {
+                  "x": 36,
+                  "y": 818.765625,
+                  "width": 318,
+                  "height": 17,
+                  "top": 818.765625,
+                  "right": 354,
+                  "bottom": 835.765625,
+                  "left": 36
+                },
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 0,
+                  "height": 0,
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                }
+              }
+            ]
+          }
+        ],
+        "long_task_ms": 73,
+        "fcp_ms": 1324,
+        "dom_content_loaded_ms": 1916.0999999940395,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 795.7999999821186
+          },
+          {
+            "url": "http://127.0.0.1:4186/app.mjs",
+            "bytes": 71567,
+            "duration_ms": 928.6000000238419
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 176
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 182.09999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 561.4000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4186/development.mjs",
+            "bytes": 14265,
+            "duration_ms": 475.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/odds-live.mjs",
+            "bytes": 18213,
+            "duration_ms": 535.9000000059605
+          },
+          {
+            "url": "http://127.0.0.1:4186/experiments-view.mjs",
+            "bytes": 13400,
+            "duration_ms": 452.40000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/charts.mjs",
+            "bytes": 5253,
+            "duration_ms": 301.30000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/race-metrics.mjs",
+            "bytes": 2767,
+            "duration_ms": 199.10000002384186
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/current.json",
+            "bytes": 14047,
+            "duration_ms": 228.2000000178814
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/venues/24.json",
+            "bytes": 1199,
+            "duration_ms": 157.40000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/odds-config.json",
+            "bytes": 409,
+            "duration_ms": 158.40000000596046
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 286513,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "strategies/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 820,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 185,
+        "fcp_ms": 820,
+        "dom_content_loaded_ms": 828,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 471.5
+          },
+          {
+            "url": "http://127.0.0.1:4186/strategy-page.mjs",
+            "bytes": 8204,
+            "duration_ms": 252.90000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 165.39999997615814
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 179.5
+          },
+          {
+            "url": "http://127.0.0.1:4186/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 304.19999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/strategies.json",
+            "bytes": 1437943,
+            "duration_ms": 7401.0999999940395
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/calibration.json",
+            "bytes": 10436,
+            "duration_ms": 254.90000000596046
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 1533830,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "strategies/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 844,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 233,
+        "fcp_ms": 844,
+        "dom_content_loaded_ms": 846.0999999940395,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 473.90000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/strategy-page.mjs",
+            "bytes": 8204,
+            "duration_ms": 253.40000000596046
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 167.69999998807907
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 179.09999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/view.mjs",
+            "bytes": 22796,
+            "duration_ms": 303.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/strategies.json",
+            "bytes": 1437943,
+            "duration_ms": 7396.5999999940395
+          },
+          {
+            "url": "http://127.0.0.1:4186/data/calibration.json",
+            "bytes": 10436,
+            "duration_ms": 254.89999997615814
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 1533830,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "expected-value/",
+        "repeat": 0,
+        "ready": "complete",
+        "lcp_ms": 840,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 0,
+        "fcp_ms": 840,
+        "dom_content_loaded_ms": 243.2000000178814,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 404.59999999403954
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 161.5
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 172.09999999403954
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 60035,
+        "pending_requests": 0,
+        "failed": []
+      },
+      {
+        "route": "expected-value/",
+        "repeat": 1,
+        "ready": "complete",
+        "lcp_ms": 880,
+        "cls": 0,
+        "shifts": [],
+        "long_task_ms": 185,
+        "fcp_ms": 880,
+        "dom_content_loaded_ms": 274.5,
+        "resources": [
+          {
+            "url": "http://127.0.0.1:4186/style.css",
+            "bytes": 46555,
+            "duration_ms": 394.80000001192093
+          },
+          {
+            "url": "http://127.0.0.1:4186/favicon.svg",
+            "bytes": 693,
+            "duration_ms": 167
+          },
+          {
+            "url": "http://127.0.0.1:4186/site.webmanifest",
+            "bytes": 695,
+            "duration_ms": 173
+          }
+        ],
+        "overflow": false,
+        "encoded_bytes": 60035,
+        "pending_requests": 0,
+        "failed": []
+      }
+    ],
+    "limitations": [
+      "Local HTTP and saved data; not production HTTPS or real user measurements.",
+      "No INP measurement. LCP/CLS are observed for this navigation, not field percentiles."
+    ]
+  },
+  "limitations": [
+    "Two runs per route; timing variation is not statistical evidence of field improvement.",
+    "Baseline Chart.js request fails certificate validation in this lab; CDN download/parse savings cannot be measured here.",
+    "Baseline archive request remains in flight at the observation cutoff; completed encoded bytes are not total eventual transfer.",
+    "No INP or real-user Core Web Vitals measured."
+  ]
+}

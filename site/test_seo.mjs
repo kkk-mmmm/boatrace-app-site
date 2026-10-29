@@ -1,9 +1,9 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import crypto from 'node:crypto';
-import {informationPages,contact} from './info-pages.mjs';
+import {informationPages,informationTemplate,contact} from './info-pages.mjs';
 import {seoPage,writeSeoPages,branding} from './seo.mjs';import {venues} from '../tools/prerace/venues.mjs';
 const template=fs.readFileSync(new URL('./public/index.html',import.meta.url),'utf8'),now=Date.parse('2030-01-01T01:00:00Z');
-test('全29ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,29);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
+test('全31ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,31);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
  for(const venue of [null,...venues]){const html=fs.readFileSync(path.join(dir,venue?`venues/${venue.code}/index.html`:'index.html'),'utf8'),canonical=new URL(venue?`venues/${venue.code}/`:'',branding.base_url).href;
  assert.ok(html.includes(`<link rel="canonical" href="${canonical}">`));assert.ok(html.includes(`property="og:url" content="${canonical}"`));assert.ok(html.includes('AI予想'));assert.ok(html.includes('競艇'));assert.ok(html.includes('フネヨミ'));assert.equal((html.match(/<h1\b/g)||[]).length,1);
  assert.doesNotMatch(html,/日本時間/);
@@ -95,4 +95,16 @@ test('決まり手は出走数を分母に集計し、未確認・少数例・�
  const invalid=structuredClone(model);invalid.profiles.venues['01'].l2[9]=[0,21,0,0,0,0];assert.ok(!venueStyleRows(venues[0],invalid,now).some(r=>r.lane===2));assert.match(venueStylesHTML(venues[0],{...model,trained_through:'2030-01-01'},now),/未集計/);
  const allMissing=seoPage(template,{venue:venues[0],now});assert.match(allMissing,/id="venue-styles"/);const guide=informationPages().find(p=>p.slug==='guide');assert.match(guide.content,/id="race-styles"/);assert.match(guide.content,/venues\/24\/#venue-styles/);
  const history=(await import('./venue-seo.mjs')).venueHistory(venues[0],{...model,profiles:{...model.profiles,venues:{'01':Object.fromEntries([1,2,3,4,5,6].map(l=>['l'+l,make(100,10,[1,2,2,2,1,1])]))},population:{l1:make(100,50,[40,2,2,2,2,2])}}},now);assert.match(history,/strategies\/\?venue=01/);assert.match(history,/guide\/#race-styles/);
+});
+
+test('解説記事は独立URL・Article構造化データ・相互リンクを持ち、例と実績を区別する',()=>{
+ const pages=informationPages();for(const slug of ['expected-value','exhibition-st']){const page=pages.find(p=>p.slug===slug),html=seoPage(informationTemplate(template,page),{page,now});assert.match(html,new RegExp('https://funeyomi.win/'+slug+'/'));const graph=JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'];assert.ok(graph.some(n=>n['@type']==='Article'&&n.author.name==='フネヨミ運営者'));assert.match(html,/href="\.\/venues\/24\/#venue-predictions"/);}
+ const ev=pages.find(p=>p.slug==='expected-value').content;for(const text of ['0.02×80','0.5倍','8,000円','800%','400%','過去の実績ではありません'])assert.ok(ev.includes(text),text);
+ const st=pages.find(p=>p.slug==='exhibition-st').content;assert.match(st,/本番F・Lを除外/);assert.match(st,/補正モデルの予測誤差や改善率ではありません|現在の集計値は未掲載/);
+});
+
+test('展示STの集計は件数で重み付けし、分散・欠損・未来期間を検証する',async()=>{
+ const {exhibitionEvidence,articlePages}=await import('./articles.mjs');const profile={kind:'EXHIBITION_ST_PAIRED_HISTORY',window_from:'2029-01-01',through:'2029-12-31',races:2,paired_starts:4,players:{a:{n:1,sum:.1,sum_squares:.01,from:'2029-12-01',through:'2029-12-01'},b:{n:3,sum:.9,sum_squares:.27,from:'2029-12-02',through:'2029-12-03'}}};const before=JSON.stringify(profile),s=exhibitionEvidence(profile,now);assert.ok(Math.abs(s.mean-.25)<1e-12);assert.ok(Math.abs(s.rmse-Math.sqrt(.07))<1e-12);assert.ok(Math.abs(s.sd-Math.sqrt(.0075))<1e-12);assert.equal(s.n,4);assert.equal(s.from,'2029-12-01');assert.equal(s.through,'2029-12-03');assert.equal(JSON.stringify(profile),before);
+ for(const p of [{...profile,paired_starts:5},{...profile,through:'2030-01-01'},{...profile,players:{a:{...profile.players.a,sum_squares:0}}}])assert.equal(exhibitionEvidence(p,now),null);
+ assert.match(articlePages(null,now).find(p=>p.slug==='exhibition-st').content,/未掲載/);assert.match(articlePages(profile,now).find(p=>p.slug==='exhibition-st').content,/\+0.250秒/);
 });

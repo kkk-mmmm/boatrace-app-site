@@ -1,3 +1,4 @@
+import {articlePages} from './articles.mjs';
 import {venues} from '../tools/prerace/venues.mjs';
 import fs from 'node:fs';
 import {escape} from './public/view.mjs';
@@ -6,6 +7,7 @@ export function informationPages(settings=contact){
  const email=String(settings.email||'');
  if(settings.verified&&!/^[a-z0-9._+-]+@funeyomi\.win$/i.test(email))throw Error('公開用メールアドレスを確認してください');
  return [
+ ...articlePages(),
  {slug:'strategies',title:'条件別検証の成績・データ充足率',description:'固定した条件別買い目の仮想成績と、予想・オッズ・展示・結果のデータ充足率を確認できます。',module:'./strategy-page.mjs',content:`<p>締切3分前基準の保存予想を各点100円で仮想購入した記録です。結果待ち・欠損・異常結果は損失に含めません。将来の利益を保証するものではありません。</p><div class="condition-controls strategy-controls">${[['date','日付'],['venue','場コード'],['grade','グレード'],['coefficient','係数版']].map(([k,l])=>`<label>${l}<select id="strategy-${k}"><option value="">すべて</option></select></label>`).join('')}<label>傾向<select id="strategy-scenario"><option value="all">すべて</option><option value="in">イン</option><option value="other">それ以外</option></select></label><label>点数上限<select id="strategy-limit"><option value="">10点・20点</option><option value="10">10点</option><option value="20">20点</option></select></label></div><button id="strategy-refresh">集計を更新</button><p id="strategy-status" role="status"></p><div id="strategy-report"></div><details><summary>確率補正の候補検証</summary><p>元の確率を変更せず、係数版・受信区分ごとに過去の日付前半で候補を選び、後半で未補正と比較します。採用は自動では行いません。</p><div id="strategy-calibration" role="status">候補集計を確認しています。</div><a href="./data/calibration.json">候補検証の集計JSON</a></details>`},
  {slug:'about',title:'運営情報・お問い合わせ',description:'フネヨミの運営者、提供する情報とお問い合わせ窓口をご案内します。',content:`
  <section><h2>運営について</h2><dl><dt>サイト名</dt><dd>フネヨミ｜ボートレース・競艇予想</dd><dt>運営者</dt><dd>${escape(settings.operator)}</dd></dl><p>全国24場の出走表・展示情報・3連単オッズと、統計モデルによるAI予想を掲載する非公式の情報サイトです。BOAT RACEの公式サービスではありません。投票・購入機能はありません。</p></section>
@@ -21,7 +23,7 @@ export function informationPages(settings=contact){
  <div id="verification-days" class="verification-days" role="group" aria-label="検証する日付"></div><p id="verification-status" class="small-note" role="status">記録を確認しています。</p><p id="verification-summary"></p><div id="verification-records"></div><button id="verification-more" hidden>追加で20レース見る</button><p id="verification-method" class="small-note"></p>
  <p class="small-note">公開対象は直近7日、内部の予想・結果は学習・検証用に30日以上保持します。履歴は毎日更新し、係数の更新は月1回の検証条件を維持します。</p>`},
  {slug:'guide',title:'予想の見方',description:'推定確率・期待値・オッズ・スジ候補・展開予想・結果比較の読み方と、データ更新の仕組みを説明します。',content:`
- <nav class="guide-contents" aria-label="このページの目次"><a href="./guide/#probability">推定確率</a><a href="./guide/#expected-value">期待値</a><a href="./guide/#data-updates">データ更新</a><a href="./guide/#saved">保存予想と結果</a></nav>
+ <p><a href="./expected-value/">期待値・オッズ・回収率の詳しい解説</a> / <a href="./exhibition-st/">展示STと本番STの実データ解説</a></p><nav class="guide-contents" aria-label="このページの目次"><a href="./guide/#probability">推定確率</a><a href="./guide/#expected-value">期待値</a><a href="./guide/#data-updates">データ更新</a><a href="./guide/#saved">保存予想と結果</a></nav>
  <section id="probability"><h2>推定確率と的中率</h2><p>各買い目の「推定確率」はモデルが計算した確率です。実際のレースで測った的中率を表す数値ではありません。全120通りの3連単へ確率を配分し、推定確率上位・期待値上位を切り替えて10点ずつ確認できます。</p><p>「イン逃げ想定」は1号艇が1着になる買い目の確率の合計、「それ以外」は2〜6号艇が1着になる確率の合計です。実際の進入コースや、決まり手が「逃げ」になる確率とは異なります。</p></section>
  <section id="expected-value"><h2>期待値の読み方</h2><p><strong>期待値 ＝ 推定確率 × 取得時点のオッズ</strong>。推定確率10%・オッズ12.0倍なら期待値は1.20です。100円あたりの推定払戻は120円、差額は＋20円という計算ですが、単発のレースの利益や、繰り返した場合の回収率を保証しません。</p><p>推定確率の誤差や締切までのオッズ変動により、期待値も変わります。オッズ未取得の買い目は期待値を算出できません。各買い目の期待値は単独の値で、複数買い目全体の期待値や利益を示すものではありません。</p></section>
  <section><h2>厳選レースとスジ候補</h2><p>厳選レースは表示更新時点から締切まで1時間以内で、新鮮なオッズがあるレースが対象です。1号艇1着の推定確率70%以上・30%以下をそれぞれ分類し、残りから期待値1.0超を高い順に表示します。分類間のレースは重複させません。条件に合うレースがなければ理由を表示します。</p><p>買い目を選ぶと、同じ1着を軸に2・3着の入れ替えや相手替えから、期待値順にスジ候補を提案します。複数選択時は候補を統合し、選択済みと重複を除いて最大10点表示します。通常、同一レースの異なる3連単が同時に的中することはありません。</p></section>

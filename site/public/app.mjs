@@ -160,6 +160,13 @@ function clearCurrent() {
 }
 const table = (headers, rows) => `<div class="table-wrap"><table><thead><tr>${headers.map(h => `<th scope="col">${e(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
+let legacyArchiveLoading=false;
+async function loadLegacyArchive(){
+ if(archive||legacyArchiveLoading)return;legacyArchiveLoading=true;
+ try{const response=await fetch(new URL('./data/archive.json',document.baseURI));if(!response.ok)throw Error('archive');archive=await response.json();renderArchive();}
+ catch{$('archive-content').textContent='検証記録を読み込めませんでした。時間をおいて再度ご確認ください。';}
+ finally{legacyArchiveLoading=false;}
+}
 let experimentsLoaded=false,experimentsLoading=false;
 async function loadExperiments({force=false}={}){
  if((experimentsLoaded&&!force)||experimentsLoading)return;
@@ -213,7 +220,7 @@ let raceContextFrame=null;
 const scheduleRaceContext=()=>{if(raceContextFrame!==null)return;raceContextFrame=requestAnimationFrame(()=>{raceContextFrame=null;updateRaceContext();});};
 window.addEventListener('scroll',scheduleRaceContext,{passive:true});window.addEventListener('resize',scheduleRaceContext);
 function showView(name) {
-  if(name==='archive')loadExperiments();
+  if(name==='archive'){loadExperiments();loadLegacyArchive();}
   view = name;
   updateRaceContext();
   $('releases-view').hidden = name !== 'releases';
@@ -535,11 +542,6 @@ window.addEventListener('popstate',routeView);window.addEventListener('hashchang
 $('refresh-button').addEventListener('click',()=>load({forceOdds:true}));
 $('mobile-refresh-button').addEventListener('click',()=>$('refresh-button').click());
 await load();
-try {
-  const response = await fetch(new URL('./data/archive.json', document.baseURI));
-  if (!response.ok) throw Error('検証記録を読み込めませんでした');
-  archive = await response.json(); renderArchive();
-} catch { $('archive-content').textContent = '検証記録を読み込めませんでした。時間をおいて再度ご確認ください。'; }
 setInterval(()=>{if(!document.hidden && view==='live')load();}, 300000);
 setInterval(async()=>{if(!document.hidden && view==='live'){await refreshOdds();applyOddsState();renderOpportunities();renderCurrent();}}, ODDS_INTERVAL_MS);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden && view==='live')load();});

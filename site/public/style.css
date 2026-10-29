@@ -201,3 +201,7 @@
 .static-venue-nav{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 22px}.static-venue-nav a,.static-race-card>p>a{display:inline-flex;align-items:center;min-height:44px}.static-race-card{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:8px;scroll-margin-top:100px}.static-race-card h3{margin-top:0}.static-race-details summary{min-height:44px;display:list-item;align-content:center;cursor:pointer}.static-race-card td,.static-race-card th{white-space:nowrap}#venue-overview,#venue-predictions,#venue-history{scroll-margin-top:100px}
 
 .venue-guide-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.venue-guide-links a{display:flex;align-items:center;min-height:44px}#venue-styles{scroll-margin-top:100px}#venue-styles th,#venue-styles td{white-space:nowrap}
+
+#radar-status{min-height:1.6em}
+
+#opportunities-content{min-height:110px}#upcoming-content{min-height:66px}

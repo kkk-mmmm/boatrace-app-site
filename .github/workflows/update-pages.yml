@@ -98,7 +98,7 @@ jobs:
           path: site/staging
       - name: Validate forecast and freshness behavior
         run: |
-          node --test site/test_strategy_dashboard.mjs tools/prediction/test_conditional_records.mjs tools/prediction/test_strategies.mjs tools/prediction/test_return_filter.mjs site/test_validation_review.mjs site/test_race_metrics.mjs site/test_race_context.mjs site/test_verification_data.mjs site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs tools/prediction/test_history_updates.mjs tools/prediction/test_prospective.mjs
+          node --test site/test_chart_loading.mjs site/test_strategy_dashboard.mjs tools/prediction/test_conditional_records.mjs tools/prediction/test_strategies.mjs tools/prediction/test_return_filter.mjs site/test_validation_review.mjs site/test_race_metrics.mjs site/test_race_context.mjs site/test_verification_data.mjs site/test_data.mjs site/test_update.mjs site/test_approval.mjs site/test_prediction_view.mjs site/test_live_odds.mjs site/test_annual_model.mjs site/test_cloudflare_programs.mjs site/test_development.mjs tools/prediction/test_history_updates.mjs tools/prediction/test_prospective.mjs
           python -B tools/site/test_probe.py
           python -B tools/site/test_collect_all.py
       - name: Read immutable verification records without changing their branch

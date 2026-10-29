@@ -1,3 +1,4 @@
+import {spawnSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import crypto from 'node:crypto';
 import {captureProspective} from './prospective.mjs';import {proposalCandidate} from '../../site/public/odds-live.mjs';
 import {captureConditionalRecords,conditionalReport,runConditionalRecords,conditionalSelection,recordConditionalInventory} from './conditional_records.mjs';
@@ -56,4 +57,12 @@ test('既知予定だけを締切前に保存し、充足率の分母と欠損�
  let r=strategyDashboard(dir,definition,{now:freeze+1000});assert.equal(r.coverage.denominator,1);assert.equal(r.coverage.prediction,1);assert.equal(r.coverage.odds,1);assert.equal(r.coverage.exhibition,0);assert.equal(r.coverage.result,0);
  const missing=structuredClone(snapshot);missing.races[0].race_no=2;recordConditionalInventory(dir,definition,[missing],{now});r=strategyDashboard(dir,definition,{now:freeze+1000});assert.equal(r.coverage.denominator,2);assert.equal(r.coverage.prediction,1);
  assert.equal(recordConditionalInventory(dir,definition,[{...snapshot,venue_code:'02',update:{status:'FAILED'}}],{now}),0);
+});
+
+test('Actionsと同じCLIが終了0で充足率まで保存し、再実行しても不要な書換えをしない',t=>{
+ const dir=temp(t),script=fileURLToPath(new URL('./conditional_records.mjs',import.meta.url)),config=fileURLToPath(new URL('../../site/conditional-strategies.json',import.meta.url));
+ const first=spawnSync(process.execPath,[script,dir,config],{encoding:'utf8',timeout:15000});assert.equal(first.status,0,first.stderr);assert.match(first.stdout,/Data coverage/);assert.doesNotMatch(first.stderr,/unsettled top-level await/);
+ const file=path.join(dir,'reports/coverage.json'),before=fs.readFileSync(file,'utf8');assert.equal(JSON.parse(before).denominator,0);
+ const second=spawnSync(process.execPath,[script,dir,config],{encoding:'utf8',timeout:15000});assert.equal(second.status,0,second.stderr);assert.equal(fs.readFileSync(file,'utf8'),before);
+ const invalid=spawnSync(process.execPath,[script],{encoding:'utf8',timeout:15000});assert.equal(invalid.status,1);assert.match(invalid.stderr,/保存先/);
 });

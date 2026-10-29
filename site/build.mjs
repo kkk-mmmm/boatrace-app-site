@@ -52,11 +52,12 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
     const html=path.join(outputDirectory,'index.html');
     fs.writeFileSync(html,fs.readFileSync(html,'utf8').replace("connect-src 'self'",`connect-src 'self' ${apiOrigin}`));
   }
-  writeSeoPages(outputDirectory,fs.readFileSync(indexHtml,'utf8'),snapshots,now);
+
   fs.writeFileSync(path.join(outputDirectory,'data/odds-config.json'),JSON.stringify({schema_version:1,api_url:oddsApiUrl,interval_seconds:60,far_interval_seconds:300,fast_window_minutes:30}));
   const annualFile=path.join(root,'models/annual/current.json');
   let annual=null;
   if(fs.existsSync(annualFile)){const candidate=JSON.parse(fs.readFileSync(annualFile,'utf8')),age=Date.parse(japanDate(now))-Date.parse(candidate.trained_through);if(age>0&&age<=3*86400000){annual=validateAnnualModel(candidate,japanDate(now));const gapFile=path.join(root,'models/exhibition-st/current.json');if(fs.existsSync(gapFile))annual.exhibition_st_profiles=JSON.parse(fs.readFileSync(gapFile));fs.writeFileSync(path.join(outputDirectory,'data/player-model.json'),JSON.stringify(annual));}}
+  writeSeoPages(outputDirectory,fs.readFileSync(indexHtml,'utf8'),snapshots,now,annual);
   const targets=snapshots.filter(s=>s.meeting_status==='OPEN').flatMap(snapshot=>snapshot.races
     .filter(r=>Number.isFinite(Date.parse(r.deadline_at)) && Date.parse(r.deadline_at)>now)
     .map(r=>({date:r.date,venue_code:snapshot.venue_code,venue:snapshot.venue,race_no:r.race_no,deadline_at:r.deadline_at,

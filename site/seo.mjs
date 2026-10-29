@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {staticPredictions,venueHistory} from './venue-seo.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {escape,japanDate} from './public/view.mjs';
@@ -6,7 +7,7 @@ import {venues} from '../tools/prerace/venues.mjs';
 import {informationPages,informationTemplate} from './info-pages.mjs';
 export const branding=JSON.parse(fs.readFileSync(new URL('./branding.json',import.meta.url)));
 const url=p=>new URL(p,branding.base_url).href;
-export function seoPage(html,{venue=null,snapshot=null,page=null,now=Date.now()}={}){
+export function seoPage(html,{venue=null,snapshot=null,page=null,historyModel=null,now=Date.now()}={}){
  const prefix=venue?`${venue.name}の`:'';
  const title=page?`${page.title} | ${branding.short_name}`:venue?`${prefix}ボートレース・競艇のAI予想とオッズ | ${branding.short_name}`:branding.name;
  const description=page?page.description:`${branding.short_name}で${venue?venue.name+'の':'全国24場の'}ボートレース・競艇予想を確認。過去1年の選手・場別データを学習した統計モデルによるAI予想、3連単オッズ、展示情報、確定結果と保存予想の比較を掲載。取得時刻・締切・更新状態も確認できます。`;
@@ -23,12 +24,12 @@ export function seoPage(html,{venue=null,snapshot=null,page=null,now=Date.now()}
  if(venue){html=html.replace('<head>','<head><base href="../../">');const fresh=snapshot?.date===japanDate(now)&&['OK','PARTIAL'].includes(snapshot.update?.status)&&now-Date.parse(snapshot.update.last_success_at)<=600000&&Date.parse(snapshot.update.last_success_at)<=now+60000;
  const rows=fresh?snapshot.races||[]:[];
  const overview=`<section id="venue-overview" class="venue-overview"><h2>${venue.name}のボートレース・競艇予想</h2><p>${venue.name}のAI予想・出走表・展示情報・3連単オッズを確認できるページです。予想は選手のST、着順、決まり手、場別傾向などを使う統計モデルで算出します。</p><h3>${escape(japanDate(now))}の開催情報</h3><p>${fresh?snapshot.meeting_status==='NO_MEETING'?'取得時点で本日は非開催です。':escape(snapshot.meeting?.title||'開催情報を確認中です。'):'最新の開催情報は取得待ちです。'}</p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>レース</th><th>締切予定</th><th>出走選手</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escape(r.race_no)}R</td><td>${Number.isFinite(Date.parse(r.deadline_at))?escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(r.deadline_at))):'未確認'}</td><td>${(r.entries||[]).map(e=>escape(e.lane+'号艇 '+e.name)).join(' / ')||'取得待ち'}</td></tr>`).join('')}</tbody></table></div>`:''}<p class="small-note">ページ生成時点の記録です。最新の取得状態と予想は上の「今日のレース」で確認してください。${fresh?'取得日時：'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.update.last_success_at)))+'':''}</p></section>`;
- html=html.replace('</main>',overview+'</main>');}
+ html=html.replace('</main>',overview+`<section class="venue-overview" id="venue-predictions"><h2>${venue.name}の保存予想とオッズ</h2><p>ページ生成 ${escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(now)))}。この欄は公開時点の保存版です。取得時点で締切前・鮮度確認済みのオッズだけを載せます。現在の締切・最新オッズは上の今日のレースと公式情報で確認してください。</p>${fresh?staticPredictions(snapshot,venue,now):'<p>予想・オッズの取得を確認できません。</p>'}</section><section class="venue-overview" id="venue-history"><h2>${venue.name}の過去データから見る特徴</h2>${venueHistory(venue,historyModel,now)}</section>`+'</main>');}
  return html;
 }
-export function writeSeoPages(directory,html,snapshots,now){
+export function writeSeoPages(directory,html,snapshots,now,historyModel=null){
  fs.writeFileSync(path.join(directory,'index.html'),seoPage(html,{now}));
- for(const venue of venues){const dir=path.join(directory,'venues',venue.code);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),seoPage(html,{venue,snapshot:snapshots.find(s=>s.venue_code===venue.code),now}));}
+ for(const venue of venues){const dir=path.join(directory,'venues',venue.code);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),seoPage(html,{venue,snapshot:snapshots.find(s=>s.venue_code===venue.code),historyModel,now}));}
  for(const page of informationPages()){const dir=path.join(directory,page.slug);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),seoPage(informationTemplate(html,page),{page,now}));}
  fs.writeFileSync(path.join(directory,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+['',...informationPages().map(p=>`${p.slug}/`),...venues.map(v=>`venues/${v.code}/`)].map(p=>`<url><loc>${url(p)}</loc></url>`).join('')+'</urlset>');
  if(new URL(branding.base_url).hostname!=='kkk-mmmm.github.io')fs.writeFileSync(path.join(directory,'CNAME'),new URL(branding.base_url).hostname+'\n');

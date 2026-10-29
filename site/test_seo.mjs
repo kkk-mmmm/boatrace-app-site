@@ -73,3 +73,11 @@ test('検索向けサイト名はホームのWebSite・タイトル・H1と全�
   const robots=fs.readFileSync(path.join(dir,'robots.txt'),'utf8');assert.match(robots,/User-agent: \*\nAllow: \//);assert.doesNotMatch(robots,/Disallow:/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('初期HTMLの予想は公開時点の鮮度・締切を確認し、古いオッズや欠場は表示しない',async()=>{
+ const {staticPredictions,venueHistory}=await import('./venue-seo.mjs');const venue=venues[0],race={date:'2030-01-01',venue_code:'01',race_no:1,deadline_at:new Date(now+600000).toISOString(),items:[{combo:'1-2-3',probability:.2}],odds:{fetched_at:new Date(now).toISOString(),recorded_at:new Date(now).toISOString(),classification:'PRERACE_ODDS_LOCAL_RECORD_UNVERIFIED',items:[{combo:'1-2-3',odds:100}]}};
+ const snapshot={date:race.date,venue_code:'01',meeting_status:'OPEN',update:{status:'OK'},races:[race]};let html=staticPredictions(snapshot,venue,now);assert.match(html,/20.0%/);assert.match(html,/100.0倍/);assert.match(html,/20.000倍/);
+ for(const changed of [{...race,deadline_at:new Date(now-1).toISOString()},{...race,odds:{...race.odds,fetched_at:new Date(now-700000).toISOString()}}])assert.doesNotMatch(staticPredictions({...snapshot,races:[changed]},venue,now),/100.0倍|20.000倍/);
+ assert.doesNotMatch(staticPredictions({...snapshot,races:[{...race,entries:[{participation_status:'WITHDRAWN'}]}]},venue,now),/20.0%/);
+ const stats=(n,w)=>[n,w,0,0,0,0,0,0,0,[Math.floor(w/2),0,0,0,0,0]],model={trained_from:'2029-01-01',trained_through:'2029-12-31',profiles:{venues:{'01':Object.fromEntries([1,2,3,4,5,6].map(l=>['l'+l,stats(100,l===1?60:8)]))},population:{l1:stats(1000,500)}}};html=venueHistory(venue,model,now);assert.match(html,/60.0%/);assert.match(html,/30.0%/);assert.match(html,/10.0ポイント高く/);assert.match(html,/100走/);assert.match(html,/2029-12-31/);assert.match(venueHistory(venue,{...model,trained_through:'2030-01-01'},now),/未集計/);
+});

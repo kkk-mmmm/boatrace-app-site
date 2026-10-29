@@ -197,3 +197,5 @@
 @media(max-width:420px){.prediction-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.prediction-tabs button{padding:10px 7px;font-size:12px}.condition-controls{gap:8px}.condition-controls label{min-width:120px}.condition-controls label:first-child{flex-basis:100%}}
 
 .strategy-controls label{flex:1 1 180px;min-width:0;max-width:100%}.strategy-controls select{min-width:0}#strategy-report .gap-period,#strategy-calibration{overflow-wrap:anywhere}#strategy-report th{white-space:nowrap}#strategy-refresh{min-height:44px}
+
+.static-venue-nav{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 22px}.static-venue-nav a,.static-race-card>p>a{display:inline-flex;align-items:center;min-height:44px}.static-race-card{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:8px;scroll-margin-top:100px}.static-race-card h3{margin-top:0}.static-race-details summary{min-height:44px;display:list-item;align-content:center;cursor:pointer}.static-race-card td,.static-race-card th{white-space:nowrap}#venue-overview,#venue-predictions,#venue-history{scroll-margin-top:100px}

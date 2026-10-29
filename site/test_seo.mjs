@@ -3,7 +3,7 @@ import {informationPages,informationTemplate,contact} from './info-pages.mjs';
 import {seoPage,writeSeoPages,branding} from './seo.mjs';import {venues} from '../tools/prerace/venues.mjs';
 const template=fs.readFileSync(new URL('./public/index.html',import.meta.url),'utf8'),now=Date.parse('2030-01-01T01:00:00Z');
 test('全32ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,32);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,32);assert.match(fs.readFileSync(path.join(dir,'robots.txt'),'utf8'),/Content-Signal: ai-train=no, search=yes, ai-input=no/);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
  for(const venue of [null,...venues]){const html=fs.readFileSync(path.join(dir,venue?`venues/${venue.code}/index.html`:'index.html'),'utf8'),canonical=new URL(venue?`venues/${venue.code}/`:'',branding.base_url).href;
  assert.ok(html.includes(`<link rel="canonical" href="${canonical}">`));assert.ok(html.includes(`property="og:url" content="${canonical}"`));assert.ok(html.includes('AI予想'));assert.ok(html.includes('競艇'));assert.ok(html.includes('フネヨミ'));assert.equal((html.match(/<h1\b/g)||[]).length,1);
  assert.doesNotMatch(html,/日本時間/);
@@ -70,7 +70,7 @@ test('検索向けサイト名はホームのWebSite・タイトル・H1と全�
    if(!route){assert.equal(websites[0].name,branding.name);assert.equal(websites[0].url,branding.base_url);assert.ok(websites[0].alternateName.includes('フネヨミ'));assert.ok(html.includes(`<title>${branding.name}</title>`));assert.ok(html.includes(`<h1 class="seo-page-title">${branding.name}</h1>`));}
   }
   const manifest=JSON.parse(fs.readFileSync(path.join(dir,'site.webmanifest')));assert.equal(manifest.name,branding.name);assert.equal(manifest.short_name,'フネヨミ');
-  const robots=fs.readFileSync(path.join(dir,'robots.txt'),'utf8');assert.match(robots,/User-agent: \*\nAllow: \//);assert.doesNotMatch(robots,/Disallow:/);
+  const robots=fs.readFileSync(path.join(dir,'robots.txt'),'utf8');assert.match(robots,/User-agent: \*\nContent-Signal: ai-train=no, search=yes, ai-input=no\nAllow: \//);assert.doesNotMatch(robots,/Disallow:/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 

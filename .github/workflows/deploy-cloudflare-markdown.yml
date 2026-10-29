@@ -1,0 +1,24 @@
+name: Deploy Cloudflare Markdown gateway
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: cloudflare/odds
+      - run: node --test cloudflare/markdown/test_worker.mjs cloudflare/odds/test_markdown_runtime.mjs
+      - name: Deploy separate Markdown Worker (route configured in dashboard)
+        working-directory: cloudflare/odds
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: npx wrangler deploy --config ../markdown/wrangler.jsonc

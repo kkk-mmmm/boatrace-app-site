@@ -1,4 +1,5 @@
 // Frozen conditional tickets are separate from outcomes. Never backfill before activation.
+import {coverageSummary} from '../../site/coverage-summary.mjs';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';
 import {validateRecord} from './prospective.mjs';
 import {conditionalRanking,firstPlaceProbabilities} from '../../site/public/view.mjs';
@@ -92,5 +93,5 @@ export function runConditionalRecords(directory,definition,{now=Date.now(),snaps
  return {...capture,inventory_saved,records:review.records,conditions:66,report_changed:changed};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{const [directory,config,staging]=process.argv.slice(2);if(!directory||!config)throw Error('保存先と条件定義を指定してください');const d=read(config);console.log('::notice title=Conditional strategy records::'+JSON.stringify(runConditionalRecords(directory,d,{snapshots:staging?walk(staging).map(read):[]})));const {strategyDashboard}=await import('../../site/strategy-dashboard.mjs');const coverage=strategyDashboard(directory,d).coverage;writeChanged(path.join(directory,'reports/coverage.json'),coverage);console.log('::notice title=Data coverage::'+JSON.stringify(coverage));if(coverage.alerts.length)console.log('::warning title=Data coverage gaps::'+JSON.stringify(coverage.alerts));}catch(e){console.error(e);process.exitCode=1;}
+ try{const [directory,config,staging]=process.argv.slice(2);if(!directory||!config)throw Error('保存先と条件定義を指定してください');const d=read(config);console.log('::notice title=Conditional strategy records::'+JSON.stringify(runConditionalRecords(directory,d,{snapshots:staging?walk(staging).map(read):[]})));const coverage=coverageSummary(directory,d,conditionalReport(directory,d));writeChanged(path.join(directory,'reports/coverage.json'),coverage);console.log('::notice title=Data coverage::'+JSON.stringify(coverage));if(coverage.alerts.length)console.log('::warning title=Data coverage gaps::'+JSON.stringify(coverage.alerts));}catch(e){console.error(e);process.exitCode=1;}
 }

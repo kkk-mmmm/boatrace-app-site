@@ -81,3 +81,10 @@ test('初期HTMLの予想は公開時点の鮮度・締切を確認し、古い�
  assert.doesNotMatch(staticPredictions({...snapshot,races:[{...race,entries:[{participation_status:'WITHDRAWN'}]}]},venue,now),/20.0%/);
  const stats=(n,w)=>[n,w,0,0,0,0,0,0,0,[Math.floor(w/2),0,0,0,0,0]],model={trained_from:'2029-01-01',trained_through:'2029-12-31',profiles:{venues:{'01':Object.fromEntries([1,2,3,4,5,6].map(l=>['l'+l,stats(100,l===1?60:8)]))},population:{l1:stats(1000,500)}}};html=venueHistory(venue,model,now);assert.match(html,/60.0%/);assert.match(html,/30.0%/);assert.match(html,/10.0ポイント高く/);assert.match(html,/100走/);assert.match(html,/2029-12-31/);assert.match(venueHistory(venue,{...model,trained_through:'2030-01-01'},now),/未集計/);
 });
+
+test('初期HTMLだけで出走表と展示の欠損・進入変化を確認でき、リンクは場ページ内を指す',async()=>{
+ const {staticPredictions,staticRaceDetails}=await import('./venue-seo.mjs');const entries=Array.from({length:6},(_,i)=>({lane:i+1,name:i===0?'<script>選手':'選手'+i,class:'A1',national_win_rate:6.5,motor_2rate:40,avg_st:.15,exhibition_time:i===0?null:6.8,exhibition_st:i===0?-.02:.12,exhibition_st_status:i===0?'F':'NORMAL',exhibition_course:i===0?2:i===1?1:i+1}));
+ const r={date:'2030-01-01',venue_code:'01',race_no:1,deadline_at:new Date(now+1200000).toISOString(),entries,items:[]};const html=staticRaceDetails(r,now);for(const text of ['全国勝率','モーター2連率','6.50','6.80','F0.02','進入変化あり','未取得','&lt;script&gt;'])assert.ok(html.includes(text),text);assert.doesNotMatch(html,/<script>|\b\d{1,2}:\d{2}:\d{2}\b/);
+ const snapshot={date:r.date,venue_code:'01',meeting_status:'OPEN',update:{status:'OK',last_success_at:new Date(now).toISOString()},races:[r]};const page=seoPage(template,{venue:venues[0],snapshot,now});assert.match(page,/id="venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/#venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/#venue-overview"/);assert.match(page,/出走表・展示情報を確認/);
+ const old=seoPage(template,{venue:venues[0],snapshot:{...snapshot,date:'2029-12-31'},now});assert.doesNotMatch(old,/id="venue-race-1"|F0.02/);
+});

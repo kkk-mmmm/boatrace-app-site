@@ -1,0 +1,13 @@
+import {escape as e,japanDate} from './public/view.mjs';
+export const STYLE_NAMES=['逃げ','差し','まくり','まくり差し','抜き','恵まれ'];
+export function venueStyleRows(venue,model,now=Date.now()){
+ if(!model?.profiles?.venues||!/^\d{4}-\d{2}-\d{2}$/.test(model.trained_from)||!/^\d{4}-\d{2}-\d{2}$/.test(model.trained_through)||model.trained_from>model.trained_through||model.trained_through>=japanDate(now))return [];
+ const stats=model.profiles.venues[venue.code];if(!stats)return [];
+ return Array.from({length:6},(_,i)=>{const s=stats['l'+(i+1)];if(!s||!Number.isInteger(s[0])||s[0]<=0||!Number.isInteger(s[1])||s[1]<0||s[1]>s[0]||!Array.isArray(s[9])||s[9].length!==6||s[9].some(n=>!Number.isInteger(n)||n<0)||s[9].reduce((a,b)=>a+b,0)>s[1])return null;return {lane:i+1,starts:s[0],wins:s[1],styles:s[9],unknown:s[1]-s[9].reduce((a,b)=>a+b,0)};}).filter(Boolean);
+}
+const pct=n=>(n*100).toFixed(1)+'%';
+export function venueStylesHTML(venue,model,now){
+ const rows=venueStyleRows(venue,model,now);if(!rows.length)return '<p>決まり手の期間・件数を確認できるデータがなく、未集計です。</p>';
+ const insights=[1,2,3].map(index=>{const eligible=rows.filter(r=>r.lane>=2&&r.starts>=100);if(!eligible.length)return `<p>${STYLE_NAMES[index]}：2〜6枠の比較は出走100件以上の枠がなく保留しています。</p>`;const max=Math.max(...eligible.map(r=>r.styles[index]/r.starts));if(max===0)return `<p>${STYLE_NAMES[index]}：比較対象の枠で記録は0件です。</p>`;const top=eligible.filter(r=>Math.abs(r.styles[index]/r.starts-max)<1e-12);return `<p>${STYLE_NAMES[index]}で1着になった出走あたりの割合は、比較対象の2〜6枠では${top.map(r=>`${r.lane}枠（${r.styles[index]}件 / ${r.starts.toLocaleString('ja-JP')}走、${pct(r.styles[index]/r.starts)}）`).join('・')}が集計上最も高くなっています。</p>`;}).join('');
+ return `<h3>${e(venue.name)}の枠別・決まり手の実績</h3><p>集計期間 ${e(model.trained_from)}〜${e(model.trained_through)}。割合の分母は各枠の出走数で、「その決まり手で1着になった割合」です。勝ったレースだけを分母にした決まり手構成比とは異なります。</p><div class="table-wrap"><table><thead><tr><th>枠</th><th>出走数</th><th>1着数</th>${STYLE_NAMES.map(n=>`<th>${n}の件数 / 出走あたり</th>`).join('')}<th>決まり手未確認の1着</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.lane}枠</td><td>${r.starts.toLocaleString('ja-JP')}走</td><td>${r.wins}</td>${r.styles.map(n=>`<td>${n}件 / ${pct(n/r.starts)}</td>`).join('')}<td>${r.unknown}件</td></tr>`).join('')}</tbody></table></div>${rows.length<6?'<p>集計を確認できない枠は比較から除外しています。</p>':''}<h4>この場の実績を読むときの確認点</h4>${insights}<p>比較対象は出走100件以上の枠です。これは記述的な比較で、統計的な優位性や今回の的中確率を示すものではありません。枠番と実際の進入コースは別です。</p><ul><li>差し：内側の空間を狙う展開を考える際も、当日の進入・展示STと内側の選手を確認します。</li><li>まくり：外から攻める展開は、展示と本番のSTの違いや内側とのスタート差も確認します。</li><li>まくり差し：外から攻めた後に内側の空間を突く展開です。今回の相手関係・進入によって成立条件は変わります。</li></ul><p>ここで過去の実績を説明するために集計したものであり、予想の係数を変更する機能ではありません。</p>`;
+}

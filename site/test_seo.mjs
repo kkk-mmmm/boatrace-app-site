@@ -88,3 +88,11 @@ test('初期HTMLだけで出走表と展示の欠損・進入変化を確認で�
  const snapshot={date:r.date,venue_code:'01',meeting_status:'OPEN',update:{status:'OK',last_success_at:new Date(now).toISOString()},races:[r]};const page=seoPage(template,{venue:venues[0],snapshot,now});assert.match(page,/id="venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/#venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/#venue-overview"/);assert.match(page,/出走表・展示情報を確認/);
  const old=seoPage(template,{venue:venues[0],snapshot:{...snapshot,date:'2029-12-31'},now});assert.doesNotMatch(old,/id="venue-race-1"|F0.02/);
 });
+
+test('決まり手は出走数を分母に集計し、未確認・少数例・期間の異常を補わない',async()=>{
+ const {venueStyleRows,venueStylesHTML}=await import('./venue-styles.mjs');const make=(n,w,styles)=>[n,w,0,0,0,0,0,0,0,styles],model={trained_from:'2029-01-01',trained_through:'2029-12-31',profiles:{venues:{'01':{l1:make(100,60,[50,2,2,2,1,1]),l2:make(200,20,[0,10,4,4,0,0]),l3:make(50,10,[0,8,1,1,0,0])}}}};
+ const rows=venueStyleRows(venues[0],model,now);assert.equal(rows.length,3);assert.equal(rows[1].unknown,2);const html=venueStylesHTML(venues[0],model,now);assert.match(html,/10件 \/ 5.0%/);assert.match(html,/出走100件以上/);assert.match(html,/2枠（10件 \/ 200走、5.0%）/);assert.doesNotMatch(html,/3枠（8件/);assert.match(html,/決まり手未確認/);
+ const invalid=structuredClone(model);invalid.profiles.venues['01'].l2[9]=[0,21,0,0,0,0];assert.ok(!venueStyleRows(venues[0],invalid,now).some(r=>r.lane===2));assert.match(venueStylesHTML(venues[0],{...model,trained_through:'2030-01-01'},now),/未集計/);
+ const allMissing=seoPage(template,{venue:venues[0],now});assert.match(allMissing,/id="venue-styles"/);const guide=informationPages().find(p=>p.slug==='guide');assert.match(guide.content,/id="race-styles"/);assert.match(guide.content,/venues\/24\/#venue-styles/);
+ const history=(await import('./venue-seo.mjs')).venueHistory(venues[0],{...model,profiles:{...model.profiles,venues:{'01':Object.fromEntries([1,2,3,4,5,6].map(l=>['l'+l,make(100,10,[1,2,2,2,1,1])]))},population:{l1:make(100,50,[40,2,2,2,2,2])}}},now);assert.match(history,/strategies\/\?venue=01/);assert.match(history,/guide\/#race-styles/);
+});

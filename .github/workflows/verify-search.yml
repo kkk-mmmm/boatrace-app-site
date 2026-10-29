@@ -1,0 +1,19 @@
+name: Check public sitemap and crawl delivery
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  search-delivery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate diagnostic checks
+        run: python -B site/test_search_delivery.py
+      - name: Check public HTTPS, robots and sitemap
+        run: python -B site/check_search_delivery.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: search-delivery
+          path: search-delivery.json

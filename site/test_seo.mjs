@@ -11,7 +11,7 @@ test('全32ページに自己canonical・場名タイトル・OGP・CSPで許可
  if(venue){assert.ok(html.includes(`${venue.name}のボートレース`));assert.ok(html.includes('<base href="../../">'));assert.ok(html.includes('data-venue="'+venue.code+'"'));assert.ok(html.includes('取得待ち'));}
  }
  const daily=fs.readFileSync(path.join(dir,'verification/index.html'),'utf8');
- assert.match(daily,/<h1>予想実績・確率と期待値の検証<\/h1>/);assert.match(daily,/実際の購入履歴の成績ではありません/);assert.match(daily,/href="\.\/#archive">検証企画・記事/);
+ assert.match(daily,/<h1>予想実績<\/h1>/);assert.match(daily,/実際の購入履歴の成績ではありません/);assert.match(daily,/href="\.\/#archive">検証企画・記事/);
  const home=fs.readFileSync(path.join(dir,'index.html'),'utf8');assert.match(home,/id="archive-tab"[^>]*>検証企画・記事/);assert.match(home,/href="\.\/verification\/">予想実績/);assert.match(home,/id="experiments-refresh"/);assert.match(home,/id="experiments-status"[^>]*role="status"/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
@@ -40,10 +40,10 @@ test('受信確認済みの公開メールだけを案内し、不正なリン�
  assert.throws(()=>informationPages({...settings,email:'" onmouseover=alert(1)',verified:true}),/公開用/);
 });
 
-test('ヘッダーの4項目は全ページで同じ順番を保ち、独立画面からも各機能へ戻れる',()=>{
+test('ヘッダーとその他メニューは全ページで同じ順番を保ち、独立画面からも各機能へ戻れる',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-shared-navigation-'));
  try{writeSeoPages(dir,template,[],now);
-  const expected=['今日の予想','検証企画・記事','予想実績','リリースノート'];
+  const expected=['今日のレース','検証企画・記事','予想実績','予想の見方','リリースノート','条件別検証','運営情報・お問い合わせ'];
   for(const route of ['',...venues.map(v=>`venues/${v.code}/`),...informationPages().map(p=>p.slug+'/')]){
    const html=fs.readFileSync(path.join(dir,route,'index.html'),'utf8'),header=html.match(/<header[\s\S]*?<\/header>/)[0],nav=header.match(/<nav aria-label="メイン">([\s\S]*?)<\/nav>/)[1];
    assert.deepEqual([...nav.matchAll(/<(?:a|button)\b[^>]*>([^<]+)<\/(?:a|button)>/g)].map(m=>m[1]),expected,route||'home');
@@ -53,7 +53,7 @@ test('ヘッダーの4項目は全ページで同じ順番を保ち、独立画�
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('検索向けサイト名はホームのWebSite・タイトル・H1と全ページのOGPで一致し、略称を保持する',()=>{
+test('検索向けサイト名・略称を保持し、ホームは今日のレースを単一見出しにする',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-site-name-'));
  try{
   writeSeoPages(dir,template,[],now);
@@ -67,7 +67,7 @@ test('検索向けサイト名はホームのWebSite・タイトル・H1と全�
    const svg=html.match(/<link rel="icon" href="([^"]+)" type="image\/svg\+xml">/)[1];
    assert.equal(svg,html.match(/class="brand-icon" src="([^"]+)"/)[1]);
    assert.ok(html.includes('<link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">'));
-   if(!route){assert.equal(websites[0].name,branding.name);assert.equal(websites[0].url,branding.base_url);assert.ok(websites[0].alternateName.includes('フネヨミ'));assert.ok(html.includes(`<title>${branding.name}</title>`));assert.ok(html.includes(`<h1 class="seo-page-title">${branding.name}</h1>`));}
+   if(!route){assert.equal(websites[0].name,branding.name);assert.equal(websites[0].url,branding.base_url);assert.ok(websites[0].alternateName.includes('フネヨミ'));assert.ok(html.includes(`<title>${branding.name}</title>`));assert.ok(html.includes('<h1 class="seo-page-title">今日のレース</h1>'));}
   }
   const manifest=JSON.parse(fs.readFileSync(path.join(dir,'site.webmanifest')));assert.equal(manifest.name,branding.name);assert.equal(manifest.short_name,'フネヨミ');
   const robots=fs.readFileSync(path.join(dir,'robots.txt'),'utf8');assert.match(robots,/User-agent: \*\nContent-Signal: ai-train=no, search=yes, ai-input=no\nAllow: \//);assert.doesNotMatch(robots,/Disallow:/);
@@ -107,4 +107,14 @@ test('展示STの集計は件数で重み付けし、分散・欠損・未来期
  const {exhibitionEvidence,articlePages}=await import('./articles.mjs');const profile={kind:'EXHIBITION_ST_PAIRED_HISTORY',window_from:'2029-01-01',through:'2029-12-31',races:2,paired_starts:4,players:{a:{n:1,sum:.1,sum_squares:.01,from:'2029-12-01',through:'2029-12-01'},b:{n:3,sum:.9,sum_squares:.27,from:'2029-12-02',through:'2029-12-03'}}};const before=JSON.stringify(profile),s=exhibitionEvidence(profile,now);assert.ok(Math.abs(s.mean-.25)<1e-12);assert.ok(Math.abs(s.rmse-Math.sqrt(.07))<1e-12);assert.ok(Math.abs(s.sd-Math.sqrt(.0075))<1e-12);assert.equal(s.n,4);assert.equal(s.from,'2029-12-01');assert.equal(s.through,'2029-12-03');assert.equal(JSON.stringify(profile),before);
  for(const p of [{...profile,paired_starts:5},{...profile,through:'2030-01-01'},{...profile,players:{a:{...profile.players.a,sum_squares:0}}}])assert.equal(exhibitionEvidence(p,now),null);
  assert.match(articlePages(null,now).find(p=>p.slug==='exhibition-st').content,/未掲載/);assert.match(articlePages(profile,now).find(p=>p.slug==='exhibition-st').content,/\+0.250秒/);
+});
+
+test('本文への移動先と独立ページの主要メニュー選択状態を保持する',()=>{
+ for(const [slug,href] of [['verification','./verification/'],['strategies','./verification/'],['guide','./guide/'],['expected-value','./guide/'],['conditional-forecast-review','./#archive']]){
+  const page=informationPages().find(p=>p.slug===slug),html=informationTemplate(template,page);
+  assert.ok(html.includes(`href="./${slug}/#main-content"`));assert.match(html,/<main id="main-content">/);
+  const header=html.match(/<header[\s\S]*?<\/header>/)[0];
+  assert.ok(header.includes(`href="${href}" aria-current="page"`),slug);
+  assert.doesNotMatch(html,/締切と予想を、ひと目で。/);
+ }
 });

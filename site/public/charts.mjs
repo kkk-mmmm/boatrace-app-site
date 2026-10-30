@@ -20,10 +20,10 @@ function loadChartLibrary(){
  return chartLibrary;
 }
 export function mountRadar(race){
- const canvas=document.getElementById('score-radar');if(!canvas||document.getElementById('assessment-panel')?.hidden)return;
+ const canvas=document.getElementById('score-radar');if(!canvas||document.getElementById('assessment-panel')?.hidden||document.getElementById('race-details-panel')?.hidden)return;
  const status=document.getElementById('radar-status'),rows=radarData(race),visible=choices(race);
  document.querySelectorAll('[data-radar-lane]').forEach(input=>{input.onchange=()=>{const lane=Number(input.dataset.radarLane);input.checked?visible.add(lane):visible.delete(lane);mountRadar(race);};});
- if(typeof window.Chart!=='function'){canvas.hidden=true;canvas.dataset.raceKey=raceChartKey(race);status.textContent='グラフを読み込んでいます。数値の表も確認できます。';loadChartLibrary().then(loaded=>{if(document.getElementById('score-radar')!==canvas||canvas.dataset.raceKey!==raceChartKey(race)||document.getElementById('assessment-panel')?.hidden)return;if(loaded)mountRadar(race);else status.textContent='グラフを取得できません。数値の表は引き続き確認できます。';});return;}
+ if(typeof window.Chart!=='function'){canvas.hidden=true;canvas.dataset.raceKey=raceChartKey(race);status.textContent='グラフを読み込んでいます。数値の表も確認できます。';loadChartLibrary().then(loaded=>{if(document.getElementById('score-radar')!==canvas||canvas.dataset.raceKey!==raceChartKey(race)||document.getElementById('assessment-panel')?.hidden||document.getElementById('race-details-panel')?.hidden)return;if(loaded)mountRadar(race);else status.textContent='グラフを取得できません。数値の表は引き続き確認できます。';});return;}
  canvas.hidden=false;status.textContent='';
  const datasets=rows.map(r=>({label:`${r.lane}号艇 ${r.name}`,data:r.values,borderColor:r.color,backgroundColor:r.color+'22',pointBackgroundColor:r.color,borderWidth:2,pointRadius:3,hidden:!visible.has(r.lane),spanGaps:false}));
  const signature=JSON.stringify(datasets),old=charts.get(canvas);

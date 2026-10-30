@@ -497,8 +497,8 @@ footer .information-links a{font-size:12px;min-height:44px;align-content:center}
 /* Integrate the race desk into the current application without removing any panels. */
 .race-workspace{display:block}
 .venue-picker{margin:24px 0;display:block}
-.venue-picker-heading{flex-direction:row}
-.venue-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.venue-picker-heading{display:grid;grid-template-columns:max-content minmax(0,640px);justify-content:start;column-gap:20px}
+.venue-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-content:start;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;padding:2px 4px 4px 2px}
 .venue-filter-row{display:flex}.venue-filter-options{flex-wrap:nowrap;overflow-x:auto}
 .race-layout{display:grid}.race-nav{display:flex;flex-direction:column}
 .upcoming-section{display:block}

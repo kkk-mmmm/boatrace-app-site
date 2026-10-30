@@ -6,3 +6,13 @@ test('グラフは評価表示まで取得せず、同時取得をまとめ、�
  const stale=state.canvas;state.canvas={dataset:{}};mount({...race,race_no:2});let created=0,drawn;window.Chart=class {constructor(canvas,config){created++;drawn=canvas;this.data=config.data;}update(){}destroy(){}};scripts[0].onload();await tick();assert.equal(created,1);assert.equal(drawn,state.canvas);assert.notEqual(drawn,stale);mount({...race,race_no:2});assert.equal(scripts.length,1);assert.equal(created,1);
 });
 test('CDN障害でも数値表の案内を残し、ポーリングで取得を連発しない',async t=>{const {state,mount,scripts,panel,status}=await setup(t);panel.hidden=false;mount(race);scripts[0].onerror();await tick();assert.equal(state.canvas.hidden,true);assert.match(status.textContent,/数値の表/);mount(race);await tick();assert.equal(scripts.length,1);assert.match(status.textContent,/取得できません/);});
+
+// A selected assessment tab must not load the CDN after switching back to predictions.
+test('親の出走表パネルが隠れている間はグラフを取得しない',async t=>{
+ const {mount,scripts,panel}=await setup(t);panel.hidden=false;
+ const get=document.getElementById;let hidden=true;
+ document.getElementById=id=>id==='race-details-panel'?{hidden}:get(id);
+ mount(race);assert.equal(scripts.length,0);
+ hidden=false;mount(race);assert.equal(scripts.length,1);
+ hidden=true;scripts[0].onerror();await tick();assert.equal(scripts.length,1);
+});

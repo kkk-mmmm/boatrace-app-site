@@ -1,4 +1,4 @@
-import {escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups, raceEntryAlerts, renderVenueSummary, renderRaceResult, upcomingRaceList, renderEnvironment, renderCourse2, RETURN_CANDIDATE_RULE, conditionalRanking, firstPlaceProbabilities} from './view.mjs';
+import {raceOutlookSummary,raceOutlookLabel,deadlineSoon,escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups, raceEntryAlerts, renderVenueSummary, renderRaceResult, upcomingRaceList, renderEnvironment, renderCourse2, RETURN_CANDIDATE_RULE, conditionalRanking, firstPlaceProbabilities} from './view.mjs';
 import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveFeaturedRaces, proposalRace, PROPOSAL_LEAD_MS, resultComparison} from './odds-live.mjs';
 import {renderDevelopment} from './development.mjs';
 import {renderExperimentArchive} from './experiments-view.mjs';
@@ -129,6 +129,7 @@ function renderVenueOptionsContent() {
 }
 function renderVenueFilters() {return preserveViewport(renderVenueFiltersContent);}
 function renderVenueFiltersContent() {
+  const nextRaces=allUpcomingRaces();
   const groups=venueFilterGroups(catalog.venues,catalog.date);
   patchHTML($('venue-filter-tags'), groups.map(group=>`<div class="venue-filter-row" role="group" aria-label="${e(group.label)}"><span>${e(group.label)}</span><div class="venue-filter-options"><button data-venue-filter="${group.key}" data-filter-value="" aria-pressed="${!venueFilters[group.key]}">すべて</button>${group.options.map(option=>`<button data-venue-filter="${group.key}" data-filter-value="${e(option.value)}" aria-pressed="${venueFilters[group.key]===option.value}">${e(option.label)}</button>`).join('')}</div></div>`).join(''));
   const matches=filterVenues(catalog.venues,venueFilters,catalog.date);
@@ -137,7 +138,9 @@ function renderVenueFiltersContent() {
   patchHTML($('venue-results'), matches.length?matches.map(venue=>{
     const tags=venueTags(venue,catalog.date);
     const details=tags.held==='OPEN'?[tags.grade || 'グレード未確認',tags.final?'最終日':tags.day?`${tags.day}日目`:'日次未確認',tags.schedule || '時間帯未確認']:[tags.held==='NO_MEETING'?'非開催':'開催未確認'];
-    return `<button class="venue-result" data-venue-result="${e(venue.code)}" aria-pressed="${selectedVenue===venue.code}"><strong>${e(venue.name)}</strong><span>${details.map(e).join(' / ')}</span></button>`;
+    const next=tags.held==='OPEN'?nextRaces.find(r=>r.venue_code===venue.code):null;
+    const nextText=next?`次 ${next.race_no}R · 締切 ${shortClock(next.deadline_at)}`:tags.held==='OPEN'?'締切前レースなし・時刻未取得':'';
+    return `<button class="venue-result${next&&deadlineSoon(next)?' is-deadline-soon':''}" data-venue-result="${e(venue.code)}" aria-pressed="${selectedVenue===venue.code}"><strong>${e(venue.name)}</strong><span>${details.map(e).join(' / ')}</span>${nextText?`<span class="venue-next-race${next&&deadlineSoon(next)?' is-deadline-soon':''}">${e(nextText)}${next&&deadlineSoon(next)?' · あと10分以内':''}</span>`:''}</button>`;
   }).join(''):'<p class="venue-filter-empty">この条件に合う場はありません。条件を外すか「絞り込みをクリア」を選んでください。</p>');
   $('venue-results').scrollTop=scroll;
   for(const button of document.querySelectorAll('[data-venue-filter]'))button.onclick=(()=>{
@@ -273,10 +276,18 @@ async function openListedRace(code,number,record) {
  }
  selected=number;renderCurrent();$('live-view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
 }
+function allUpcomingRaces(now=Date.now()) {
+ return upcomingRaceList(liveOdds?.date===japanDate(now)?liveOdds.upcoming_races??catalog?.upcoming_races:catalog?.upcoming_races,now,288);
+}
 function renderUpcoming() {
- const now=Date.now(),rows=upcomingRaceList(liveOdds?.date===japanDate(now)?liveOdds.upcoming_races??catalog?.upcoming_races:catalog?.upcoming_races,now);
+ const now=Date.now(),rows=allUpcomingRaces(now).slice(0,5);
  $('upcoming-section').classList.toggle('is-empty',!rows.length);
- patchHTML($('upcoming-content'),rows.length?`<div class="upcoming-list">${rows.map(r=>`<button class="upcoming-race" data-upcoming-venue="${r.venue_code}" data-upcoming-race="${r.race_no}"><strong>${e(catalog?.venues.find(v=>v.code===r.venue_code)?.name||r.venue_code)} ${r.race_no}R</strong><span>締切 <time datetime="${e(r.deadline_at)}">${e(shortClock(r.deadline_at))}</time></span></button>`).join('')}</div>`:'<p class="upcoming-empty">現在、確認できる締切前のレースはありません。開催前・全レース締切済み・締切情報の取得待ちの場合があります。</p>');
+ patchHTML($('upcoming-content'),rows.length?`<div class="upcoming-list">${rows.map(r=>{
+  const local=current?.date===r.date&&current?.venue_code===r.venue_code?current.races.find(x=>x.race_no===r.race_no):null;
+  const summary=local?raceOutlookSummary(local,current.update?.last_success_at,now):(catalog?.race_outlooks||[]).find(x=>x.date===r.date&&x.venue_code===r.venue_code&&x.race_no===r.race_no);
+  const label=raceOutlookLabel(summary,r,now),soon=deadlineSoon(r,now);
+  return `<button class="upcoming-race${soon?' is-deadline-soon':''}" data-upcoming-venue="${r.venue_code}" data-upcoming-race="${r.race_no}"><strong>${e(catalog?.venues.find(v=>v.code===r.venue_code)?.name||r.venue_code)} ${r.race_no}R</strong><span class="upcoming-deadline">締切 <time datetime="${e(r.deadline_at)}">${e(shortClock(r.deadline_at))}</time>${soon?' <small>あと10分以内</small>':''}</span><span class="race-outlook race-outlook-${label.kind}">${e(label.label)}</span><small class="outlook-detail">${e(label.detail)}</small></button>`;
+ }).join('')}</div><details class="outlook-method"><summary>レース傾向ラベルの見方</summary><p>全120通りから合算した1着推定確率を使用。1号艇70%以上は「イン優勢」、それ以外で最多の艇が45%以上は「○号艇に軸」、最多でも35%未満は「混戦」、残りは「上位拮抗」です。欠損・欠場・古いデータは「判定待ち」。実際の進入・決まり手や的中保証を示すものではありません。</p></details>`:'<p class="upcoming-empty">現在、確認できる締切前のレースはありません。開催前・全レース締切済み・締切情報の取得待ちの場合があります。</p>');
  for(const button of document.querySelectorAll('[data-upcoming-venue]'))button.onclick=()=>openListedRace(button.dataset.upcomingVenue,Number(button.dataset.upcomingRace),rows.find(r=>r.venue_code===button.dataset.upcomingVenue&&r.race_no===Number(button.dataset.upcomingRace)));
 }
 

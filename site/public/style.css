@@ -561,3 +561,9 @@ footer .information-links a{font-size:12px;min-height:44px;align-content:center}
  .upcoming-race .upcoming-deadline{text-align:right}.upcoming-deadline small{font-size:10px}
  .upcoming-race .outlook-detail{text-align:right}.venue-result .venue-next-race{font-size:11px}
 }
+
+/* Desktop race rail: content length must not change the button width. */
+@media(min-width:761px){
+ .race-nav{align-items:stretch}
+ .race-nav>button{width:100%;min-width:0;flex:0 0 auto;flex-wrap:nowrap}
+}

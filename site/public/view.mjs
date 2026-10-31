@@ -153,7 +153,7 @@ export function raceEntryAlerts(race,now=Date.now()) {
  const unique=new Set(known.map(e=>e.exhibition_course)).size===known.length;
  const changes=unique?known.filter(e=>e.exhibition_course!==e.lane):[];
  const complete=entries.length===6&&active.length>0&&active.every(e=>[e.exhibition_time,e.exhibition_st,e.exhibition_course].every(Number.isFinite));
- const due=Date.parse(race.deadline_at)-600000,left=Date.parse(race.deadline_at)-now;
+ const due=Date.parse(race.deadline_at)-900000,left=Date.parse(race.deadline_at)-now;
  const state=complete?'AVAILABLE':race.exhibition_issue?'FAILED':now<due?'SCHEDULED':race.exhibition_fetched_at?'PARTIAL':'WAITING';
  return {absent,changes,courseStatus:changes.length?'CHANGED':unique&&known.length===active.length&&active.length>0?'UNCHANGED':'UNKNOWN',state,due,
   retryAt:left>300000?Date.parse(race.deadline_at)-300000:null};

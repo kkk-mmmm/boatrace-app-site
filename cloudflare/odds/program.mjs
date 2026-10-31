@@ -63,11 +63,12 @@ export function programExhibition(page){
   return {lane,participation_status:withdrawn?'WITHDRAWN':'ENTERED',exhibition_time:withdrawn?null:time,exhibition_st:null,exhibition_course:null,exhibition_st_status:null,...(withdrawn?{}:starts.get(lane))};});
  requireValue(new Set(result.map(e=>e.lane)).size===6&&result.every(e=>e.lane>=1&&e.lane<=6),'展示の艇番が不正です');return result;
 }
+// exhibition_10m_done is the persisted initial-fetch marker; retained for compatibility.
 export function dataActions(program,deadline,now){
  const left=Date.parse(deadline)-now;if(!(left>0))return {entries:false,exhibition:false};
  const available=program?.exhibition_available && program.entries?.length===6 && program.entries.every(e=>e.participation_status==='WITHDRAWN'||[e.exhibition_time,e.exhibition_st,e.exhibition_course].every(Number.isFinite));
  return {entries:!program?.entries?.length||left<=30*60000&&!program.entries_30m_done,
-  exhibition:(left<=10*60000&&(!program?.exhibition_10m_done||!!program?.exhibition_issue) || left<=5*60000&&!available&&(!program?.exhibition_5m_done||!!program?.exhibition_issue||program?.exhibition_available&&!available)) && (!program?.exhibition_last_attempt || now-Date.parse(program.exhibition_last_attempt)>=60000)};
+  exhibition:(left<=15*60000&&(!program?.exhibition_10m_done||!!program?.exhibition_issue) || left<=5*60000&&!available&&(!program?.exhibition_5m_done||!!program?.exhibition_issue||program?.exhibition_available&&!available)) && (!program?.exhibition_last_attempt || now-Date.parse(program.exhibition_last_attempt)>=60000)};
 }
 export function annualForecast(program,model,now){
  if(!model||!program.entries?.length||program.entries.some(e=>e.participation_status==='WITHDRAWN')||now>=Date.parse(program.deadline_at)-180000)return null;

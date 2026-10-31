@@ -82,3 +82,5 @@ test('旋回直後に選択艇が先頭となり、差し・まくり差しだ�
  const escape=developmentPaths({...scenario,lane:1,style:'逃げ',combo:'1-2-3'});assert.equal(escape[0].drift,false);
  assert.match(renderDevelopment(example(),2),/keyTimes="0;0.7;1"/);
 });
+
+test('展示案内は締切15分前を境に予定から取得待ちへ切り替わる',async()=>{const {raceEntryAlerts}=await import('./public/view.mjs'),now=Date.parse('2030-01-01T00:00Z'),race={entries:[],deadline_at:new Date(now+900000).toISOString()};assert.equal(raceEntryAlerts(race,now-1).state,'SCHEDULED');assert.equal(raceEntryAlerts(race,now).state,'WAITING');assert.equal(raceEntryAlerts(race,now).due,now);});

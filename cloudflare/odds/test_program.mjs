@@ -7,17 +7,17 @@ test('Workers用出走表・展示の正規化を公式資料と照合する',()
  assert.equal(entries.length,6);assert.ok(entries.every(e=>/^\d{4}$/.test(e.racer_id)));assert.equal(programDeadlines(pages.find(p=>p.url.includes('racelist?')),'2026-10-21').length,12);
  assert.deepEqual(programExhibition({tables:[]}),[]);
 });
-test('朝・30分前・10分前・未提供時5分前の更新だけを起動する',()=>{
+test('朝・30分前・15分前・未提供時5分前の更新だけを起動する',()=>{
  const now=Date.now(),deadline=new Date(now+3600000).toISOString();assert.deepEqual(dataActions(null,deadline,now),{entries:true,exhibition:false});
  const p={entries:Array.from({length:6},(_,i)=>({exhibition_time:6.7,exhibition_st:.1,exhibition_course:i+1})),entries_30m_done:false};assert.equal(dataActions(p,new Date(now+1800000).toISOString(),now).entries,true);
- p.entries_30m_done=true;assert.deepEqual(dataActions(p,new Date(now+600000).toISOString(),now),{entries:false,exhibition:true});
+ p.entries_30m_done=true;assert.equal(dataActions(p,new Date(now+900001).toISOString(),now).exhibition,false);assert.deepEqual(dataActions(p,new Date(now+900000).toISOString(),now),{entries:false,exhibition:true});
  p.exhibition_10m_done=true;p.exhibition_available=true;assert.deepEqual(dataActions(p,new Date(now+300000).toISOString(),now),{entries:false,exhibition:false});
  p.exhibition_available=false;assert.equal(dataActions(p,new Date(now+300000).toISOString(),now).exhibition,true);
  assert.deepEqual(dataActions(p,new Date(now).toISOString(),now),{entries:false,exhibition:false});
 });
 
-test('10分前の失敗は完了扱いにせず、1分以内の再取得を抑えて再試行する',()=>{
- const now=Date.parse('2030-01-01T00:00:00Z'),deadline=new Date(now+600000).toISOString(),p={entries:[{}],entries_30m_done:true,exhibition_last_attempt:new Date(now).toISOString()};
+test('15分前の失敗は完了扱いにせず、1分以内の再取得を抑えて再試行する',()=>{
+ const now=Date.parse('2030-01-01T00:00:00Z'),deadline=new Date(now+900000).toISOString(),p={entries:[{}],entries_30m_done:true,exhibition_last_attempt:new Date(now).toISOString()};
  assert.equal(dataActions(p,deadline,now).exhibition,false);assert.equal(dataActions(p,deadline,now+60000).exhibition,true);
 });
 test('欠場の公式クラスと進入・展示STを区別し、ST未提供を0として返さない',()=>{

@@ -1,0 +1,79 @@
+{
+  "synthetic": true,
+  "real_video_comparison": false,
+  "drawing_version": "turn-2",
+  "frames_per_case": 61,
+  "phases": [
+    "entry",
+    "turn",
+    "exit"
+  ],
+  "viewports": [
+    1440,
+    390
+  ],
+  "module_sha256": {
+    "site/public/development-simulation.mjs": "91a1dcb97641b1f913df7c3abd76817ebd7b408380dca9dda2ed82d2839a519d",
+    "site/public/development-player.mjs": "35973f49917ad247062f501daa2b7e9b9a2751cbca5e5defdeb20c32686b5a47",
+    "site/public/development.mjs": "d20234086e3fd05dc0999a9af69d36b1d5df11c1839b011dd4bce7db03d669cc",
+    "site/fixtures/development-race.mjs": "fb3a1f5a5576e988916337c90799d7451b0285ac7184abe3af2478225f0bf64a"
+  },
+  "cases": {
+    "escape-1440": {
+      "duration": 8.714819413439368,
+      "entry": 2.8749387828545054,
+      "turn": 4.982715205701355,
+      "exit": 7.090491628548204,
+      "attempts": 1
+    },
+    "escape-390": {
+      "duration": 8.714819413439368,
+      "entry": 2.8749387828545054,
+      "turn": 4.982715205701355,
+      "exit": 7.090491628548204,
+      "attempts": 1
+    },
+    "sashi-1440": {
+      "duration": 11.275818664664898,
+      "entry": 5.735231058222179,
+      "turn": 7.54894729363131,
+      "exit": 9.654107298125947,
+      "attempts": 1
+    },
+    "sashi-390": {
+      "duration": 11.275818664664898,
+      "entry": 5.735231058222179,
+      "turn": 7.54894729363131,
+      "exit": 9.654107298125947,
+      "attempts": 1
+    },
+    "makuri-1440": {
+      "duration": 9.127359682905931,
+      "entry": 2.8149861085235046,
+      "turn": 5.188126391324424,
+      "exit": 7.561176108026704,
+      "attempts": 1
+    },
+    "makuri-390": {
+      "duration": 9.127359682905931,
+      "entry": 2.8149861085235046,
+      "turn": 5.188126391324424,
+      "exit": 7.561176108026704,
+      "attempts": 1
+    },
+    "makurisashi-1440": {
+      "duration": 11.879480608411352,
+      "entry": 6.108148535766116,
+      "turn": 8.463993761599742,
+      "exit": 10.3270996560304,
+      "attempts": 1
+    },
+    "makurisashi-390": {
+      "duration": 11.879480608411352,
+      "entry": 6.108148535766116,
+      "turn": 8.463993761599742,
+      "exit": 10.3270996560304,
+      "attempts": 1
+    }
+  }
+}

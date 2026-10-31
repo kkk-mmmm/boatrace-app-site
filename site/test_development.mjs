@@ -1,86 +1,21 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';
-import {developmentScenarios,developmentPaths,renderDevelopment} from './public/development.mjs';
-function example(masses=[.45,.2,.199999,.1,.03,.020001]){
- const probabilities=[];for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)for(let c=1;c<=6;c++)if(new Set([a,b,c]).size===3)probabilities.push({combo:`${a}-${b}-${c}`,probability:masses[a-1]/20});
- return {probabilities,entries:Array.from({length:6},(_,i)=>({lane:i+1,name:'選手'+i,avg_st:.15,exhibition_time:6.7+i*.03,exhibition_st:.1+i*.02,annual_lane:{win_rate:.2,mean_st:.16,mean_start_rank:3,kimarite:{'逃げ':2,'差し':4,'まくり':3,'まくり差し':1}}}))};
-}
-test('全120通りから1着確率を集計し、他艇は20%以上だけを採用、各ケースで最高確率の買い目を1点選ぶ',()=>{
- const race=example(),before=JSON.stringify(race),cases=developmentScenarios(race);assert.deepEqual(cases.map(s=>s.lane),[1,2]);assert.equal(JSON.stringify(race),before);
- assert.ok(Math.abs(cases[1].probability-.2)<1e-12);assert.equal(cases[0].style,'逃げ');assert.equal(cases[1].style,'差し');assert.equal(cases[1].combo,'2-1-3');
- race.probabilities.find(r=>r.combo==='2-6-5').probability+=.01;race.probabilities.find(r=>r.combo==='2-1-3').probability-=.01;
- assert.equal(developmentScenarios(race)[1].combo,'2-6-5');assert.equal(before,JSON.stringify(example()));
- assert.deepEqual(developmentScenarios({...race,probabilities:race.probabilities.slice(0,10)}),[]);
- assert.deepEqual(developmentScenarios({...race,entries:race.entries.slice(0,5)}),[]);
- assert.deepEqual(developmentScenarios(example([0,.2,.2,.2,.2,.2])).map(s=>s.lane),[2,3,4,5,6]);
-});
-test('6艇の経路は入力に再現可能に依存し、買い目の想定着順を保持、欠損でNaNを描かない',()=>{
- const race=example(),s=developmentScenarios(race)[1],paths=developmentPaths(s);assert.equal(paths.length,6);assert.deepEqual(paths,developmentPaths(s));
- assert.deepEqual(paths.sort((a,b)=>a.finish-b.finish).slice(0,3).map(p=>p.lane),s.combo.split('-').map(Number));
- for(const field of ['win_rate','mean_st','mean_start_rank']){const changed=example();changed.entries[3].annual_lane[field]=field==='win_rate'?.8:field==='mean_st'?.3:5;assert.notDeepEqual(developmentPaths(developmentScenarios(changed)[1]),developmentPaths(s));}
- for(const field of ['exhibition_time','exhibition_st']){const changed=example();changed.entries[3][field]=field==='exhibition_time'?7.2:.3;assert.notDeepEqual(developmentPaths(developmentScenarios(changed)[1]),developmentPaths(s));}
- const missing=example();missing.entries=missing.entries.map(e=>({lane:e.lane,name:e.name}));const text=renderDevelopment(missing,2);assert.match(text,/未取得/);assert.match(text,/決まり手未判定/);assert.doesNotMatch(text,/NaN|undefined/);
- for(const style of ['差し','まくり','まくり差し']){const c={...s,style};assert.ok(developmentPaths(c).every(p=>!p.path.includes('NaN')));}
- assert.notDeepEqual(developmentPaths({...s,style:'差し'}),developmentPaths({...s,style:'まくり'}));
-});
-test('外部入力をエスケープし、不完全な分布は展開を作らない',()=>{
- const race=example();race.entries[0].name='<img src=x onerror=alert(1)>';assert.doesNotMatch(renderDevelopment(race),/<img/);assert.match(renderDevelopment(race),/&lt;img/);
- assert.match(renderDevelopment({...race,probabilities:[]}),/確認できてから/);
-});
+import test from 'node:test';import assert from 'node:assert/strict';
+import {developmentScenarios,developmentPaths,developmentSimulation,renderDevelopment} from './public/development.mjs';
+import {simulateDevelopment,boatState,fleetState,bodiesOverlap,touchesMark,wakePoints,DRAWING} from './public/development-simulation.mjs';
+import {animationFixture} from './fixtures/development-race.mjs';
+const cases=()=>{const s=developmentScenarios(animationFixture());return [s[0],s[1],{...s[1],style:'まくり'},{...s[2],style:'まくり差し'}];};
+const diff=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+test('確率と買い目の選定は保持し、20%以上のケースだけ作り入力と結果データを変更しない',()=>{const r=animationFixture(),before=JSON.stringify(r),s=developmentScenarios(r);assert.deepEqual(s.map(c=>c.lane),[1,2,3]);assert.ok(Math.abs(s[0].probability-.4)<1e-9);const added={...r,result:{kimarite:'差し',entries:[]}};assert.deepEqual(developmentScenarios(added),s);assert.equal(JSON.stringify(r),before);for(const c of s)assert.ok(r.probabilities.some(p=>p.combo===c.combo));assert.deepEqual(developmentScenarios({...r,probabilities:[]}),[]);});
+test('4戦法が決定的に成立し、買い目の2・3着では経路も順位も強制しない',()=>{for(const s of cases()){const before=JSON.stringify(s),sim=simulateDevelopment(s);assert.ok(sim.valid,JSON.stringify(sim.failures));assert.deepEqual(sim,simulateDevelopment(s));assert.equal(JSON.stringify(s),before);assert.deepEqual(sim,simulateDevelopment({...s,combo:s.lane+'-6-5'}));assert.ok(developmentPaths(s).length===6);const states=fleetState(sim,sim.checkpoint),winner=states.find(b=>b.lane===s.lane);assert.ok(states.filter(b=>b!==winner).every(b=>b.progress<=winner.progress-.22));}});
+test('ST差はスリット通過時刻と進入へ入り、各艇の旋回開始・終了は共通固定時刻ではない',()=>{const s=cases()[0],a=simulateDevelopment(s),changed=structuredClone(s);changed.boats[5].st+=.08;const b=simulateDevelopment(changed);assert.ok(a.valid&&b.valid);const aa=a.boats[5],bb=b.boats[5];assert.ok(Math.abs(bb.phases[0].end-aa.phases[0].end-.08)<1e-9);assert.ok(bb.phases[2].start>aa.phases[2].start);for(const boat of a.boats)assert.ok(Math.abs(boatState(boat,boat.slitTime).x+DRAWING.halfLength-DRAWING.slitX)<1e-6);assert.equal(new Set(a.boats.map(b=>b.turnStart)).size,6);assert.equal(new Set(a.boats.map(b=>b.turnEnd)).size,6);assert.ok(a.boats.every(b=>b.phases.map(p=>p.name).join(',')==='スリット通過,アプローチ,ターン進入,旋回,脱出加速,バック'));});
+test('位置・速度・艇首は全接続点で連続し、弧長速度と一致する',()=>{for(const s of cases()){const sim=simulateDevelopment(s);for(const b of sim.boats){for(let i=0;i<b.phases.length-1;i++){const t=b.phases[i].end,a=boatState(b,t-1e-6),z=boatState(b,t+1e-6);assert.ok(diff(a,z)<.001);assert.ok(Math.abs(a.heading-z.heading)<.001);assert.ok(Math.abs(a.speed-z.speed)<.001);assert.equal(t,b.phases[i+1].start);}for(const p of b.phases.slice(1,5)){const t=p.start+p.duration*.45,a=boatState(b,t),z=boatState(b,t+.0001);assert.ok(Math.abs(diff(a,z)/.0001-a.speed)<.2);}}}});
+test('同一時刻と検証サンプルの中間でも占有領域が重ならず、マークへ接触しない',()=>{for(const s of cases()){const sim=simulateDevelopment(s);assert.ok(sim.validation.valid);for(let t=DRAWING.step/2;t<sim.duration;t+=.017){const states=fleetState(sim,t);for(let i=0;i<6;i++){assert.equal(touchesMark(states[i],DRAWING.safety),false);for(let j=i+1;j<6;j++)assert.equal(bodiesOverlap(states[i],states[j],DRAWING.safety),false);}}}});
+test('差しは先行艇の旋回後に切り込み、まくり差しは外攻めから内へ切り替える',()=>{for(const s of [cases()[1],cases()[3]]){const sim=simulateDevelopment(s),winner=sim.boats.find(b=>b.lane===s.lane),inner=sim.boats.find(b=>b.course===1);assert.ok(winner.phases[2].start>=inner.turnStart+.25-1e-10);assert.ok(winner.radius<inner.radius);}const sim=simulateDevelopment(cases()[3]),winner=sim.boats.find(b=>b.lane===3);assert.equal(winner.phases[1].path.curves.length,2);assert.ok(winner.phases[1].path.curves.at(-1)[3].y>winner.phases[1].path.curves[0][0].y);assert.ok(winner.phases[2].path.curves.at(-1)[3].y<winner.phases[2].path.curves[0][0].y);const retry=structuredClone(cases()[3]);retry.boats[0].st=.2;const resolved=simulateDevelopment(retry);assert.ok(resolved.valid&&resolved.attempts>1,'接触候補を捨て、別の時間設定を選ぶ');assert.ok(resolved.failures.some(f=>f.reason==='CONTACT'));});
+test('探索上限と不成立を扱い、極端な入力でも強引に座標を動かさない',()=>{const s=cases()[0],zero=simulateDevelopment(s,{maxAttempts:0});assert.equal(zero.valid,false);assert.equal(zero.attempts,0);const blocked=animationFixture();blocked.entries[0].annual_lane.mean_st=.3;blocked.entries[2].annual_lane.kimarite={'まくり差し':20};const fallback=renderDevelopment(blocked,3);assert.match(fallback,/生成できませんでした/);assert.doesNotMatch(fallback,/<svg id="development-water"/);assert.deepEqual(zero.boats,[]);const bad=simulateDevelopment({...s,style:'差し'});assert.equal(bad.reason,'TACTIC_COURSE');const extreme=structuredClone(cases()[3]);extreme.boats[0].st=.03;extreme.boats[2].st=.45;const result=simulateDevelopment(extreme);assert.ok(result.attempts<=DRAWING.maxAttempts);if(result.valid)assert.ok(result.validation.valid);else assert.equal(result.boats.length,0);});
+test('展示進入は仮定と表示し、不明時は全艇枠なり、欠場時は描画停止',()=>{const r=animationFixture();[r.entries[0].exhibition_course,r.entries[1].exhibition_course]=[2,1];const s=developmentScenarios(r);assert.equal(s[1].style,'逃げ');assert.match(renderDevelopment(r,2),/確定情報ではありません/);r.entries[0].exhibition_course=null;assert.match(developmentSimulation(developmentScenarios(r)[0]).entryBasis,/枠なり/);r.entries[5].participation_status='WITHDRAWN';assert.deepEqual(developmentScenarios(r),[]);assert.match(renderDevelopment(r),/欠場のない6艇/);});
+test('少数の勝利履歴・欠損は戦法未判定、照合日のない/未来のST差は使わない',()=>{const r=animationFixture();r.entries[1].annual_lane.samples=2;assert.equal(developmentScenarios(r)[1].style,null);r.history={lanes:[{lane:4,exhibition_st_gap:{n:10,mean:.08,through:'2030-01-01'}}]};assert.equal(developmentScenarios(r)[0].boats[3].stGap,null);r.history.lanes[0].exhibition_st_gap.through='2029-12-31';assert.equal(developmentScenarios(r)[0].boats[3].stGap,.08);const missing=animationFixture();missing.entries=missing.entries.map(e=>({lane:e.lane,name:e.name}));assert.doesNotMatch(renderDevelopment(missing),/NaN|undefined/);});
+test('艇首ずれは3度以内で脱出後に0、航跡は同じ模式時刻から再現する',()=>{const sim=simulateDevelopment(cases()[0]);for(const b of sim.boats){for(let t=0;t<sim.duration;t+=.09)assert.ok(Math.abs(boatState(b,t).slip)<=Math.PI/60+1e-9);assert.equal(boatState(b,b.phases[4].end).slip,0);assert.deepEqual(wakePoints(b,4),wakePoints(b,4));assert.notDeepEqual(wakePoints(b,4),wakePoints(b,5));}assert.equal(bodiesOverlap({x:0,y:0,heading:0},{x:1,y:1,heading:0}),true);assert.equal(touchesMark({x:460,y:170,heading:0}),true);});
+test('SVGに旧4.2秒・固定出口・独立SMILを残さず、入力をエスケープする',()=>{const r=animationFixture();r.entries[0].name='<img src=x>';const text=renderDevelopment(r);assert.match(text,/&lt;img/);assert.doesNotMatch(text,/<img|animateMotion|keyTimes|4\.2秒/);assert.match(text,/development-seek/);assert.match(text,/0.5倍/);assert.match(text,/未校正/);assert.match(text,/予想精度を示しません/);});
+// Existing exhibition-fetch contract remains separate from the drawing clock.
+test('展示の予定・進入変更・欠場と15分前の取得待ちを維持',async()=>{const {raceEntryAlerts}=await import('./public/view.mjs'),now=Date.parse('2030-01-01T00:00Z'),r=animationFixture();r.deadline_at=new Date(now+900000).toISOString();r.entries.forEach(e=>{e.exhibition_st=null;});assert.equal(raceEntryAlerts(r,now-1).state,'SCHEDULED');assert.equal(raceEntryAlerts(r,now).state,'WAITING');[r.entries[0].exhibition_course,r.entries[1].exhibition_course]=[2,1];assert.equal(raceEntryAlerts(r,now).courseStatus,'CHANGED');r.entries[5].participation_status='WITHDRAWN';assert.equal(raceEntryAlerts(r,now).absent.length,1);});
 
-test('展示の予定・未提供・失敗と進入変更・欠場を区別して表示する',async()=>{
- const {raceEntryAlerts,raceStatus}=await import('./public/view.mjs'),now=Date.parse('2030-01-01T00:00:00Z'),race=example();race.date='2030-01-01';race.deadline_at=new Date(now+1800000).toISOString();
- assert.equal(raceEntryAlerts(race,now).state,'SCHEDULED');race.entries.forEach((e,i)=>e.exhibition_course=i+1);
- assert.equal(raceEntryAlerts(race,now).courseStatus,'UNCHANGED');
- [race.entries[1].exhibition_course,race.entries[2].exhibition_course]=[3,2];assert.equal(raceEntryAlerts(race,now).courseStatus,'CHANGED');
- race.entries[0].participation_status='WITHDRAWN';assert.equal(raceEntryAlerts(race,now).absent.length,1);assert.equal(raceStatus(race,{update:{status:'OK'}},now).currentOdds,false);
- race.entries[1].exhibition_st=null;race.exhibition_fetched_at=new Date(now).toISOString();assert.equal(raceEntryAlerts(race,now+1500000).state,'PARTIAL');
- race.exhibition_issue='HTTP 503';assert.equal(raceEntryAlerts(race,now+1500000).state,'FAILED');
-});
-test('展示ST補正は過去に照合できた平均差だけを描画へ反映する',()=>{
- const race=example(),before=developmentPaths(developmentScenarios(race)[1]);race.history={lanes:[{lane:4,exhibition_st_gap:{n:10,mean:.08}}]};
- assert.notDeepEqual(developmentPaths(developmentScenarios(race)[1]),before);assert.match(renderDevelopment(race),/\+0.080秒/);
-});
-
-test('全艇の決まり手傾向を反映し、まくり寄りは外・差し寄りは内のターンと出口になる',()=>{
- const race=example();for(const e of race.entries){e.annual_lane.kimarite={'まくり':20};e.exhibition_time=6.8;}
- const outside=developmentPaths(developmentScenarios(race)[0]).find(p=>p.lane===4);
- race.entries[3].annual_lane.kimarite={'差し':20};const inside=developmentPaths(developmentScenarios(race)[0]).find(p=>p.lane===4);
- assert.ok(outside.turnRadius>inside.turnRadius);assert.ok(outside.backY<inside.backY,'図の上方が外、マーク寄りの下方が内');assert.notEqual(outside.path,inside.path);
- assert.equal(outside.backX,inside.backX,'決まり手だけで想定の序列を付けない');
-});
-test('ST・スコアの差でバックの前後差を変え、同等入力なら並走し、買い目の順番で等間隔にしない',()=>{
- const race=example();for(const e of race.entries){e.exhibition_time=6.8;e.exhibition_st=.15;e.annual_lane.mean_st=.15;e.annual_lane.mean_start_rank=3;}
- race.scores=race.entries.map(e=>({lane:e.lane,total:1}));const equal=developmentPaths(developmentScenarios(race)[0]);
- assert.equal(new Set(equal.filter(p=>p.lane!==1).map(p=>p.backX)).size,1);assert.ok(equal[0].backX<Math.min(...equal.slice(1).map(p=>p.backX)));assert.equal(new Set(equal.map(p=>p.backY)).size,6);
- for(const [i,p] of [...equal].sort((a,b)=>a.backY-b.backY).entries())if(i)assert.ok(p.backY-[...equal].sort((a,b)=>a.backY-b.backY)[i-1].backY>=13.99);
- const st=structuredClone(race);st.entries[3].annual_lane.mean_st=.08;assert.ok(developmentPaths(developmentScenarios(st)[0])[3].backX<equal[3].backX);
- const score=structuredClone(race);score.scores[3].total=3;assert.ok(developmentPaths(developmentScenarios(score)[0])[3].backX<equal[3].backX);
- const tiny=structuredClone(race);tiny.scores[3].total+=.001;assert.equal(new Set(developmentPaths(developmentScenarios(tiny)[0]).filter(p=>p.lane!==1).map(p=>p.backX)).size,1);
- const scenario=developmentScenarios(race)[0];assert.deepEqual(developmentPaths({...scenario,combo:'1-6-5'}).map(p=>[p.backX,p.backY]),equal.map(p=>[p.backX,p.backY]));
- assert.match(renderDevelopment(race),/途中経過/);assert.match(renderDevelopment(race),/総合スコア/);
-});
-
-test('同じ傾向・同等スコアでも勝つ艇を切り替えると経路と先頭艇が変わる',()=>{
- const race=example([.2,.2,.2,.2,.1,.1]);for(const e of race.entries){e.exhibition_time=6.8;e.exhibition_st=.15;e.annual_lane={win_rate:.2,mean_st:.15,mean_start_rank:3,kimarite:{'差し':10}};}
- const original=JSON.stringify(race),cases=developmentScenarios(race),all=cases.map(developmentPaths);
- assert.equal(cases.length,4);
- for(let i=0;i<cases.length;i++){
-  const winner=all[i].find(p=>p.lane===cases[i].lane),others=all[i].filter(p=>p!==winner);
-  assert.ok(others.every(p=>p.backX-winner.backX>=35.99));
-  assert.equal(new Set(others.map(p=>p.backX)).size,1,'他艇は同等入力なら並走');
-  for(let j=0;j<i;j++)assert.notDeepEqual(all[i].map(p=>p.path),all[j].map(p=>p.path));
- }
- assert.equal(JSON.stringify(race),original,'予想確率と入力は変更しない');
- race.scores=race.entries.map(e=>({lane:e.lane,total:e.lane===6?20:-20}));const paths=developmentPaths(developmentScenarios(race)[1]);
- assert.equal([...paths].sort((a,b)=>a.backX-b.backX)[0].lane,2,'強い他艇がいても選択した勝利条件を満たす');
- for(const p of paths)assert.ok(Number.isFinite(p.backX)&&p.backX>=24&&p.backX<620);
-});
-
-test('旋回直後に選択艇が先頭となり、差し・まくり差しだけ1号艇が外へ流れる',()=>{
- const scenario=developmentScenarios(example())[1],normal=developmentPaths({...scenario,style:'まくり'});
- for(const style of ['逃げ','差し','まくり','まくり差し']){const paths=developmentPaths({...scenario,style}),winner=paths.find(p=>p.lane===2);assert.ok(paths.filter(p=>p.lane!==2).every(p=>p.turnExitX-winner.turnExitX>=39));assert.ok(paths.every(p=>p.turnFraction>0&&p.turnFraction<1));const one=paths.find(p=>p.lane===1);if(['差し','まくり差し'].includes(style)){assert.ok(one.turnRadius>normal[0].turnRadius);assert.ok(one.turnExitY<normal[0].turnExitY);assert.equal(one.drift,true);}else assert.equal(one.drift,false);}
- const escape=developmentPaths({...scenario,lane:1,style:'逃げ',combo:'1-2-3'});assert.equal(escape[0].drift,false);
- assert.match(renderDevelopment(example(),2),/keyTimes="0;0.7;1"/);
-});
-
-test('展示案内は締切15分前を境に予定から取得待ちへ切り替わる',async()=>{const {raceEntryAlerts}=await import('./public/view.mjs'),now=Date.parse('2030-01-01T00:00Z'),race={entries:[],deadline_at:new Date(now+900000).toISOString()};assert.equal(raceEntryAlerts(race,now-1).state,'SCHEDULED');assert.equal(raceEntryAlerts(race,now).state,'WAITING');assert.equal(raceEntryAlerts(race,now).due,now);});
+test('再生速度は時計だけへ作用し、0.5倍の2倍の経過で同じ艇・航跡へ到達する',async()=>{const {advanceDevelopmentTime}=await import('./public/development-player.mjs'),sim=simulateDevelopment(cases()[0]);let normal=0,slow=0;for(let i=0;i<10;i++)normal=advanceDevelopmentTime(normal,.1,1,sim.duration);for(let i=0;i<20;i++)slow=advanceDevelopmentTime(slow,.1,.5,sim.duration);assert.ok(Math.abs(normal-slow)<1e-9);for(const b of sim.boats){assert.ok(diff(boatState(b,normal),boatState(b,slow))<1e-8);const a=wakePoints(b,normal),z=wakePoints(b,slow);assert.ok(a.every((p,i)=>diff(p,z[i])<1e-8));}});

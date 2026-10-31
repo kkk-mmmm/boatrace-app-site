@@ -94,6 +94,11 @@ export function predictionRanking(rows, quotes, {scenario = 'all', tab = 'probab
     .sort((a, b) => (byValue ? b.value - a.value : b.probability - a.probability) || a.combo.localeCompare(b.combo));
 }
 
+// The UI order can change without changing pre-registered EV-based verification rules.
+export function returnProbabilityRanking(rows,quotes,options={}){
+ return predictionRanking(rows,quotes,{...options,tab:'return'}).sort((a,b)=>b.probability-a.probability||a.combo.localeCompare(b.combo));
+}
+
 // Each selected ticket contributes a relationship; rank the union only once.
 export function sujiCandidates(rows, quotes, selectedCombos, {scenario = 'all', currentOdds = false, limit = 10} = {}) {
   const selected = new Set(Array.isArray(selectedCombos) ? selectedCombos : selectedCombos ? [selectedCombos] : []);

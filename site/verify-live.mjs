@@ -109,7 +109,7 @@ try{
   };
  }`});
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
- await send('Page.navigate',{url:base+'?venue='+candidate.venue_code});
+ await send('Page.navigate',{url:base+'venues/'+candidate.venue_code+'/'});
  if(morning){
   await wait("document.querySelectorAll('#venue-select option').length===24 && document.querySelector('.empty h3')");
   assert.equal(await run("document.querySelectorAll('.prediction-table tbody tr').length"),0);
@@ -310,7 +310,7 @@ try{
  fs.writeFileSync(path.join(output,'release-notes.json'),JSON.stringify(releaseReport,null,2)+'\n');console.log('::notice title=Published release notes verification::'+JSON.stringify(releaseReport));
  const confirmed=venues.flatMap(v=>v.races.filter(r=>r.result?.status==='CONFIRMED').map(r=>({venue:v,race:r})));
  if(confirmed.length){
-  const sample=confirmed.find(s=>resultComparison(s.race).status==='OK')||confirmed[0];await send('Page.navigate',{url:base+'?venue='+sample.venue.venue_code});
+  const sample=confirmed.find(s=>resultComparison(s.race).status==='OK')||confirmed[0];await send('Page.navigate',{url:base+'venues/'+sample.venue.venue_code+'/'});
   await wait("document.querySelectorAll('[data-race]').length>0");await run(`document.querySelector('[data-race="${sample.race.race_no}"]').click();document.getElementById('result-tab').click()`);
   await wait("document.querySelectorAll('#result-panel .race-result > .table-wrap tbody tr').length===6");
   const comparison=resultComparison(sample.race);

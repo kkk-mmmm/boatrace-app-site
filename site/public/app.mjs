@@ -110,7 +110,7 @@ const freshUpdate = (update, date) => date === japanDate(Date.now()) && ['OK','P
   && Date.now() - Date.parse(update.last_success_at) <= 10 * 60000;
 function identifyVenue() {
   for (const element of document.querySelectorAll('[data-venue-name]')) element.textContent = venueName();
-  document.title = view==='releases'?`リリースノート | ${siteShortName}`:new URL(location.href).searchParams.has('venue')||document.body.dataset.venue?`${venueName()}のボートレース・競艇のAI予想とオッズ | ${siteShortName}`:siteName;
+  document.title = view==='releases'?`リリースノート | ${siteShortName}`:document.body.dataset.pageTitle?document.body.dataset.pageTitle:new URL(location.href).searchParams.has('venue')||document.body.dataset.venue?`${venueName()}のボートレース・競艇のAI予想とオッズ | ${siteShortName}`:siteName;
 }
 function renderVenueOptions() {return preserveViewport(renderVenueOptionsContent);}
 function renderVenueOptionsContent() {
@@ -156,7 +156,7 @@ function renderVenueFiltersContent() {
     const details=tags.held==='OPEN'?[tags.grade || 'グレード未確認',tags.final?'最終日':tags.day?`${tags.day}日目`:'日次未確認',tags.schedule || '時間帯未確認']:[tags.held==='NO_MEETING'?'非開催':'開催未確認'];
     const next=tags.held==='OPEN'?nextRaces.find(r=>r.venue_code===venue.code):null;
     const nextText=next?`${next.race_no}R · 締切 ${shortClock(next.deadline_at)}`:tags.held==='OPEN'?'締切前レースなし・時刻未取得':'';
-    return `<button class="venue-result${next&&deadlineSoon(next)?' is-deadline-soon':''}" data-venue-result="${e(venue.code)}" aria-pressed="${selectedVenue===venue.code}"><strong>${e(venue.name)}</strong><span>${details.map(e).join(' / ')}</span>${nextText?`<span class="venue-next-race${next&&deadlineSoon(next)?' is-deadline-soon':''}">${next?`${next.race_no}R · 締切 <time datetime="${e(next.deadline_at)}">${e(shortClock(next.deadline_at))}</time>`:e(nextText)}</span>`:''}</button>`;
+    return `<a href="./venues/${e(venue.code)}/" class="venue-result${next&&deadlineSoon(next)?' is-deadline-soon':''}" data-venue-result="${e(venue.code)}" aria-current="${selectedVenue===venue.code?'page':'false'}"><strong>${e(venue.name)}</strong><span>${details.map(e).join(' / ')}</span>${nextText?`<span class="venue-next-race${next&&deadlineSoon(next)?' is-deadline-soon':''}">${next?`${next.race_no}R · 締切 <time datetime="${e(next.deadline_at)}">${e(shortClock(next.deadline_at))}</time>`:e(nextText)}</span>`:''}</a>`;
   }).join(''):`<p class="venue-filter-empty">${filtered?'この条件に合う場はありません。条件を外すか「絞り込みをクリア」を選んでください。':'本日開催と確認できる場はありません。全24場から選択できます。非開催と開催未確認はセレクトの表示をご確認ください。'}</p>`);
   $('venue-results').scrollTop=scroll;
   for(const button of document.querySelectorAll('[data-venue-filter]'))button.onclick=(()=>{
@@ -164,9 +164,7 @@ function renderVenueFiltersContent() {
     venueFilters[key]=venueFilters[key]===value?null:value;venueFilterMode=true;venueExpanded=false;renderVenueFilters();
     document.querySelector(`[data-venue-filter="${key}"][data-filter-value="${value || ''}"]`)?.focus({preventScroll:true});
   });
-  for(const button of document.querySelectorAll('[data-venue-result]'))button.onclick=(()=>{
-    chooseVenue(button.dataset.venueResult);
-  });
+
 }
 function clearCurrent() {
   developmentPlayer?.dispose();developmentPlayer=null;
@@ -285,14 +283,7 @@ function renderOpportunitiesContent() {
   renderUpcoming();
 }
 
-async function openListedRace(code,number,record) {
- showView('live');closeVenuePanel();selectedVenue=code;clearCurrent();renderVenueOptions();const loading=load(),version=loadVersion;await loading;
- if(version!==loadVersion||selectedVenue!==code||current?.venue_code!==code)return;
- if(!current.races.some(r=>r.race_no===number)&&record&&record.date===current.date){
-  current={...current,races:[...current.races,{date:record.date,venue_code:code,venue:venueName(),race_no:number,deadline_at:record.deadline_at,entries:[],items:[],probabilities:[],odds:null,issue:'出走表・予想は取得待ちです。'}].sort((a,b)=>a.race_no-b.race_no)};
- }
- selected=number;renderCurrent();$('live-view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
-}
+function openListedRace(code,number){location.assign(new URL(`./venues/${code}/?race=${number}#live-view`,document.baseURI));}
 function allUpcomingRaces(now=Date.now()) {
  return upcomingRaceList(liveOdds?.date===japanDate(now)?liveOdds.upcoming_races??catalog?.upcoming_races:catalog?.upcoming_races,now,288);
 }
@@ -398,7 +389,7 @@ function renderCurrentContent() {
     <p class="small-note">STのばらつきは標準偏差で、小さいほど安定した傾向です。少数の集計は全体の傾向へ寄せて補正します。集計対象は${e(race.history?.trained_through || '未取得')}までです。通過条件が確認できない選手を勝負掛け扱いにはしません。</p>`;
   const developmentSheet=withdrawn?'<p class="development-empty">欠場があるため、6艇を前提とした展開予想は停止しています。</p>':renderDevelopment(race.items.length?race:{...race,probabilities:[]},developmentLane);
   const assessment=`<details id="assessment-disclosure" class="prediction-details"><summary>予想の根拠・自信度</summary><div id="assessment-panel"><h4>レースの自信度</h4>${confidenceHTML(race)}<p class="small-note">1着確率の集中度と枠別履歴の件数による参考指標です。実測の的中率や利益の確率ではありません。</p>${radarHTML(race)}${renderCourse2(race)}</div></details>`;
-  const sheetTabs=`<div class="entry-tabs" role="tablist" aria-label="出走表と展示情報"><button id="entries-tab" role="tab" aria-selected="${entryTab==='entries'}" aria-controls="entries-panel">出走表</button><button id="exhibition-tab" role="tab" aria-selected="${entryTab==='exhibition'}" aria-controls="exhibition-panel">展示情報</button></div><div id="entries-panel" role="tabpanel" tabindex="0" aria-labelledby="entries-tab" ${entryTab==='entries'?'':'hidden'}>${entrySheet}</div><div id="exhibition-panel" role="tabpanel" tabindex="0" aria-labelledby="exhibition-tab" ${entryTab==='exhibition'?'':'hidden'}>${exhibit}${renderEnvironment(race)}</div>`;
+  const sheetTabs=`<div class="entry-tabs" role="tablist" aria-label="出走表と展示情報"><button id="entries-tab" role="tab" aria-selected="${entryTab==='entries'}" aria-controls="entries-panel">出走表</button><button id="exhibition-tab" role="tab" aria-selected="${entryTab==='exhibition'}" aria-controls="exhibition-panel">展示情報</button></div><div id="entries-panel" role="tabpanel" tabindex="0" aria-labelledby="entries-tab" ${entryTab==='entries'?'':'hidden'}>${entrySheet}</div><div id="exhibition-panel" role="tabpanel" tabindex="0" aria-labelledby="exhibition-tab" ${entryTab==='exhibition'?'':'hidden'}>${exhibit}<p><a href="./exhibition-st/">展示STと本番STの差の読み方</a></p>${renderEnvironment(race)}</div>`;
   const legacyScores=`<section class="score-section"><div class="table-heading"><h3>予想のもとになる各スコア</h3></div>${table(['枠','選手','基礎スコア','履歴補正','総合スコア'],(race.scores || []).map(x=>[e(x.lane),e(x.name),numeric(x.base_score),signed(x.history_adjustment),numeric(x.total)]))}<p class="small-note">${race.items.length?'表示中の保存予想に用いた計算値です。最新の出走表とは取得時刻が異なる場合があります。':'出走表から計算した参考スコアです。必須データが欠けるため予想には使用していません。'}スコアは順位付け用で、的中率ではありません。履歴の特徴量は件数が少ない場合に縮小し、検証で採用した係数だけを適用します。</p><details><summary>全国・当地・モーター・ST・枠番と履歴補正の内訳</summary>${table(['枠','全国勝率','当地勝率','モーター','平均ST','枠番'],(race.scores || []).map(x=>[e(x.lane),...(x.base_components || [null,null,null,null,null]).map(numeric)]))}${(race.scores || []).map(x=>`<details><summary>${e(x.lane)}号艇 / 履歴補正の内訳</summary>${table(['項目','補正前の特徴量','適用スコア'],x.history_components.map(c=>[e(c.label),signed(c.raw_value),signed(c.value)]))}</details>`).join('')}</details></section>`;
   const scores=annual?`<section class="score-section"><div class="table-heading"><h3>予想のもとになる各スコア</h3></div>${table(['枠','選手','履歴モデルスコア'],(race.scores||[]).map(x=>[e(x.lane),e(x.name),signed(x.total)]))}<p class="small-note">直近365日の選手・枠別の着順、STと安定度、スタート順位、決まり手の実績から算出したスコアです。確率は順位モデルによる推定値で、的中率を保証しません。少数の履歴は全体の傾向へ寄せます。</p>${renderVenueSummary(race)}${(race.scores||[]).map(x=>`<details><summary>${e(x.lane)}号艇 / 特徴量とスコアの内訳</summary>${table(['項目','特徴量','適用スコア'],(x.history_components||[]).map(c=>[e(c.label),signed(c.raw_value),signed(c.value)]))}</details>`).join('')}</section>`:legacyScores;
   const marketItems=(originalRace.odds?.items || []).filter(row=>matchesPredictionScenario(row.combo,predictionScenario));
@@ -415,7 +406,7 @@ function renderCurrentContent() {
     <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目は複数選択・解除でき、選択内容から関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。高配当条件は${highPayoutConditionText}の条件抽出であり、推定確率1%・50倍では期待値0.5倍となります。的中やプラス収支は保証されません。提案は締切3分前以前の最新成功記録を当日中保持します。処理の遅延や保存欠損が生じる場合があります。</p></details>`;
   const conditionControls=`<div class="condition-controls"><label>レース条件<select id="condition-preset"><option value="in50" ${conditionPreset==='in50'?'selected':''}>1号艇1着確率50%未満</option>${[2,3,4,5,6].map(lane=>`<option value="${lane}" ${conditionPreset===String(lane)?'selected':''}>${lane}号艇の1着確率20%以上</option>`).join('')}</select></label>${conditionPreset!=='in50'?`<label>艇の含め方<select id="condition-relation"><option value="head" ${conditionRelation==='head'?'selected':''}>指定艇が1着</option><option value="any" ${conditionRelation==='any'?'selected':''}>指定艇を1〜3着に含む</option></select></label>`:''}<label>点数上限<select id="condition-limit"><option value="10" ${conditionLimit===10?'selected':''}>最大10点</option><option value="20" ${conditionLimit===20?'selected':''}>最大20点</option></select></label></div><p class="small-note condition-status" role="status">${laneProbabilities?conditionPreset==='in50'?`今回の1号艇1着確率 ${pct(laneProbabilities[0])} / ${conditionMet?'条件に該当':'条件外'}`:`今回の${conditionPreset}号艇1着確率 ${pct(laneProbabilities[Number(conditionPreset)-1])} / ${conditionMet?'条件に該当':'条件外'}`:'全120通りの確率を確認できません。'}</p><p class="small-note">検証中の条件です。${highPayoutConditionText}から期待値順で最大${conditionLimit}点。各100円なら最大${yen(conditionLimit*100)}です。確率は絞り込み前の値です。</p><details id="condition-evidence" class="prediction-details"><summary>過去の比較結果・検証条件</summary><p class="small-note">選べる全22条件と「すべて／1号艇1着／1号艇以外が1着」の区分を、自動記録の有効化後の固定提案から保存します。閲覧や条件選択は記録の開始操作ではありません。締切3分前までの保存予想・オッズから買い目を固定し、公式結果で各100円の仮想購入を照合します。条件外は見送り、未照合・欠損は回収率に含めません。</p><p class="small-note">2026-10-24〜10-27の導入時係数版（c746…2a85）・Worker保存462レースを各100円で仮想購入。全対象の最大10点は回収率72.8%・レース的中率8.2%、最大20点は73.5%・13.0%。1号艇1着確率50%未満の279レースでは、最大10点は81.7%・10.4%、最大20点は80.0%・16.5%でした。点数は条件に該当する数までです。</p><p class="small-note">別区分の締切前受信41レースでは、全対象の最大10点は58.7%、最大20点は67.7%、1号艇1着確率50%未満23レースは70.1%・91.3%でした。区分は重複するため合算していません。1号艇1着確率は、決まり手の「逃げ」の確率とは異なります。</p><p class="small-note">100条件を探索し、日付前後半も比較しました。前半の成績で選んだ条件は後半で基準を上回らず、改善を確証した条件はありません。上記は4日分の観測で、将来の回収率や利益を保証しません。条件外は購入なし、未照合・異常・オッズ欠損は除外。既存の4艇BOX企画とは別の検証です。</p></details>`;
   const forecast = race.items.length ? `${savedProposal?`<div class="proposal-notice" role="status"><strong>締切3分前の保存提案${status.code==='CLOSED'?' / 締切済み':''}</strong></div>`:cutoffReached?'<p class="small-note proposal-missing" role="status">締切3分前の保存予想はありません。期待値上位は表示できません。</p>':''}
-    <div class="table-heading"><h3>3連単の予想</h3><span class="small-note">${e(displayedModel)}</span></div>
+    <div class="table-heading"><h3>3連単の予想</h3><a href="./expected-value/">期待値とオッズの読み方</a><span class="small-note">${e(displayedModel)}</span></div>
     <div class="entry-tabs prediction-tabs" role="tablist" aria-label="予想の並び順"><button id="probability-tab" role="tab" aria-selected="${predictionTab==='probability'}" aria-controls="prediction-panel">推定確率順</button><button id="value-tab" role="tab" aria-selected="${predictionTab==='value'}" aria-controls="prediction-panel">期待値上位</button><button id="return-tab" role="tab" aria-selected="${predictionTab==='return'}" aria-controls="prediction-panel">高配当条件</button><button id="condition-tab" role="tab" aria-selected="${predictionTab==='condition'}" aria-controls="prediction-panel">条件別検証</button></div>
     <div id="prediction-panel" role="tabpanel" aria-labelledby="${predictionTab}-tab">${predictionTab==='condition'?conditionControls:''}${forecastItems.length?`<div class="prediction-table">${table(['順位', '買い目', '推定確率', 'オッズ', '期待値'], forecastItems.map((x,i) => {
       const odds = x.odds;
@@ -526,10 +517,10 @@ async function load({forceOdds=false}={}) {
         || nextCatalog.venues.some(v => !/^(0[1-9]|1\d|2[0-4])$/.test(v.code) || typeof v.name !== 'string')) throw Error('開催一覧の形式を確認できませんでした');
       catalog = nextCatalog;
       if (!selectedVenue) {
-        const query = new URL(location.href).searchParams.get('venue')||document.body.dataset.venue;
+        const query = document.body.dataset.venue||new URL(location.href).searchParams.get('venue');
         selectedVenue = catalog.venues.some(v => v.code === query) ? query
           : catalog.venues.find(v => v.meeting_status === 'OPEN' && freshUpdate(v.update,catalog.date))?.code || '01';
-        clearCurrent();
+        clearCurrent();const requestedRace=Number(new URL(location.href).searchParams.get('race'));if(Number.isInteger(requestedRace)&&requestedRace>=1&&requestedRace<=12)selected=requestedRace;
       }
       renderVenueOptions();renderOpportunities();
       const code = requestedVenue || selectedVenue;
@@ -584,16 +575,7 @@ $('venue-more').onclick=()=>{venueExpanded=!venueExpanded;renderVenueFilters();}
 mobileVenue.addEventListener('change',()=>{if(!mobileVenue.matches)venuePanelOpen=false;syncVenuePanel();if(catalog)renderVenueFilters();});
 window.addEventListener('resize',()=>{if(catalog)renderVenueFilters();});
 syncVenuePanel();
-async function chooseVenue(code){
- if(!catalog?.venues.some(v=>v.code===code))return;
- closeVenuePanel();
- if(code!==selectedVenue){selectedVenue=code;clearCurrent();renderVenueOptions();}
- const loading=load();const version=loadVersion;
- // Scroll to the loading state immediately; old details have already been cleared.
- $('live-view').scrollIntoView({behavior:'instant',block:'start'});
- await loading;if(version!==loadVersion||selectedVenue!==code)return;
- const heading=$('live-content').querySelector('h3');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
-}
+function chooseVenue(code){if(catalog?.venues.some(v=>v.code===code))location.assign(new URL(`./venues/${code}/`,document.baseURI));}
 $('venue-select').addEventListener('change',()=>chooseVenue($('venue-select').value));
 $('live-tab').addEventListener('click', () => showView('live'));
 $('archive-tab').addEventListener('click', () => showView('archive'));

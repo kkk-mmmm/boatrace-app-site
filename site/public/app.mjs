@@ -569,6 +569,15 @@ $('archive-tab').addEventListener('click', () => showView('archive'));
 $('experiments-refresh')?.addEventListener('click',()=>loadExperiments({force:true}));
 $('releases-tab').addEventListener('click',()=>showView('releases'));
 for(const link of document.querySelectorAll('[data-mobile-view]'))link.addEventListener('click',event=>{event.preventDefault();showView(link.dataset.mobileView);window.scrollTo({top:0,behavior:'instant'});});
+// Paginate the compiled archive without fetching or replacing already visible cards.
+const releaseCards=[...document.querySelectorAll('#releases-content .release-card')];
+const releaseMore=$('release-more');let releaseLimit=10;
+function updateReleasePage(){
+ releaseCards.forEach((card,index)=>{card.hidden=index>=releaseLimit;});
+ if($('release-count'))$('release-count').textContent=`${Math.min(releaseLimit,releaseCards.length)} / ${releaseCards.length}件を表示`;
+ if(releaseMore)releaseMore.hidden=releaseLimit>=releaseCards.length;
+}
+if(releaseMore){releaseMore.addEventListener('click',()=>{const firstNew=releaseCards[releaseLimit];releaseLimit+=10;updateReleasePage();if(releaseMore.hidden){const heading=firstNew?.querySelector('h3');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}});updateReleasePage();}
 const routeView=()=>showView(location.hash==='#releases'?'releases':location.hash==='#archive'?'archive':'live');
 window.addEventListener('popstate',routeView);window.addEventListener('hashchange',routeView);routeView();
 $('refresh-button').addEventListener('click',()=>load({forceOdds:true}));

@@ -1,4 +1,4 @@
-import {CONTEXT_LABELS,contextFeatures,observeRaceContext,course2Stats} from './race-context.mjs';
+import {CONTEXT_LABELS,contextFeatures,observeRaceContext,course2Stats,lane2SupportFeature,lane2SupportStats,LANE2_SUPPORT_LABEL} from './race-context.mjs';
 // Versioned independently: v2 saved forecasts retain their original engine.
 export const ANNUAL_ENGINE='annual-player-v3.0';
 export const ANNUAL_FEATURES=['枠別1着率','枠別着順点','選手の着順点','枠別ST','ST安定度','枠別スタート順位','展示順位と着順の差','逃げ傾向','差し傾向','まくり傾向','まくり差し傾向','抜き傾向','開催日ST','区分別ST'];
@@ -6,6 +6,8 @@ export const VENUE_ANNUAL_ENGINE='annual-player-v3.1';
 export const VENUE_ANNUAL_FEATURES=[...ANNUAL_FEATURES,'場・枠別1着傾向','場・枠別着順傾向','場と選手の決まり手適合'];
 export const CONTEXT_ANNUAL_ENGINE='annual-player-v3.2';
 export const CONTEXT_ANNUAL_FEATURES=[...VENUE_ANNUAL_FEATURES,...CONTEXT_LABELS];
+export const LANE2_ANNUAL_ENGINE='annual-player-v3.3';
+export const LANE2_ANNUAL_FEATURES=[...CONTEXT_ANNUAL_FEATURES,LANE2_SUPPORT_LABEL];
 export const annualFeatureNames=model=>model.feature_names||ANNUAL_FEATURES;
 export const STYLES=['逃げ','差し','まくり','まくり差し','抜き','恵まれ'];
 // n,w,points,finishN,stN,stSum,stSq,rankN,rankSum,styleCounts,gapN,gapSum,gapSq
@@ -42,7 +44,7 @@ export function annualFeatures(race,profiles,names=ANNUAL_FEATURES){
    conditional('d'+race.context?.meeting_day)*10,conditional('p'+race.context?.phase)*10];
   if(names.length===ANNUAL_FEATURES.length)return base;
   const v=profiles.venues?.[race.venue_code]?.['l'+e.lane]||emptyAnnualStats(),nationalPoints=pool[3]?pool[2]/pool[3]:5;
-  const extra=names.length===CONTEXT_ANNUAL_FEATURES.length?contextFeatures(race,profiles,e):[];
+  const extra=names.length>=CONTEXT_ANNUAL_FEATURES.length?contextFeatures(race,profiles,e):[];if(names.length===LANE2_ANNUAL_FEATURES.length)extra.push(lane2SupportFeature(race,profiles,e));
   if(!v[0])return [...base,0,0,0,...extra];
   const venueWin=shrunk(v[1],v[0],popWin,300),venuePoints=shrunk(v[2],v[3],nationalPoints,300);
   const fit=[0,1,2,3,4].reduce((sum,k)=>{
@@ -78,15 +80,16 @@ export function annualTriples(scores){
  return rows.sort((a,b)=>b.probability-a.probability||a.combo.localeCompare(b.combo)).map((r,i)=>({rank:i+1,...r}));
 }
 export function validateAnnualModel(model,date){
- const names=annualFeatureNames(model||{}),context=model?.engine_version===CONTEXT_ANNUAL_ENGINE,venue=context||model?.engine_version===VENUE_ANNUAL_ENGINE;
- if(JSON.stringify(names)!==JSON.stringify(context?CONTEXT_ANNUAL_FEATURES:venue?VENUE_ANNUAL_FEATURES:ANNUAL_FEATURES)||venue&&!model?.profiles?.venues)throw Error('場別モデルの特徴量・履歴が不正です');
- if(model?.schema_version!==3||![ANNUAL_ENGINE,VENUE_ANNUAL_ENGINE,CONTEXT_ANNUAL_ENGINE].includes(model.engine_version)||model.coverage?.days!==365||model.coverage.failures!==0
+ const names=annualFeatureNames(model||{}),lane2=model?.engine_version===LANE2_ANNUAL_ENGINE,context=lane2||model?.engine_version===CONTEXT_ANNUAL_ENGINE,venue=context||model?.engine_version===VENUE_ANNUAL_ENGINE;
+ if(JSON.stringify(names)!==JSON.stringify(lane2?LANE2_ANNUAL_FEATURES:context?CONTEXT_ANNUAL_FEATURES:venue?VENUE_ANNUAL_FEATURES:ANNUAL_FEATURES)||venue&&!model?.profiles?.venues)throw Error('場別モデルの特徴量・履歴が不正です');
+ if(model?.schema_version!==3||![ANNUAL_ENGINE,VENUE_ANNUAL_ENGINE,CONTEXT_ANNUAL_ENGINE,LANE2_ANNUAL_ENGINE].includes(model.engine_version)||model.coverage?.days!==365||model.coverage.failures!==0
   || model.coverage.from!==model.trained_from||model.coverage.through!==model.trained_through
   || Date.parse(date)-Date.parse(model.trained_through)>3*86400000
   || !model.profiles?.players || model.coefficients?.length!==names.length||model.means?.length!==names.length||model.scales?.length!==names.length
   || [model.coefficients,model.means,model.scales].some(a=>a.some(x=>!finite(x)))||model.scales.some(x=>x<=0)||!(model.temperature>0)
   || !model.trained_from||!model.trained_through||model.trained_through>=date||Date.parse(model.trained_through)-Date.parse(model.trained_from)!==364*86400000
   || !/^annual-v3-[a-f0-9]{64}$/.test(model.id||''))throw Error('直近1年モデルの期間・完全性・形式を確認できません');
+ if(lane2&&model.coefficients.at(-1)<0)throw Error('2号艇逃がし率の係数は非負である必要があります');
  return model;
 }
 export function predictAnnual(race,model){
@@ -121,7 +124,7 @@ export function annualDataDetails(race,model,e){
 }
 export function annualHistory(race,model){
  const conditional=s=>({samples:s?.[4]||0,st_mean:s?.[4]?meanST(s):null,st_sd:s?.[4]>1?sdST(s):null});
- return {trained_from:model.trained_from,trained_through:model.trained_through,venue:annualVenueSummary(race,model),course2_escape:course2Stats(race,model.profiles),context_features_applied:model.engine_version===CONTEXT_ANNUAL_ENGINE,context_usage:Object.fromEntries(['course2_escape','course2_sashi','wind_speed','wind_direction','tide','tide_trend'].map((key,i)=>[key,model.engine_version===CONTEXT_ANNUAL_ENGINE&&Math.abs(model.coefficients[17+i])>1e-10])),lanes:race.entries.map(e=>{
+ return {trained_from:model.trained_from,trained_through:model.trained_through,venue:annualVenueSummary(race,model),course2_escape:course2Stats(race,model.profiles),lane2_support:{...lane2SupportStats(race,model.profiles),applied:model.engine_version===LANE2_ANNUAL_ENGINE&&model.coefficients.at(-1)>0},context_features_applied:[CONTEXT_ANNUAL_ENGINE,LANE2_ANNUAL_ENGINE].includes(model.engine_version),context_usage:Object.fromEntries(['course2_escape','course2_sashi','wind_speed','wind_direction','tide','tide_trend'].map((key,i)=>[key,[CONTEXT_ANNUAL_ENGINE,LANE2_ANNUAL_ENGINE].includes(model.engine_version)&&Math.abs(model.coefficients[17+i])>1e-10])),lanes:race.entries.map(e=>{
   const p=model.profiles.players[e.racer_id]||{},s=p['l'+e.lane];
   return {lane:e.lane,data_details:annualDataDetails(race,model,e),exhibition_rank:exhibitionRank(race.entries,e.lane),day:conditional(p['d'+race.context?.meeting_day]),phase:conditional(p['p'+race.context?.phase]),
    exhibition_rank_gap:s?.[10]?{n:s[10],mean:s[11]/s[10],rmse:Math.sqrt((s[12]||0)/s[10])}:null,exhibition_st_gap:pairedExhibitionGap(model,e.racer_id,race.date),pressure:{status:'UNCONFIRMED'}};

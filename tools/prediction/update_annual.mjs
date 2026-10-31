@@ -11,7 +11,7 @@ validateAnnualModel(model,new Date(Date.parse(model.trained_through)+86400000).t
 if(manifest.through<model.trained_through)throw Error('履歴更新で日付を巻き戻すことはできません');
 const profiles=buildHistoryProfiles(races,manifest);
 const pythonFile=path.join(path.dirname(file),'../course2-escape/current.json');
-if(fs.existsSync(pythonFile)){const data=JSON.parse(fs.readFileSync(pythonFile));if(data.from!==manifest.from||data.through!==manifest.through||data.population.n!==profiles.race_context?.course2?.n||data.population.escape!==profiles.race_context?.course2?.escape)throw Error('PythonとJSの2コース逃がし率集計が一致しません');profiles.race_context.course2={...data.population,players:data.players};}
+if(fs.existsSync(pythonFile)){const data=JSON.parse(fs.readFileSync(pythonFile));if(data.from!==manifest.from||data.through!==manifest.through||data.population.n!==profiles.race_context?.course2?.n||data.population.escape!==profiles.race_context?.course2?.escape)throw Error('PythonとJSの2コース逃がし率集計が一致しません');profiles.race_context.course2={...data.population,players:data.players};if(JSON.stringify(data.lane2_support)!==JSON.stringify(profiles.race_context.lane2_support))throw Error('PythonとJSの2号艇逃がし率が一致しません');}
 const coefficient_id='annual-coeff-'+crypto.createHash('sha256').update(JSON.stringify([model.engine_version,model.feature_names,model.coefficients,model.means,model.scales,model.temperature])).digest('hex');
 const next={...model,coefficient_id,trained_from:manifest.from,trained_through:manifest.through,created_at:new Date().toISOString(),profiles,
  coefficients_trained_through:model.coefficients_trained_through||model.trained_through,

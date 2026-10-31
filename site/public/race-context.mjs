@@ -10,6 +10,7 @@ export function preraceEnvironment(race){
  return env?.kind==='PRERACE_OFFICIAL'&&finite(at)&&finite(cutoff)&&at<=cutoff?env:null;
 }
 export function observeRaceContext(profiles,race){
+ observeLane2Support(profiles,race);
  if(!normal(race))return;
  const context=profiles.race_context||=( {course2:{...blank(),players:{}},conditions:{}} );
  const one=race.entries.find(e=>e.actual_course===1),two=race.entries.find(e=>e.actual_course===2);
@@ -46,3 +47,21 @@ export function contextFeatures(race,profiles,entry){
   return s?.n?bounded(Math.log(Math.max(1e-6,(s.wins+100*prior)/(s.n+100))/prior),-2,2):0;
  })];
 }
+
+// Lane numbers are intentional: independent of actual/exhibition entry and winning style.
+export const LANE2_SUPPORT_LABEL='2号艇選手の1号艇勝利傾向';
+export function observeLane2Support(profiles,race){
+ const es=race.entries||[];
+ if(es.length!==6||new Set(es.map(e=>e.lane)).size!==6||!es.every(e=>Number.isInteger(e.lane)&&e.lane>=1&&e.lane<=6&&e.finish_status==='NORMAL'&&Number.isInteger(e.finish)&&e.finish>=1&&e.finish<=6)||new Set(es.map(e=>e.finish)).size!==6)return;
+ const one=es.find(e=>e.lane===1),two=es.find(e=>e.lane===2);if(!/^\d{4}$/.test(two.racer_id||''))return;
+ const context=profiles.race_context||=({course2:{...blank(),players:{}},conditions:{}}),pool=context.lane2_support||=({n:0,one_wins:0,players:{}}),player=pool.players[two.racer_id]||=({n:0,one_wins:0});
+ for(const row of [pool,player]){row.n++;row.one_wins+=Number(one.finish===1);}
+}
+export function lane2SupportStats(race,profiles){
+ const two=race.entries?.find(e=>e.lane===2),pool=profiles.race_context?.lane2_support,row=pool?.players?.[two?.racer_id],valid=s=>Number.isInteger(s?.n)&&s.n>0&&Number.isInteger(s.one_wins)&&s.one_wins>=0&&s.one_wins<=s.n;
+ const empty={samples:0,escape_rate:null,smoothed_escape_rate:null,population_escape_rate:null,player_id:two?.racer_id||null,basis:'枠番2号艇',log_odds_delta:0};
+ if(!valid(pool)||!valid(row)||row.n>pool.n||row.one_wins>pool.one_wins||row.n-row.one_wins>pool.n-pool.one_wins||race.entries?.some(e=>e.participation_status==='WITHDRAWN'))return empty;
+ const prior=pool.one_wins/pool.n,rate=(row.one_wins+20*prior)/(row.n+20),logit=p=>Math.log(Math.max(1e-6,p)/Math.max(1e-6,1-p));
+ return {...empty,samples:row.n,escape_rate:row.one_wins/row.n,smoothed_escape_rate:rate,population_escape_rate:prior,log_odds_delta:bounded(logit(rate)-logit(prior),-2,2)};
+}
+export const lane2SupportFeature=(race,profiles,entry)=>entry.lane===1?lane2SupportStats(race,profiles).log_odds_delta:0;

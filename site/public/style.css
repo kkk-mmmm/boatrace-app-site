@@ -567,3 +567,5 @@ footer .information-links a{font-size:12px;min-height:44px;align-content:center}
  .race-nav{align-items:stretch}
  .race-nav>button{width:100%;min-width:0;flex:0 0 auto;flex-wrap:nowrap}
 }
+
+.exhibition-table{min-width:0}.exhibition-table td:nth-child(2){letter-spacing:0;font-weight:650}.exhibition-table .lane{vertical-align:middle}.exhibition-course-unknown{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:4px}

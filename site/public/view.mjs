@@ -226,3 +226,14 @@ export function raceOutlookLabel(summary,race,now=Date.now()){
 export function deadlineSoon(race,now=Date.now()){
  const remaining=Date.parse(race?.deadline_at)-now;return race?.date===japanDate(now)&&remaining>0&&remaining<=600000;
 }
+
+export function exhibitionDisplayRows(entries=[]){
+ const active=entries.filter(e=>e.participation_status!=='WITHDRAWN');
+ const validCourse=e=>Number.isInteger(e.exhibition_course)&&e.exhibition_course>=1&&e.exhibition_course<=6;
+ const counts=new Map();for(const e of active)if(validCourse(e))counts.set(e.exhibition_course,(counts.get(e.exhibition_course)||0)+1);
+ const order=e=>e.participation_status!=='WITHDRAWN'&&validCourse(e)&&counts.get(e.exhibition_course)===1?e.exhibition_course:99;
+ const st=e=>Number.isFinite(e.exhibition_st)&&Math.abs(e.exhibition_st)<1&&e.exhibition_st_status!=='L'?(e.exhibition_st_status==='F'?-Math.abs(e.exhibition_st):e.exhibition_st):null;
+ const time=e=>Number.isFinite(e.exhibition_time)&&e.exhibition_time>0?e.exhibition_time:null;
+ const rank=(e,get)=>{if(!active.length||e.participation_status==='WITHDRAWN'||active.some(x=>get(x)===null))return null;const value=get(e);return 1+active.filter(x=>get(x)<value).length+(active.filter(x=>get(x)===value).length-1)/2;};
+ return [...entries].sort((a,b)=>order(a)-order(b)||a.lane-b.lane).map(entry=>({entry,course_known:order(entry)!==99,st_rank:rank(entry,st),time_rank:rank(entry,time)}));
+}

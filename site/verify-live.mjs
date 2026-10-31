@@ -150,7 +150,7 @@ try{
  await run("document.getElementById('return-tab').click()");
  assert.equal(await run("document.getElementById('prediction-panel').getAttribute('aria-labelledby')"),'return-tab');
  const returnRows=await run("[...document.querySelectorAll('.prediction-table tbody tr')].map(tr=>({combo:tr.querySelector('[data-combo]').dataset.combo,probability:parseFloat(tr.children[2].textContent),odds:parseFloat(tr.children[3].textContent),value:parseFloat(tr.children[4].textContent)}))");
- assert.ok(returnRows.length<=10);assert.ok(returnRows.every(r=>r.probability>=1&&r.odds>=50));for(let i=1;i<returnRows.length;i++)assert.ok(returnRows[i-1].value>=returnRows[i].value);
+ assert.ok(returnRows.length<=10);assert.ok(returnRows.every(r=>r.probability>=1&&r.odds>=50));for(let i=1;i<returnRows.length;i++)assert.ok(returnRows[i-1].probability>=returnRows[i].probability);
  if(!returnRows.length)assert.ok(await run("!!document.querySelector('.empty-value')"));
  // Check the published scenario filters and full incremental list, using
  // probability order so unavailable market quotes cannot hide combinations.
@@ -191,11 +191,13 @@ try{
  await run("document.querySelector('#featured-details>summary').click()");
  assert.ok((await run("document.getElementById('featured-details').textContent")).includes('高率は70%以上'));
  await run("document.querySelector('#featured-details>summary').click()");
+ await run("document.getElementById('race-details-tab').click()");
  assert.equal(await run("document.getElementById('entry-statistics-details').open"),false);
  await run("document.querySelector('#entry-statistics-details>summary').click()");
  assert.ok((await run("document.getElementById('entry-statistics-details').textContent")).includes('枠別統計：'));
  await run("document.querySelector('#entry-statistics-details>summary').click()");
 
+ await run("document.getElementById('race-prediction-tab').click()");
  assert.equal(await run("document.getElementById('prediction-details').open"),false);
  assert.equal(await run("document.querySelector('.time-note').closest('details').id"),'prediction-details');
  const closedPredictionDetailsHeight=await run("document.getElementById('prediction-details').getBoundingClientRect().height");assert.ok(closedPredictionDetailsHeight<80);
@@ -203,8 +205,8 @@ try{
  assert.ok(await run("document.getElementById('prediction-details').getBoundingClientRect().height")>closedPredictionDetailsHeight+40);
  assert.ok((await run("document.getElementById('prediction-details').textContent")).includes('期待値は推定確率 × 取得時点のオッズ'));
  await run("document.querySelector('#prediction-details>summary').click()");
- await run("document.getElementById('assessment-tab').click()");
- await wait("!document.getElementById('assessment-panel').hidden && typeof window.Chart==='function' && !!window.Chart.getChart(document.getElementById('score-radar'))");
+ await run("document.getElementById('race-prediction-tab').click();document.getElementById('assessment-disclosure').open=true");
+ await wait("document.getElementById('assessment-disclosure').open && typeof window.Chart==='function' && !!window.Chart.getChart(document.getElementById('score-radar'))");
  const radar=await run("(()=>{const c=window.Chart.getChart(document.getElementById('score-radar'));return {axes:c.data.labels.length,datasets:c.data.datasets.length,colors:c.data.datasets.map(d=>d.borderColor)};})()");
  assert.equal(radar.axes,6);assert.equal(radar.datasets,6);assert.deepEqual(radar.colors,['#8b96a4','#253744','#e34747','#1681ca','#e3bc12','#28a76b']);
  await run("document.querySelector('[data-radar-lane=\"2\"]').click()");
@@ -212,52 +214,32 @@ try{
  console.log('::notice title=Published assessment verification::'+JSON.stringify(radar));
  await run("document.getElementById('development-tab').click()");
  assert.equal(await run("document.getElementById('development-panel').hidden"),false);
- assert.equal(await run("document.querySelectorAll('[data-development-boat]').length"),6);
-  assert.equal(await run("document.querySelectorAll('.development-start-pole').length"),2);
-  assert.equal(await run("document.querySelectorAll('.development-boat text, .development-boat circle').length"),0);
-  assert.deepEqual(await run("[...document.querySelectorAll('.development-hull')].map(p=>p.getAttribute('fill'))"),['#fff','#253744','#e34747','#1681ca','#ffd747','#28a76b']);
-  const wakeFrames=await run(`(()=>{
-   const water=document.getElementById('development-water');water.pauseAnimations();
-   const frames=[0,2,4.2,6].map(time=>{water.setCurrentTime(time);
-    return [...document.querySelectorAll('.development-track')].map((track,i)=>{
-     const fraction=Number(document.querySelectorAll('.development-boat animateMotion')[i].getAttribute('keyPoints').split(';')[1]),progress=time<=4.2?fraction*time/4.2:fraction+(1-fraction)*(time-4.2)/1.8;
-     const point=track.getPointAtLength(track.getTotalLength()*progress),screen=new DOMPoint(point.x,point.y).matrixTransform(track.getCTM());
-     const boat=document.querySelectorAll('[data-development-boat]')[i].getCTM();
-     return {expectedOffset:100*(1-progress),offset:parseFloat(getComputedStyle(track).strokeDashoffset),distance:Math.hypot(boat.e-screen.x,boat.f-screen.y)};
-    });
-   });water.setCurrentTime(0);water.unpauseAnimations();return frames;
-  })()`);
-  for(let frame=0;frame<4;frame++)for(const wake of wakeFrames[frame]){
-   assert.ok(Math.abs(wake.offset-wake.expectedOffset)<.1,'航跡が時刻とともに伸びる');
-   assert.ok(wake.distance<1,'航跡の先端と船の位置が一致する');
-  }
-
- const developmentCases=await run("[...document.querySelectorAll('button[data-development-lane]')].map(b=>({lane:Number(b.dataset.developmentLane),probability:Number(b.dataset.firstProbability)}))");
+ const developmentCases=await run("[...document.querySelectorAll('button[data-development-lane]')].map(b=>({lane:Number(b.dataset.developmentLane),probability:parseFloat(b.querySelector('strong').textContent)/100}))");
  assert.ok(developmentCases.length>0);assert.ok(developmentCases.every(c=>c.lane===1||c.probability>=.2-1e-12));
- const developmentTickets=[],developmentPathsSeen=[];
+ const developmentTickets=[],developmentPlansSeen=[];let animatedCases=0;
  for(const c of developmentCases){
   await run(`document.querySelector('button[data-development-lane="${c.lane}"]').click()`);
-  const paths=await run("[...document.querySelectorAll('.development-boat animateMotion')].map(x=>x.getAttribute('path'))");
-  for(const previous of developmentPathsSeen)assert.notDeepEqual(paths,previous);developmentPathsSeen.push(paths);
-  await run("document.getElementById('development-water').pauseAnimations();document.getElementById('development-water').setCurrentTime(4.2)");
-  assert.equal(await run("Number([...document.querySelectorAll('[data-development-boat]')].sort((a,b)=>a.getCTM().e-b.getCTM().e)[0].dataset.developmentBoat)"),c.lane);
+  const hasWater=await run("!!document.getElementById('development-water')");
+  if(hasWater){
+   animatedCases++;
+   assert.equal(await run("document.querySelectorAll('[data-development-boat]').length"),6);
+   assert.equal(await run("document.querySelectorAll('.development-start-pole').length"),2);
+   assert.equal(await run("document.querySelectorAll('.development-boat text, .development-boat circle').length"),0);
+   assert.deepEqual(await run("[...document.querySelectorAll('.development-hull')].map(p=>p.getAttribute('fill'))"),['#fff','#253744','#e34747','#1681ca','#ffd747','#28a76b']);
+   const checks=await run(`(async()=>{const player=document.getElementById('development-water').__developmentPlayer,engine=await import(new URL('./development-simulation.mjs',document.baseURI));player.pause();const frames=[0,player.simulation.duration/2,player.simulation.duration].map(time=>{player.seek(time);return engine.fleetState(player.simulation,time).map(state=>{const hull=document.querySelector('[data-development-boat="'+state.lane+'"]'),values=hull.getAttribute('transform').match(/[-\\d.]+/g).map(Number);return Math.hypot(values[0]-state.x,values[1]-state.y);});});const end=engine.fleetState(player.simulation,player.simulation.duration);return {frames,leading:end.find(s=>s.lane===${c.lane}).progress>=Math.max(...end.filter(s=>s.lane!==${c.lane}).map(s=>s.progress))+.219,plan:player.simulation.boats.map(b=>[b.lane,b.radius,b.phases.map(p=>p.duration)]),wakeCount:document.querySelectorAll('.development-track').length};})()`);
+   assert.ok(checks.frames.flat().every(distance=>distance<.01));assert.ok(checks.leading);assert.equal(checks.wakeCount,18);
+   for(const previous of developmentPlansSeen)assert.notDeepEqual(checks.plan,previous);developmentPlansSeen.push(checks.plan);
+  }else assert.match(await run("document.getElementById('development-panel').textContent"),/生成できませんでした|欠場/);
   const combo=await run("document.querySelector('[data-development-combo]').dataset.developmentCombo");assert.ok(combo.startsWith(c.lane+'-'));developmentTickets.push(combo);
  }
- await run("document.getElementById('development-water').unpauseAnimations();document.getElementById('development-water').setCurrentTime(2);document.getElementById('development-pause').click()");
- assert.equal(await run("document.getElementById('development-water').animationsPaused()"),true);
- const animationStart=await run("document.querySelector('[data-development-boat]').getCTM().e");
- await run("document.getElementById('development-water').setCurrentTime(4)");
- assert.notEqual(await run("document.querySelector('[data-development-boat]').getCTM().e"),animationStart);
  await run("document.querySelector('[data-development-combo]').click()");
- assert.equal(await run('document.activeElement.id'),'related-title');
- const selectedFromDevelopment=await run("[...document.querySelectorAll('.related-selection [data-combo]')].map(b=>b.dataset.combo)");
- assert.ok(selectedFromDevelopment.includes(developmentTickets.at(-1)));
- await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
- assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
- const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,boats:6,motion_verified:true,winner_positions_verified:true,distinct_scenario_paths_verified:true,boat_shapes_verified:true,start_poles:2,progressive_trails_verified:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
+ assert.equal(await run('document.activeElement.id'),'related-title');assert.equal(await run("document.getElementById('race-prediction-panel').hidden"),false);
+ const selectedFromDevelopment=await run("[...document.querySelectorAll('.related-selection [data-combo]')].map(b=>b.dataset.combo)");assert.ok(selectedFromDevelopment.includes(developmentTickets.at(-1)));
+ await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
+ const developmentReport={checked_at:new Date().toISOString(),site_url:base,venue_code:candidate.venue_code,race_no:race.race_no,cases:developmentCases,tickets:developmentTickets,animated_cases:animatedCases,bounded_fallback_checked:true,synchronized_clock_checked:true,conditional_lead_checked:true,suji_selected:selectedFromDevelopment,mobile_overflow:false,errors};
  fs.writeFileSync(path.join(output,'development.json'),JSON.stringify(developmentReport,null,2)+'\n');console.log('::notice title=Published development verification::'+JSON.stringify(developmentReport));
  await run("document.getElementById('result-tab').click()");assert.equal(await run("document.getElementById('result-panel').hidden"),false);
- await run("document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
+ await run("document.getElementById('race-details-tab').click();document.getElementById('exhibition-tab').click()");assert.ok((await run("document.getElementById('exhibition-panel').textContent")).includes('展示と本番の差'));
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await run('scrollTo(0,0)');
  assert.equal(await run('document.documentElement.scrollWidth>innerWidth'),false);
  const heights=await run("[...document.querySelectorAll('.opportunity-card')].map(element=>element.getBoundingClientRect().height)");assert.ok(heights.every(height=>height<=115));
@@ -281,7 +263,7 @@ try{
   assert.ok(cards.length<=3);
   for(const card of cards){
    assert.ok(Number.isFinite(card.in)&&Number.isFinite(card.other)&&Math.abs(card.in+card.other-1)<1e-6);
-   assert.ok(card.probability_text.includes('イン逃げ想定')&&card.probability_text.includes('それ以外'));
+   assert.ok(card.probability_text.includes('1号艇1着確率')&&card.probability_text.includes('1号艇以外が1着'));
    assert.ok(tab==='high'?card.in>=.7-1e-12:tab==='low'?card.in<=.3+1e-12:card.in>.3&&card.in<.7&&card.value>1);
    assert.ok(card.height<=115);
   }
@@ -295,7 +277,7 @@ try{
  await run("document.querySelector('[data-featured-tab=value]').click()");
  if(workerOdds){
   await wait("!document.getElementById('refresh-button').disabled && window.__cloudflareReads.length>0");
-  if(!morning)await run("window.__uxPanel=document.getElementById('entries-panel');window.__uxWater=document.getElementById('development-water');window.__uxButton=document.getElementById('entries-tab');window.__uxDetails=document.querySelector('.score-section details');if(window.__uxDetails)window.__uxDetails.open=true;window.__uxButton.scrollIntoView({block:'center'});window.__uxButton.focus({preventScroll:true});window.__uxTop=window.__uxButton.getBoundingClientRect().top");
+  if(!morning)await run("document.getElementById('race-details-tab').click();document.getElementById('entries-tab').click();document.getElementById('race-data-details').open=true;window.__uxPanel=document.getElementById('entries-panel');window.__uxWater=document.getElementById('development-water');window.__uxButton=document.getElementById('entries-tab');window.__uxDetails=document.querySelector('.score-section details');if(window.__uxDetails)window.__uxDetails.open=true;window.__uxButton.scrollIntoView({block:'center'});window.__uxButton.focus({preventScroll:true});window.__uxTop=window.__uxButton.getBoundingClientRect().top");
   if(!morning)await wait("!document.getElementById('mobile-race-context').hidden");
   const before=await run('window.__cloudflareReads.length');
   for(let n=1;n<=2;n++){

@@ -52,6 +52,7 @@ const $ = id => document.getElementById(id);
 const liveHeading=document.querySelector('.seo-page-title').textContent;
 const yen = n => `${n.toLocaleString('ja-JP')}円`;
 const pct = n => n == null ? '—' : `${(n * 100).toFixed(1)}%`;
+const highPayoutConditionText=`オッズ${RETURN_CANDIDATE_RULE.minimum_odds}倍以上・推定確率${RETURN_CANDIDATE_RULE.minimum_probability*100}%以上`;
 const clock = value => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).format(new Date(value)) : '未確認';
 let current = null, archive = null, catalog = null, selected = null, selectedVenue = null, predictionTab = 'probability', view = 'live', entryTab = 'entries', loadVersion = 0;
 let developmentLane=1, racePanel='prediction';
@@ -99,7 +100,9 @@ function applyOddsStateContent() {
   const acquired=!oddsFailure&&(liveOdds?liveOdds.races.some(r=>r.venue_code===selectedVenue&&r.status==='OK'&&r.items?.length):current?.races.some(r=>r.odds?.items?.length));
   $('odds-status').textContent=acquired?'オッズ：取得済み':'オッズ：未取得';
 }
-const venueFilters={held:'OPEN',grade:null,day:null,schedule:null};
+const venueFilters={held:null,grade:null,day:null,schedule:null};
+let venueExpanded=false,venuePanelOpen=false,venuePanelScroll=0,venueFilterMode=false;
+const mobileVenue=matchMedia('(max-width:760px)');
 const shortClock=value=>value&&Number.isFinite(Date.parse(value))?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'未確認';
 const venueName = () => catalog?.venues.find(v => v.code === selectedVenue)?.name || '選んだ場';
 const freshUpdate = (update, date) => date === japanDate(Date.now()) && ['OK','PARTIAL'].includes(update?.status)
@@ -134,29 +137,40 @@ function renderVenueFiltersContent() {
   const nextRaces=allUpcomingRaces();
   const groups=venueFilterGroups(catalog.venues,catalog.date);
   patchHTML($('venue-filter-tags'), groups.map(group=>`<div class="venue-filter-row" role="group" aria-label="${e(group.label)}"><span>${e(group.label)}</span><div class="venue-filter-options"><button data-venue-filter="${group.key}" data-filter-value="" aria-pressed="${!venueFilters[group.key]}">すべて</button>${group.options.map(option=>`<button data-venue-filter="${group.key}" data-filter-value="${e(option.value)}" aria-pressed="${venueFilters[group.key]===option.value}">${e(option.label)}</button>`).join('')}</div></div>`).join(''));
-  const matches=filterVenues(catalog.venues,venueFilters,catalog.date);
-  $('venue-results-count').textContent=`該当 ${matches.length}場 / 全${catalog.venues.length}場`;
+  const active=groups.flatMap(g=>venueFilters[g.key]?[g.options.find(o=>o.value===venueFilters[g.key])?.label||venueFilters[g.key]]:[]);
+  const filtered=venueFilterMode;
+  const matches=filtered?filterVenues(catalog.venues,venueFilters,catalog.date):catalog.venues.filter(v=>venueTags(v,catalog.date).held==='OPEN');
+  $('venue-active-filters').textContent=filtered?`使用中：${active.length?active.join('・'):'すべての開催状況'}`:'指定なし';
+  $('venue-results-count').textContent=filtered?`絞り込み結果 ${matches.length}場 / 全${catalog.venues.length}場`:`本日開催 ${matches.length}場 / 全${catalog.venues.length}場`;
+  $('clear-venue-filters').hidden=!filtered;
+  $('venue-results').setAttribute('aria-label',filtered?'開催条件の絞り込み結果':'本日開催の場へのショートカット');
+  const columns=innerWidth>1050?6:4,limit=columns*2;
+  const showAll=mobileVenue.matches||venueExpanded;
+  const visible=showAll?matches:matches.slice(0,limit);
+  $('venue-more').hidden=mobileVenue.matches||matches.length<=limit;
+  $('venue-more').setAttribute('aria-expanded',String(venueExpanded));
+  $('venue-more').textContent=venueExpanded?'表示を2段に戻す':`開催場をすべて表示（${matches.length}場）`;
   const scroll=$('venue-results').scrollTop;
-  patchHTML($('venue-results'), matches.length?matches.map(venue=>{
+  patchHTML($('venue-results'), matches.length?visible.map(venue=>{
     const tags=venueTags(venue,catalog.date);
     const details=tags.held==='OPEN'?[tags.grade || 'グレード未確認',tags.final?'最終日':tags.day?`${tags.day}日目`:'日次未確認',tags.schedule || '時間帯未確認']:[tags.held==='NO_MEETING'?'非開催':'開催未確認'];
     const next=tags.held==='OPEN'?nextRaces.find(r=>r.venue_code===venue.code):null;
     const nextText=next?`${next.race_no}R · 締切 ${shortClock(next.deadline_at)}`:tags.held==='OPEN'?'締切前レースなし・時刻未取得':'';
     return `<button class="venue-result${next&&deadlineSoon(next)?' is-deadline-soon':''}" data-venue-result="${e(venue.code)}" aria-pressed="${selectedVenue===venue.code}"><strong>${e(venue.name)}</strong><span>${details.map(e).join(' / ')}</span>${nextText?`<span class="venue-next-race${next&&deadlineSoon(next)?' is-deadline-soon':''}">${next?`${next.race_no}R · 締切 <time datetime="${e(next.deadline_at)}">${e(shortClock(next.deadline_at))}</time>`:e(nextText)}</span>`:''}</button>`;
-  }).join(''):'<p class="venue-filter-empty">この条件に合う場はありません。条件を外すか「絞り込みをクリア」を選んでください。</p>');
+  }).join(''):`<p class="venue-filter-empty">${filtered?'この条件に合う場はありません。条件を外すか「絞り込みをクリア」を選んでください。':'本日開催と確認できる場はありません。全24場から選択できます。非開催と開催未確認はセレクトの表示をご確認ください。'}</p>`);
   $('venue-results').scrollTop=scroll;
   for(const button of document.querySelectorAll('[data-venue-filter]'))button.onclick=(()=>{
     const key=button.dataset.venueFilter,value=button.dataset.filterValue || null;
-    venueFilters[key]=venueFilters[key]===value?null:value;renderVenueFilters();
+    venueFilters[key]=venueFilters[key]===value?null:value;venueFilterMode=true;venueExpanded=false;renderVenueFilters();
     document.querySelector(`[data-venue-filter="${key}"][data-filter-value="${value || ''}"]`)?.focus({preventScroll:true});
   });
   for(const button of document.querySelectorAll('[data-venue-result]'))button.onclick=(()=>{
-    $('venue-select').value=button.dataset.venueResult;$('venue-select').dispatchEvent(new Event('change'));
+    chooseVenue(button.dataset.venueResult);
   });
 }
 function clearCurrent() {
   developmentPlayer?.dispose();developmentPlayer=null;
-  current = null;selected = null;entryTab='entries';predictionRaceKey=null;chosenCombos.clear();updateRaceContext();identifyVenue();
+  current = null;selected = null;entryTab='entries';racePanel='prediction';predictionRaceKey=null;chosenCombos.clear();updateRaceContext();identifyVenue();
   $('update-status').hidden=false;$('update-status').textContent = `${venueName()}の情報を取得中`;
   $('update-dot').classList.remove('ok');$('updated-at').textContent = '—';
   $('meeting-title').textContent = `${venueName()}の開催情報を確認中`;
@@ -251,7 +265,7 @@ function showView(name) {
   $('releases-tab').setAttribute('aria-pressed',String(name==='releases'));
   const url=new URL(location.href);url.hash=name==='releases'?'releases':name==='archive'?'archive':'';
   if(url.href!==location.href)history.pushState(null,'',url);
-  identifyVenue();developmentPlayer?.setVisible(view==='live'&&entryTab==='development'&&racePanel==='details');
+  identifyVenue();developmentPlayer?.setVisible(view==='live'&&racePanel==='development');
 }
 
 function notify(message) { $('message').textContent = message; $('message').hidden = !message || view!=='live'; }
@@ -263,17 +277,17 @@ function renderOpportunitiesContent() {
   const groups=featuredRaceGroups(oddsFailure?[]:liveOdds?liveFeaturedRaces(liveOdds,now):catalog?.featured_races || [],now);
   const rows=groups[featuredTab];
   for(const button of document.querySelectorAll('[data-featured-tab]'))button.setAttribute('aria-pressed',String(button.dataset.featuredTab===featuredTab));
-  const conditions={value:'高率・低率に分類されないレースから、期待値1.0超を高い順に表示します。',high:'イン逃げ想定70%以上を、確率が高い順に表示します。期待値1.0未満も含みます。',low:'イン逃げ想定30%以下を、確率が低い順に表示します。期待値1.0未満も含みます。'};
+  const conditions={value:'高率・低率に分類されないレースから、期待値1.0超を高い順に表示します。',high:'1号艇1着確率70%以上を、確率が高い順に表示します。期待値1.0未満も含みます。',low:'1号艇1着確率30%以下を、確率が低い順に表示します。期待値1.0未満も含みます。'};
   $('featured-condition').textContent=conditions[featuredTab];
-  patchHTML($('opportunities-content'), rows.length?`<div class="opportunity-grid">${rows.map((x,i)=>`<button class="opportunity-card" data-opportunity-venue="${e(x.venue_code)}" data-opportunity-race="${x.race_no}" data-in-probability="${x.scenario_probabilities.in}" data-other-probability="${x.scenario_probabilities.other}" data-expected-value="${x.value}" title="${e(x.model_name)} / オッズ取得 ${e(clock(x.fetched_at))}"><span class="opportunity-top"><span class="eyebrow">${i+1} / ${e(catalog?.venues.find(v=>v.code===x.venue_code)?.name || x.venue)} ${x.race_no}R</span><span>締切 ${e(shortClock(x.deadline_at))}</span></span><span class="opportunity-main"><strong>${e(x.combo)}</strong><span class="opportunity-value"><b>${x.value.toFixed(3)}</b>倍<small>期待値</small></span></span><span class="opportunity-probabilities"><span>イン逃げ想定 <b>${pct(x.scenario_probabilities.in)}</b></span><span>それ以外 <b>${pct(x.scenario_probabilities.other)}</b></span></span><span class="opportunity-bottom"><span>${pct(x.probability)} × ${x.odds.toFixed(1)}倍</span><span>取得 ${e(shortClock(x.fetched_at))}</span></span></button>`).join('')}</div>`
-    : `<div class="opportunity-empty">締切まで1時間以内で、この条件に合うレースはありません。${featuredTab==='value'?'期待値1.0超のレースがない、または高率・低率へ分類済みのためです。':`イン逃げ想定${featuredTab==='high'?'70%以上':'30%以下'}のレースを確認できません。`}オッズ・全120通りの予想が未取得、更新待ち、締切済みの場合も対象外です。</div>`);
+  patchHTML($('opportunities-content'), rows.length?`<div class="opportunity-grid">${rows.map((x,i)=>`<button class="opportunity-card" data-opportunity-venue="${e(x.venue_code)}" data-opportunity-race="${x.race_no}" data-in-probability="${x.scenario_probabilities.in}" data-other-probability="${x.scenario_probabilities.other}" data-expected-value="${x.value}" title="${e(x.model_name)} / オッズ取得 ${e(clock(x.fetched_at))}"><span class="opportunity-top"><span class="eyebrow">${i+1} / ${e(catalog?.venues.find(v=>v.code===x.venue_code)?.name || x.venue)} ${x.race_no}R</span><span>締切 ${e(shortClock(x.deadline_at))}</span></span><span class="opportunity-main"><strong>${e(x.combo)}</strong><span class="opportunity-value"><b>${x.value.toFixed(3)}</b>倍<small>期待値</small></span></span><span class="opportunity-probabilities"><span>1号艇1着確率 <b>${pct(x.scenario_probabilities.in)}</b></span><span>1号艇以外が1着 <b>${pct(x.scenario_probabilities.other)}</b></span></span><span class="opportunity-bottom"><span>${pct(x.probability)} × ${x.odds.toFixed(1)}倍</span><span>取得 ${e(shortClock(x.fetched_at))}</span></span></button>`).join('')}</div>`
+    : `<div class="opportunity-empty">締切まで1時間以内で、この条件に合うレースはありません。${featuredTab==='value'?'期待値1.0超のレースがない、または高率・低率へ分類済みのためです。':`1号艇1着確率${featuredTab==='high'?'70%以上':'30%以下'}のレースを確認できません。`}オッズ・全120通りの予想が未取得、更新待ち、締切済みの場合も対象外です。</div>`);
   for(const button of document.querySelectorAll('[data-opportunity-venue]'))button.onclick=()=>openListedRace(button.dataset.opportunityVenue,Number(button.dataset.opportunityRace),rows.find(r=>r.venue_code===button.dataset.opportunityVenue&&r.race_no===Number(button.dataset.opportunityRace)));
   renderUpcoming();
 }
 
 async function openListedRace(code,number,record) {
- showView('live');selectedVenue=code;clearCurrent();await load();
- if(current?.venue_code!==code)return;
+ showView('live');closeVenuePanel();selectedVenue=code;clearCurrent();renderVenueOptions();const loading=load(),version=loadVersion;await loading;
+ if(version!==loadVersion||selectedVenue!==code||current?.venue_code!==code)return;
  if(!current.races.some(r=>r.race_no===number)&&record&&record.date===current.date){
   current={...current,races:[...current.races,{date:record.date,venue_code:code,venue:venueName(),race_no:number,deadline_at:record.deadline_at,entries:[],items:[],probabilities:[],odds:null,issue:'出走表・予想は取得待ちです。'}].sort((a,b)=>a.race_no-b.race_no)};
  }
@@ -294,6 +308,12 @@ function renderUpcoming() {
  for(const button of document.querySelectorAll('[data-upcoming-venue]'))button.onclick=()=>openListedRace(button.dataset.upcomingVenue,Number(button.dataset.upcomingRace),rows.find(r=>r.venue_code===button.dataset.upcomingVenue&&r.race_no===Number(button.dataset.upcomingRace)));
 }
 
+function bindTabs(ids,values,active,select){
+ ids.forEach((id,i)=>{const button=$(id);if(!button)return;button.tabIndex=values[i]===active?0:-1;
+  button.onclick=()=>{select(values[i]);renderCurrent();$(id)?.focus({preventScroll:true});};
+  button.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?ids.length-1:(i+(event.key==='ArrowRight'?1:ids.length-1))%ids.length;$(ids[next])?.click();};
+ });
+}
 function renderCurrent() {return preserveViewport(()=>{try{return renderCurrentContent();}finally{updateRaceContext();}});}
 function renderCurrentContent() {
   const previousPlayback=developmentPlayer?{key:developmentPlayer.key,state:developmentPlayer.snapshot()}:null;
@@ -377,47 +397,41 @@ function renderCurrentContent() {
     <div class="table-heading"><span>開催日・レース区分ごとのST傾向</span></div>${table(['枠','本日と同じ日次の平均ST','日次のSTばらつき','同じ区分の平均ST','区分のSTばらつき','勝負掛け'],(race.entries || []).map(x=>{const h=history.get(x.lane);return [e(x.lane),h?.day?.samples?`${numeric(h.day.st_mean)}（${h.day.samples}件）`:'未集計',numeric(h?.day?.st_sd),h?.phase?.samples?`${numeric(h.phase.st_mean)}（${h.phase.samples}件）`:'未集計',numeric(h?.phase?.st_sd),h?.pressure?.status==='CONFIRMED'?`${h.pressure.required_finish}着以内 / ${h.pressure.required_points}点必要`:h?.pressure?.status==='NOT_REQUIRED'?'対象外（確認済み）':'未確認・補正なし'];}))}
     <p class="small-note">STのばらつきは標準偏差で、小さいほど安定した傾向です。少数の集計は全体の傾向へ寄せて補正します。集計対象は${e(race.history?.trained_through || '未取得')}までです。通過条件が確認できない選手を勝負掛け扱いにはしません。</p>`;
   const developmentSheet=withdrawn?'<p class="development-empty">欠場があるため、6艇を前提とした展開予想は停止しています。</p>':renderDevelopment(race.items.length?race:{...race,probabilities:[]},developmentLane);
-  const sheetTabs=`<div class="entry-tabs" role="tablist" aria-label="出走表・展示情報・評価・展開予想・結果"><button id="entries-tab" role="tab" aria-selected="${entryTab==='entries'}" aria-controls="entries-panel">出走表</button><button id="exhibition-tab" role="tab" aria-selected="${entryTab==='exhibition'}" aria-controls="exhibition-panel">展示情報</button><button id="assessment-tab" role="tab" aria-selected="${entryTab==='assessment'}" aria-controls="assessment-panel">評価・自信度</button><button id="development-tab" role="tab" aria-selected="${entryTab==='development'}" aria-controls="development-panel">展開予想</button><button id="result-tab" role="tab" aria-selected="${entryTab==='result'}" aria-controls="result-panel">結果</button></div><div id="entries-panel" role="tabpanel" aria-labelledby="entries-tab" ${entryTab==='entries'?'':'hidden'}>${entrySheet}</div><div id="exhibition-panel" role="tabpanel" aria-labelledby="exhibition-tab" ${entryTab==='exhibition'?'':'hidden'}>${exhibit}${renderEnvironment(race)}</div><div id="assessment-panel" role="tabpanel" aria-labelledby="assessment-tab" ${entryTab==='assessment'?'':'hidden'}><h4>レースの自信度</h4>${confidenceHTML(race)}<p class="small-note">1着確率の集中度と枠別履歴の件数による参考指標です。実測の的中率や利益の確率ではありません。</p>${radarHTML(race)}${renderCourse2(race)}</div><div id="development-panel" role="tabpanel" aria-labelledby="development-tab" ${entryTab==='development'?'':'hidden'}>${developmentSheet}</div><div id="result-panel" role="tabpanel" aria-labelledby="result-tab" ${entryTab==='result'?'':'hidden'}>${renderRaceResult(originalRace,now,resultComparison(originalRace,now))}</div>`;
+  const assessment=`<details id="assessment-disclosure" class="prediction-details"><summary>予想の根拠・自信度</summary><div id="assessment-panel"><h4>レースの自信度</h4>${confidenceHTML(race)}<p class="small-note">1着確率の集中度と枠別履歴の件数による参考指標です。実測の的中率や利益の確率ではありません。</p>${radarHTML(race)}${renderCourse2(race)}</div></details>`;
+  const sheetTabs=`<div class="entry-tabs" role="tablist" aria-label="出走表と展示情報"><button id="entries-tab" role="tab" aria-selected="${entryTab==='entries'}" aria-controls="entries-panel">出走表</button><button id="exhibition-tab" role="tab" aria-selected="${entryTab==='exhibition'}" aria-controls="exhibition-panel">展示情報</button></div><div id="entries-panel" role="tabpanel" tabindex="0" aria-labelledby="entries-tab" ${entryTab==='entries'?'':'hidden'}>${entrySheet}</div><div id="exhibition-panel" role="tabpanel" tabindex="0" aria-labelledby="exhibition-tab" ${entryTab==='exhibition'?'':'hidden'}>${exhibit}${renderEnvironment(race)}</div>`;
   const legacyScores=`<section class="score-section"><div class="table-heading"><h3>予想のもとになる各スコア</h3></div>${table(['枠','選手','基礎スコア','履歴補正','総合スコア'],(race.scores || []).map(x=>[e(x.lane),e(x.name),numeric(x.base_score),signed(x.history_adjustment),numeric(x.total)]))}<p class="small-note">${race.items.length?'表示中の保存予想に用いた計算値です。最新の出走表とは取得時刻が異なる場合があります。':'出走表から計算した参考スコアです。必須データが欠けるため予想には使用していません。'}スコアは順位付け用で、的中率ではありません。履歴の特徴量は件数が少ない場合に縮小し、検証で採用した係数だけを適用します。</p><details><summary>全国・当地・モーター・ST・枠番と履歴補正の内訳</summary>${table(['枠','全国勝率','当地勝率','モーター','平均ST','枠番'],(race.scores || []).map(x=>[e(x.lane),...(x.base_components || [null,null,null,null,null]).map(numeric)]))}${(race.scores || []).map(x=>`<details><summary>${e(x.lane)}号艇 / 履歴補正の内訳</summary>${table(['項目','補正前の特徴量','適用スコア'],x.history_components.map(c=>[e(c.label),signed(c.raw_value),signed(c.value)]))}</details>`).join('')}</details></section>`;
   const scores=annual?`<section class="score-section"><div class="table-heading"><h3>予想のもとになる各スコア</h3></div>${table(['枠','選手','履歴モデルスコア'],(race.scores||[]).map(x=>[e(x.lane),e(x.name),signed(x.total)]))}<p class="small-note">直近365日の選手・枠別の着順、STと安定度、スタート順位、決まり手の実績から算出したスコアです。確率は順位モデルによる推定値で、的中率を保証しません。少数の履歴は全体の傾向へ寄せます。</p>${renderVenueSummary(race)}${(race.scores||[]).map(x=>`<details><summary>${e(x.lane)}号艇 / 特徴量とスコアの内訳</summary>${table(['項目','特徴量','適用スコア'],(x.history_components||[]).map(c=>[e(c.label),signed(c.raw_value),signed(c.value)]))}</details>`).join('')}</section>`:legacyScores;
   const marketItems=(originalRace.odds?.items || []).filter(row=>matchesPredictionScenario(row.combo,predictionScenario));
   const market = marketItems.length ? `<details class="market-odds"><summary>3連単オッズ一覧（${marketItems.length}通り / ${predictionScenario==='in'?'1号艇1着':predictionScenario==='other'?'1号艇以外が1着':'すべて'}）</summary><p class="small-note">取得 ${e(clock(originalRace.odds.fetched_at))} / ${status.currentOdds ? '締切前・取得時点のオッズ' : '参考オッズ。取得時刻・締切・更新状態を確認してください。'}${savedProposal?' / 保存提案の期待値には上の保存オッズを使います。この一覧は最新取得値です。':''}</p>${table(['買い目','取得時点オッズ'],marketItems.map(x=>[e(x.combo),`${x.odds.toFixed(1)}倍`]))}</details>` : '<p class="small-note">この条件の3連単オッズは未取得・未提供です。</p>';
-  const scenarioNote=`<p class="small-note scenario-note">${scenarioMass?'全120通りの推定確率を集計。イン逃げ想定は1号艇1着として分類し、実際の進入・決まり手の確率を示すものではありません。':'全120通りの確率を確認できないため、傾向別の確率は表示できません。'}</p>`;
-  const scenarios=`<div class="prediction-scenarios" role="group" aria-label="1着の傾向で絞り込み"><button data-scenario="all" aria-pressed="${predictionScenario==='all'}"><span>すべて</span><strong>${scenarioMass?'100%':'—'}</strong></button>${[['in','イン逃げ想定','1号艇が1着'],['other','それ以外','1号艇以外が1着']].map(([key,label,detail])=>`<button data-scenario="${key}" aria-pressed="${predictionScenario===key}"><span>${label}</span><strong>${pct(scenarioMass?.[key])}</strong><small>${detail}</small></button>`).join('')}</div>${!scenarioMass?'<p class="small-note scenario-unavailable">全120通りの確率が未取得のため、傾向別の確率は表示できません。</p>':''}`;
-  const unavailableReason=!canRank?`${predictionTab==='condition'?'条件別検証':predictionTab==='return'?'回収率上位':'期待値上位'}は表示できません：${status.text}。${cutoffReached?'締切3分前以前の保存記録を確認できません。':'締切前で新鮮なオッズの取得をお待ちください。'}`:predictionTab==='condition'?(!laneProbabilities?'全120通りの確率を確認できないため、条件を判定できません。':!conditionMet?'このレースは選択した1着確率の条件に当てはまりません。':'選択中の傾向・艇条件と、オッズ50倍以上・推定確率1%以上に合う買い目はありません。'):predictionTab==='return'?'オッズ50倍以上・推定確率1%以上に合う買い目はありません。':'期待値を計算できる買い目がありません。';
+  const scenarioNote=`<p class="small-note scenario-note">${scenarioMass?'全120通りを集計した1号艇1着の推定確率です。実際の進入・決まり手の確率を示すものではありません。':'全120通りの確率を確認できないため、傾向別の確率は表示できません。'}</p>`;
+  const scenarios=`<div class="prediction-scenarios" role="group" aria-label="1着の傾向で絞り込み"><button data-scenario="all" aria-pressed="${predictionScenario==='all'}"><span>すべて</span><strong>${scenarioMass?'100%':'—'}</strong></button>${[['in','1号艇1着確率',''],['other','1号艇以外が1着','']].map(([key,label,detail])=>`<button data-scenario="${key}" aria-pressed="${predictionScenario===key}"><span>${label}</span><strong>${pct(scenarioMass?.[key])}</strong><small>${detail}</small></button>`).join('')}</div>${!scenarioMass?'<p class="small-note scenario-unavailable">全120通りの確率が未取得のため、傾向別の確率は表示できません。</p>':''}`;
+  const unavailableReason=!canRank?`${predictionTab==='condition'?'条件別検証':predictionTab==='return'?'高配当条件':'期待値上位'}は表示できません：${status.text}。${cutoffReached?'締切3分前以前の保存記録を確認できません。':'締切前で新鮮なオッズの取得をお待ちください。'}`:predictionTab==='condition'?(!laneProbabilities?'全120通りの確率を確認できないため、条件を判定できません。':!conditionMet?'このレースは選択した1着確率の条件に当てはまりません。':`選択中の傾向・艇条件と、${highPayoutConditionText}に合う買い目はありません。`):predictionTab==='return'?`${highPayoutConditionText}に合う買い目はありません。`:'期待値を計算できる買い目がありません。';
   const chosen = pool.filter(row=>chosenCombos.has(row.combo));
   const related=sujiCandidates(pool,race.odds?.items || [],[...chosenCombos],{scenario:predictionScenario,currentOdds:canRank});
   const relatedBlock=`<section class="related-bets" aria-labelledby="related-title"><h4 id="related-title">選んだ買い目から、スジの候補（最大10点）</h4>${chosen.length?`<div class="related-selection"><span>選択中 ${chosen.length}点</span>${chosen.map(row=>`<button class="combo-select" data-combo="${e(row.combo)}" aria-pressed="true" aria-label="${e(row.combo)}の選択を解除"><strong>${e(row.combo)}</strong><small>確率 ${pct(row.probability)} / 期待値 ${canRank && oddsMap.has(row.combo)?(row.probability*oddsMap.get(row.combo)).toFixed(3)+'倍':'—'}</small></button>`).join('')}<button id="clear-bets" class="text-button">選択をクリア</button></div>${related.length?table(['買い目 / スジ','推定確率','オッズ','期待値'],related.map(row=>[`<button class="combo-select" data-combo="${e(row.combo)}" aria-pressed="false" aria-label="${e(row.combo)}を追加選択">${e(row.combo)}</button><small class="suji-reason">${e(row.reason)}<br>軸：${row.based_on.slice(0,2).map(e).join('、')}${row.based_on.length>2?' ほか'+(row.based_on.length-2)+'点':''}</small>`,pct(row.probability),`${row.odds.toFixed(1)}倍`,`${row.value.toFixed(3)}倍`])):`<p class="related-empty" role="status">${canRank?'選択中の傾向で、未選択かつオッズを確認できるスジ候補はありません。':`現在は候補の提案を休止しています：${e(status.text)}。締切前の新鮮なオッズが必要です。`}</p>`}<details id="suji-details" class="prediction-details"><summary>詳しく見る（スジ候補の条件）</summary><p class="small-note">複数の選択買い目から、同じ1着を軸に2・3着の入れ替え、または相手を1艇以上残した相手替えを集め、選択済みと重複を除いた期待値上位10点を提案します。表示中の傾向で絞り込みます。決まり手を推定したスジではありません。期待値は各1点の値で、1.0倍未満なら推定払戻が購入額を下回ります。複数の買い目が同時に的中するものではありません。</p></details>`:'<p class="related-empty">買い目を複数押して選択してください。同じ買い目をもう一度押すと解除でき、選択済みを除くスジ候補を重複なし・最大10点で提案します。</p>'}</section>`;
   const predictionDetails=`<details id="prediction-details" class="prediction-details"><summary>詳しく見る（保存時刻・計算方法）</summary><div class="time-note"><span>予想入力取得：${e(clock(race.input_fetched_at))}</span><span>予想保存：${e(clock(race.prediction_saved_at))}</span><span>オッズ取得：${e(clock(race.odds?.fetched_at))}</span></div>
     ${savedProposal?`<p class="small-note">保存提案の基準 ${e(clock(savedProposal.cutoff_at))} / オッズ取得 ${e(clock(savedProposal.odds.fetched_at))} / 記録 ${e(clock(savedProposal.proposal_saved_at))}。基準時刻以前の最新成功記録です。この提案の確率・オッズ・期待値は以後更新しません。</p>`:''}
     ${scenarioNote}
-    <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目は複数選択・解除でき、選択内容から関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。回収率上位は50倍以上・推定確率1%以上の条件抽出であり、推定確率1%・50倍では期待値0.5倍となります。的中やプラス収支は保証されません。提案は締切3分前以前の最新成功記録を当日中保持します。処理の遅延や保存欠損が生じる場合があります。</p></details>`;
-  const conditionControls=`<div class="condition-controls"><label>レース条件<select id="condition-preset"><option value="in50" ${conditionPreset==='in50'?'selected':''}>イン逃げ想定50%未満</option>${[2,3,4,5,6].map(lane=>`<option value="${lane}" ${conditionPreset===String(lane)?'selected':''}>${lane}号艇の1着確率20%以上</option>`).join('')}</select></label>${conditionPreset!=='in50'?`<label>艇の含め方<select id="condition-relation"><option value="head" ${conditionRelation==='head'?'selected':''}>指定艇が1着</option><option value="any" ${conditionRelation==='any'?'selected':''}>指定艇を1〜3着に含む</option></select></label>`:''}<label>点数上限<select id="condition-limit"><option value="10" ${conditionLimit===10?'selected':''}>最大10点</option><option value="20" ${conditionLimit===20?'selected':''}>最大20点</option></select></label></div><p class="small-note condition-status" role="status">${laneProbabilities?conditionPreset==='in50'?`今回のイン逃げ想定 ${pct(laneProbabilities[0])} / ${conditionMet?'条件に該当':'条件外'}`:`今回の${conditionPreset}号艇1着確率 ${pct(laneProbabilities[Number(conditionPreset)-1])} / ${conditionMet?'条件に該当':'条件外'}`:'全120通りの確率を確認できません。'}</p><p class="small-note">検証中の条件です。オッズ50倍以上・推定確率1%以上から期待値順で最大${conditionLimit}点。各100円なら最大${yen(conditionLimit*100)}です。確率は絞り込み前の値です。</p><details id="condition-evidence" class="prediction-details"><summary>過去の比較結果・検証条件</summary><p class="small-note">選べる全22条件と「すべて／イン／それ以外」の区分を、自動記録の有効化後の固定提案から保存します。閲覧や条件選択は記録の開始操作ではありません。締切3分前までの保存予想・オッズから買い目を固定し、公式結果で各100円の仮想購入を照合します。条件外は見送り、未照合・欠損は回収率に含めません。</p><p class="small-note">2026-10-24〜10-27の導入時係数版（c746…2a85）・Worker保存462レースを各100円で仮想購入。全対象の最大10点は回収率72.8%・レース的中率8.2%、最大20点は73.5%・13.0%。イン逃げ想定50%未満の279レースでは、最大10点は81.7%・10.4%、最大20点は80.0%・16.5%でした。点数は条件に該当する数までです。</p><p class="small-note">別区分の締切前受信41レースでは、全対象の最大10点は58.7%、最大20点は67.7%、イン50%未満23レースは70.1%・91.3%でした。区分は重複するため合算していません。イン逃げ想定は1号艇1着の推定確率です。</p><p class="small-note">100条件を探索し、日付前後半も比較しました。前半の成績で選んだ条件は後半で基準を上回らず、改善を確証した条件はありません。上記は4日分の観測で、将来の回収率や利益を保証しません。条件外は購入なし、未照合・異常・オッズ欠損は除外。既存の4艇BOX企画とは別の検証です。</p></details>`;
+    <p class="small-note">選択した傾向の買い目を10点ずつ表示します。買い目は複数選択・解除でき、選択内容から関連候補を確認できます。絞り込み後も推定確率と期待値はレース全体に対する値です。推定確率はモデルの計算値で、実測の的中率ではありません。期待値は推定確率 × 取得時点のオッズです。オッズが未提供の買い目は期待値順位の対象外です。オッズは変動します。高配当条件は${highPayoutConditionText}の条件抽出であり、推定確率1%・50倍では期待値0.5倍となります。的中やプラス収支は保証されません。提案は締切3分前以前の最新成功記録を当日中保持します。処理の遅延や保存欠損が生じる場合があります。</p></details>`;
+  const conditionControls=`<div class="condition-controls"><label>レース条件<select id="condition-preset"><option value="in50" ${conditionPreset==='in50'?'selected':''}>1号艇1着確率50%未満</option>${[2,3,4,5,6].map(lane=>`<option value="${lane}" ${conditionPreset===String(lane)?'selected':''}>${lane}号艇の1着確率20%以上</option>`).join('')}</select></label>${conditionPreset!=='in50'?`<label>艇の含め方<select id="condition-relation"><option value="head" ${conditionRelation==='head'?'selected':''}>指定艇が1着</option><option value="any" ${conditionRelation==='any'?'selected':''}>指定艇を1〜3着に含む</option></select></label>`:''}<label>点数上限<select id="condition-limit"><option value="10" ${conditionLimit===10?'selected':''}>最大10点</option><option value="20" ${conditionLimit===20?'selected':''}>最大20点</option></select></label></div><p class="small-note condition-status" role="status">${laneProbabilities?conditionPreset==='in50'?`今回の1号艇1着確率 ${pct(laneProbabilities[0])} / ${conditionMet?'条件に該当':'条件外'}`:`今回の${conditionPreset}号艇1着確率 ${pct(laneProbabilities[Number(conditionPreset)-1])} / ${conditionMet?'条件に該当':'条件外'}`:'全120通りの確率を確認できません。'}</p><p class="small-note">検証中の条件です。${highPayoutConditionText}から期待値順で最大${conditionLimit}点。各100円なら最大${yen(conditionLimit*100)}です。確率は絞り込み前の値です。</p><details id="condition-evidence" class="prediction-details"><summary>過去の比較結果・検証条件</summary><p class="small-note">選べる全22条件と「すべて／1号艇1着／1号艇以外が1着」の区分を、自動記録の有効化後の固定提案から保存します。閲覧や条件選択は記録の開始操作ではありません。締切3分前までの保存予想・オッズから買い目を固定し、公式結果で各100円の仮想購入を照合します。条件外は見送り、未照合・欠損は回収率に含めません。</p><p class="small-note">2026-10-24〜10-27の導入時係数版（c746…2a85）・Worker保存462レースを各100円で仮想購入。全対象の最大10点は回収率72.8%・レース的中率8.2%、最大20点は73.5%・13.0%。1号艇1着確率50%未満の279レースでは、最大10点は81.7%・10.4%、最大20点は80.0%・16.5%でした。点数は条件に該当する数までです。</p><p class="small-note">別区分の締切前受信41レースでは、全対象の最大10点は58.7%、最大20点は67.7%、1号艇1着確率50%未満23レースは70.1%・91.3%でした。区分は重複するため合算していません。1号艇1着確率は、決まり手の「逃げ」の確率とは異なります。</p><p class="small-note">100条件を探索し、日付前後半も比較しました。前半の成績で選んだ条件は後半で基準を上回らず、改善を確証した条件はありません。上記は4日分の観測で、将来の回収率や利益を保証しません。条件外は購入なし、未照合・異常・オッズ欠損は除外。既存の4艇BOX企画とは別の検証です。</p></details>`;
   const forecast = race.items.length ? `${savedProposal?`<div class="proposal-notice" role="status"><strong>締切3分前の保存提案${status.code==='CLOSED'?' / 締切済み':''}</strong></div>`:cutoffReached?'<p class="small-note proposal-missing" role="status">締切3分前の保存予想はありません。期待値上位は表示できません。</p>':''}
     <div class="table-heading"><h3>3連単の予想</h3><span class="small-note">${e(displayedModel)}</span></div>
-    <div class="entry-tabs prediction-tabs" role="tablist" aria-label="予想の並び順"><button id="probability-tab" role="tab" aria-selected="${predictionTab==='probability'}" aria-controls="prediction-panel">推定確率順</button><button id="value-tab" role="tab" aria-selected="${predictionTab==='value'}" aria-controls="prediction-panel">期待値上位</button><button id="return-tab" role="tab" aria-selected="${predictionTab==='return'}" aria-controls="prediction-panel">回収率上位</button><button id="condition-tab" role="tab" aria-selected="${predictionTab==='condition'}" aria-controls="prediction-panel">条件別検証</button></div>
-    <div id="prediction-panel" role="tabpanel" aria-labelledby="${predictionTab}-tab">${predictionTab==='condition'?conditionControls:predictionTab==='return'?`<p class="small-note return-rule">オッズ${RETURN_CANDIDATE_RULE.minimum_odds}倍以上・推定確率${RETURN_CANDIDATE_RULE.minimum_probability*100}%以上を推定確率が高い順に表示します。実績回収率の順位ではありません。</p>`:''}${forecastItems.length?`<div class="prediction-table">${table(['順位', '買い目', '推定確率', 'オッズ', '期待値'], forecastItems.map((x,i) => {
+    <div class="entry-tabs prediction-tabs" role="tablist" aria-label="予想の並び順"><button id="probability-tab" role="tab" aria-selected="${predictionTab==='probability'}" aria-controls="prediction-panel">推定確率順</button><button id="value-tab" role="tab" aria-selected="${predictionTab==='value'}" aria-controls="prediction-panel">期待値上位</button><button id="return-tab" role="tab" aria-selected="${predictionTab==='return'}" aria-controls="prediction-panel">高配当条件</button><button id="condition-tab" role="tab" aria-selected="${predictionTab==='condition'}" aria-controls="prediction-panel">条件別検証</button></div>
+    <div id="prediction-panel" role="tabpanel" aria-labelledby="${predictionTab}-tab">${predictionTab==='condition'?conditionControls:''}${forecastItems.length?`<div class="prediction-table">${table(['順位', '買い目', '推定確率', 'オッズ', '期待値'], forecastItems.map((x,i) => {
       const odds = x.odds;
       return [`<span class="rank ${i === 0 ? 'first' : ''}">${i+1}</span>`, `<button class="combo-select" data-combo="${e(x.combo)}" aria-pressed="${chosenCombos.has(x.combo)}" aria-label="${e(x.combo)}${chosenCombos.has(x.combo)?'の選択を解除':'を追加選択'}">${comboChips(x.combo)}</button>`, pct(x.probability), odds == null ? '—' : `${odds.toFixed(1)}倍${!canRank ? '（参考）' : ''}`, canRank && odds != null ? `${(x.probability * odds).toFixed(3)}倍` : '—'];
-    }))}</div><div class="prediction-pagination"><span role="status">${forecastItems.length} / ${ranked.length}点を表示${predictionTab==='condition'?'（選択した上限まで）':''}</span>${predictionTab!=='condition'&&forecastItems.length<ranked.length?'<button id="more-predictions">さらに10点を見る ↓</button>':''}</div>`:`<p class="empty-value" role="status">${e(unavailableReason)}</p>`}</div>
+    }))}</div><div class="prediction-pagination"><span role="status">${forecastItems.length} / ${ranked.length}点を表示${predictionTab==='condition'?'（選択した上限まで）':''}</span>${predictionTab!=='condition'&&forecastItems.length<ranked.length?'<button id="more-predictions">さらに10点を見る ↓</button>':''}</div>`:`<p class="empty-value" role="status">${e(unavailableReason)}</p>`}${predictionTab==='return'?`<p class="small-note return-rule">${highPayoutConditionText}の買い目を、推定確率が高い順に表示しています。実績回収率の順位ではありません。</p>`:''}</div>
     <details class="scenario-disclosure"><summary>1着の傾向で絞り込み</summary>${scenarios}</details>
     ${predictionDetails}
     ${relatedBlock}
     ${race.model_status==='EXPERIMENTAL'?`<p class="small-note">${correctionPending?'履歴は集計済み・予想への補正は未適用です。表示中の予想は固定式で計算しています。':'履歴補正は検証中です。'}</p>`:''}
     `
     : `<div class="empty"><h3>このレースの予想は未取得です</h3><p>${e(race.issue || '必須データが確認できていません。')}</p></div>`;
-  patchHTML($('live-content'), `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${Date.parse(r.deadline_at)<=now?'終了':r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span></button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3><p class="race-deadline">締切 ${e(shortClock(race.deadline_at))}</p><p class="race-odds-time">オッズ取得 ${e(clock(race.odds?.fetched_at))}</p></div><span class="status ${status.currentOdds ? 'is-current' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${withdrawn?entryAlerts:''}<div class="race-panel-tabs" role="tablist" aria-label="レース情報の表示"><button id="race-prediction-tab" role="tab" aria-selected="${racePanel==='prediction'}" aria-controls="race-prediction-panel">予想</button><button id="race-details-tab" role="tab" aria-selected="${racePanel==='details'}" aria-controls="race-details-panel">出走表・展示</button><button id="race-status-tab" role="tab" aria-selected="${racePanel==='status'}" aria-controls="race-status-panel">取得状況・内訳</button></div><section id="race-prediction-panel" role="tabpanel" aria-labelledby="race-prediction-tab" ${racePanel==='prediction'?'':'hidden'}>${forecast}</section><section id="race-details-panel" role="tabpanel" aria-labelledby="race-details-tab" ${racePanel==='details'?'':'hidden'}>${entryAlerts}${sheetTabs}</section><section id="race-status-panel" role="tabpanel" aria-labelledby="race-status-tab" ${racePanel==='status'?'':'hidden'}>${scores}${market}</section>${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`);
-  for(const [index,panel] of ['prediction','details','status'].entries()){
-    const button=$('race-'+panel+'-tab');button.tabIndex=racePanel===panel?0:-1;
-    button.onclick=()=>{racePanel=panel;renderCurrent();$('race-'+panel+'-tab').focus({preventScroll:true});};
-    button.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?2:(index+(event.key==='ArrowRight'?1:2))%3;$('race-'+['prediction','details','status'][next]+'-tab').click();};
-  }
+  patchHTML($('live-content'), `<div class="race-layout"><nav class="race-nav" aria-label="レース選択">${current.races.map(r => `<button data-race="${r.race_no}" aria-pressed="${r.race_no === selected}"><b>${r.race_no}R</b><span>${Date.parse(r.deadline_at)<=now?'終了':r.deadline_at ? e(new Date(r.deadline_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'})) : '未確認'}</span></button>`).join('')}</nav><article class="race-card"><div class="race-heading"><div><h3>${e(name)} ${race.race_no}R</h3><p class="race-deadline">締切 ${e(shortClock(race.deadline_at))}</p><p class="race-odds-time">オッズ取得 ${e(clock(race.odds?.fetched_at))}</p></div><span class="status ${status.currentOdds ? 'is-current' : status.code === 'CLOSED' ? 'closed' : 'warn'}">${e(status.text)}</span></div>${withdrawn?entryAlerts:''}<div class="race-panel-tabs" role="tablist" aria-label="レース情報の表示"><button id="race-prediction-tab" role="tab" aria-selected="${racePanel==='prediction'}" aria-controls="race-prediction-panel">予想</button><button id="race-details-tab" role="tab" aria-selected="${racePanel==='details'}" aria-controls="race-details-panel">出走表<wbr>・展示</button><button id="development-tab" role="tab" aria-selected="${racePanel==='development'}" aria-controls="development-panel">展開予想</button><button id="result-tab" role="tab" aria-selected="${racePanel==='result'}" aria-controls="result-panel">結果</button></div><section id="race-prediction-panel" role="tabpanel" tabindex="0" aria-labelledby="race-prediction-tab" ${racePanel==='prediction'?'':'hidden'}>${forecast}${assessment}</section><section id="race-details-panel" role="tabpanel" tabindex="0" aria-labelledby="race-details-tab" ${racePanel==='details'?'':'hidden'}>${entryAlerts}${sheetTabs}</section><section id="development-panel" role="tabpanel" tabindex="0" aria-labelledby="development-tab" ${racePanel==='development'?'':'hidden'}>${developmentSheet}</section><section id="result-panel" role="tabpanel" tabindex="0" aria-labelledby="result-tab" ${racePanel==='result'?'':'hidden'}>${renderRaceResult(originalRace,now,resultComparison(originalRace,now))}</section><details id="race-data-details" class="prediction-details"><summary>データ取得状況・計算内訳</summary><div id="race-status-panel">${scores}${market}</div></details>${race.issue || race.entries_issue || race.exhibition_issue ? `<p class="small-note">更新状況：${e([race.issue,race.entries_issue,race.exhibition_issue].filter(Boolean).join(' / '))}</p>` : ''}${sources ? `<a class="source-link" href="${e(sources)}" target="_blank" rel="noopener noreferrer">公式の出走表・締切を確認する ↗</a>` : ''}</article></div>`);
+  bindTabs(['race-prediction-tab','race-details-tab','development-tab','result-tab'],['prediction','details','development','result'],racePanel,value=>racePanel=value);
+  bindTabs(['entries-tab','exhibition-tab'],['entries','exhibition'],entryTab,value=>entryTab=value);
+  $('assessment-disclosure').ontoggle=()=>mountRadar(race);
   mountRadar(race);
-  $('entries-tab').onclick=(()=>{entryTab='entries';renderCurrent();});
-  $('exhibition-tab').onclick=(()=>{entryTab='exhibition';renderCurrent();});
-  $('assessment-tab').onclick=(()=>{entryTab='assessment';renderCurrent();});
-  $('result-tab').onclick=(()=>{entryTab='result';renderCurrent();});
-  $('development-tab').onclick=(()=>{entryTab='development';renderCurrent();});
   const water=$('development-water');
   if(water){
     const lane=Number(water.dataset.developmentLane),key=`${raceKey}/${lane}`,scenario=developmentScenarios(race).find(s=>s.lane===lane),simulation=scenario&&developmentSimulation(scenario);
@@ -428,7 +442,7 @@ function renderCurrentContent() {
         developmentPlayer?.dispose();developmentPlayer=mountDevelopmentPlayer(water,simulation,{state,visible:false,reduced});developmentPlayer.svg=water;developmentPlayer.key=key;
       }
       developmentPlayer.queueSimulation(simulation);
-      developmentPlayer.setVisible(entryTab==='development'&&racePanel==='details'&&view==='live');
+      developmentPlayer.setVisible(racePanel==='development'&&view==='live');
     }
   }else{developmentPlayer?.dispose();developmentPlayer=null;}
   for(const button of document.querySelectorAll('button[data-development-lane]'))button.onclick=(()=>{developmentLane=Number(button.dataset.developmentLane);renderCurrent();document.querySelector(`[data-development-lane="${developmentLane}"]`)?.focus({preventScroll:true});});
@@ -438,12 +452,9 @@ function renderCurrentContent() {
     predictionScenario='all';chosenCombos.add(combo);renderCurrent();
     jumpToSuji();
   });
-  for(const {ids,active} of [{ids:['entries','exhibition','assessment','development','result'],active:entryTab},{ids:['probability','value','return','condition'],active:predictionTab}]){
-    ids.forEach((id,i)=>{const button=$(id+'-tab');if(!button)return;button.tabIndex=id===active?0:-1;button.onkeydown=(event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?ids.length-1:(i+(event.key==='ArrowRight'?1:ids.length-1))%ids.length;$(ids[next]+'-tab').click();$(ids[next]+'-tab').focus();}});});
-  }
+  bindTabs(['probability-tab','value-tab','return-tab','condition-tab'],['probability','value','return','condition'],predictionTab,value=>{predictionTab=value;predictionLimit=10;});
   for(const [id,change] of [['condition-preset',value=>conditionPreset=value],['condition-relation',value=>conditionRelation=value],['condition-limit',value=>conditionLimit=Number(value)]])if($(id))$(id).onchange=(()=>{change($(id).value);renderCurrent();$(id)?.focus({preventScroll:true});});
   for (const button of document.querySelectorAll('[data-race]')) button.onclick=( () => {selected = Number(button.dataset.race); renderCurrent();});
-  for(const tab of ['probability','value','return','condition'])if($(tab+'-tab'))$(tab+'-tab').onclick=(()=>{predictionTab=tab;predictionLimit=10;renderCurrent();$(tab+'-tab').focus({preventScroll:true});});
   for(const button of document.querySelectorAll('[data-scenario]'))button.onclick=(()=>{
     predictionScenario=button.dataset.scenario;predictionLimit=10;renderCurrent();
     document.querySelector(`[data-scenario="${predictionScenario}"]`)?.focus({preventScroll:true});
@@ -560,12 +571,30 @@ async function load({forceOdds=false}={}) {
   } }
 }
 for(const button of document.querySelectorAll('[data-featured-tab]'))button.addEventListener('click',()=>{featuredTab=button.dataset.featuredTab;renderOpportunities();});
-$('clear-venue-filters').addEventListener('click',()=>{for(const key of Object.keys(venueFilters))venueFilters[key]=null;renderVenueFilters();});
-$('venue-select').addEventListener('change', () => {
-  selectedVenue = $('venue-select').value;
-  clearCurrent();
-  load();
-});
+$('clear-venue-filters').addEventListener('click',()=>{for(const key of Object.keys(venueFilters))venueFilters[key]=null;venueFilterMode=false;venueExpanded=false;renderVenueFilters();document.querySelector('.venue-filter-disclosure>summary').focus({preventScroll:true});});
+function syncVenuePanel(){
+ $('venue-choice-panel').hidden=mobileVenue.matches&&!venuePanelOpen;
+ $('venue-change').setAttribute('aria-expanded',String(venuePanelOpen));
+}
+function closeVenuePanel({cancel=false}={}){venuePanelOpen=false;syncVenuePanel();if(cancel){$('venue-change').focus({preventScroll:true});scrollTo({top:venuePanelScroll,behavior:'instant'});}}
+$('venue-change').onclick=()=>{if(venuePanelOpen)return closeVenuePanel({cancel:true});venuePanelScroll=scrollY;venuePanelOpen=true;syncVenuePanel();$('venue-select').focus({preventScroll:true});};
+$('venue-cancel').onclick=()=>closeVenuePanel({cancel:true});
+$('venue-choice-panel').addEventListener('keydown',event=>{if(event.key==='Escape'&&mobileVenue.matches){event.preventDefault();closeVenuePanel({cancel:true});}});
+$('venue-more').onclick=()=>{venueExpanded=!venueExpanded;renderVenueFilters();};
+mobileVenue.addEventListener('change',()=>{if(!mobileVenue.matches)venuePanelOpen=false;syncVenuePanel();if(catalog)renderVenueFilters();});
+window.addEventListener('resize',()=>{if(catalog)renderVenueFilters();});
+syncVenuePanel();
+async function chooseVenue(code){
+ if(!catalog?.venues.some(v=>v.code===code))return;
+ closeVenuePanel();
+ if(code!==selectedVenue){selectedVenue=code;clearCurrent();renderVenueOptions();}
+ const loading=load();const version=loadVersion;
+ // Scroll to the loading state immediately; old details have already been cleared.
+ $('live-view').scrollIntoView({behavior:'instant',block:'start'});
+ await loading;if(version!==loadVersion||selectedVenue!==code)return;
+ const heading=$('live-content').querySelector('h3');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+}
+$('venue-select').addEventListener('change',()=>chooseVenue($('venue-select').value));
 $('live-tab').addEventListener('click', () => showView('live'));
 $('archive-tab').addEventListener('click', () => showView('archive'));
 $('experiments-refresh')?.addEventListener('click',()=>loadExperiments({force:true}));

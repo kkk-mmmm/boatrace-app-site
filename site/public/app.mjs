@@ -1,6 +1,8 @@
 import {returnProbabilityRanking,exhibitionDisplayRows,raceOutlookSummary,raceOutlookLabel,deadlineSoon,escape as e, raceStatus, safeSource, japanDate, venueTags, filterVenues, venueFilterGroups, matchesPredictionScenario, predictionPool, scenarioProbabilities, predictionRanking, sujiCandidates, featuredRaceGroups, raceEntryAlerts, renderVenueSummary, renderRaceResult, upcomingRaceList, renderEnvironment, renderCourse2, RETURN_CANDIDATE_RULE, conditionalRanking, firstPlaceProbabilities} from './view.mjs';
 import {ODDS_INTERVAL_MS, validateLiveOdds, applyLiveOdds, liveFeaturedRaces, proposalRace, PROPOSAL_LEAD_MS, resultComparison} from './odds-live.mjs';
-import {renderDevelopment} from './development.mjs';
+import {renderDevelopment,developmentScenarios,developmentSimulation} from './development.mjs';
+import {mountDevelopmentPlayer} from './development-player.mjs';
+let developmentPlayer=null;
 import {renderExperimentArchive} from './experiments-view.mjs';
 import {confidenceHTML,radarHTML,mountRadar} from './charts.mjs';
 // Update matching DOM nodes in place so reading and interaction state survive polling.
@@ -153,6 +155,7 @@ function renderVenueFiltersContent() {
   });
 }
 function clearCurrent() {
+  developmentPlayer?.dispose();developmentPlayer=null;
   current = null;selected = null;entryTab='entries';predictionRaceKey=null;chosenCombos.clear();updateRaceContext();identifyVenue();
   $('update-status').hidden=false;$('update-status').textContent = `${venueName()}の情報を取得中`;
   $('update-dot').classList.remove('ok');$('updated-at').textContent = '—';
@@ -248,7 +251,7 @@ function showView(name) {
   $('releases-tab').setAttribute('aria-pressed',String(name==='releases'));
   const url=new URL(location.href);url.hash=name==='releases'?'releases':name==='archive'?'archive':'';
   if(url.href!==location.href)history.pushState(null,'',url);
-  identifyVenue();
+  identifyVenue();developmentPlayer?.setVisible(view==='live'&&entryTab==='development'&&racePanel==='details');
 }
 
 function notify(message) { $('message').textContent = message; $('message').hidden = !message || view!=='live'; }
@@ -293,8 +296,7 @@ function renderUpcoming() {
 
 function renderCurrent() {return preserveViewport(()=>{try{return renderCurrentContent();}finally{updateRaceContext();}});}
 function renderCurrentContent() {
-  const previousWater=$('development-water');
-  const previousMotion=previousWater && !$('development-panel').hidden ? {key:previousWater.dataset.raceKey,time:previousWater.getCurrentTime(),paused:previousWater.animationsPaused()}:null;
+  const previousPlayback=developmentPlayer?{key:developmentPlayer.key,state:developmentPlayer.snapshot()}:null;
   if (!current) return;
   const now = Date.now();
   const today = japanDate(now);
@@ -332,6 +334,7 @@ function renderCurrentContent() {
   document.querySelector('.meeting-summary').hidden=view!=='live'||emptyVenue;
   $('message').hidden=view!=='live'||emptyVenue||!$('message').textContent;
   if (emptyVenue) {
+    developmentPlayer?.dispose();developmentPlayer=null;
     patchHTML($('live-content'), `<div class="empty"><h3>${fresh && current.meeting_status === 'NO_MEETING' ? '本日は非開催です' : '本日のデータは取得待ちです'}</h3><p>${fresh && current.meeting_status === 'NO_MEETING' ? `本日は${e(name)}の開催が確認できていません。保存済みの検証結果がある場合は、検証記録からご覧いただけます。` : '最新の出走表や必須データが確認できたレースから表示します。過去の記録やサンプルを、本日の予想として使うことはありません。'}</p><button id="empty-archive" class="text-button">予想実績を見る →</button></div>`);
     $('empty-archive').onclick=(()=>{location.href=new URL('./verification/',document.baseURI).href;});
     return;
@@ -417,18 +420,17 @@ function renderCurrentContent() {
   $('development-tab').onclick=(()=>{entryTab='development';renderCurrent();});
   const water=$('development-water');
   if(water){
-    const lane=water.dataset.developmentLane;const key=`${raceKey}/${lane}`;
+    const lane=Number(water.dataset.developmentLane),key=`${raceKey}/${lane}`,scenario=developmentScenarios(race).find(s=>s.lane===lane),simulation=scenario&&developmentSimulation(scenario);
     water.dataset.raceKey=key;
-    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(water!==previousWater || previousMotion?.key!==key){
-    water.setCurrentTime(entryTab==='development'?(previousMotion?.key===key?Math.min(6,previousMotion.time):reduced?6:0):0);
-    if(entryTab!=='development' || (previousMotion?.key===key?previousMotion.paused:reduced))water.pauseAnimations();else water.unpauseAnimations();
+    if(simulation?.valid){
+      if(!developmentPlayer||developmentPlayer.svg!==water||developmentPlayer.key!==key){
+        const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,state=previousPlayback?.key===key?previousPlayback.state:previousPlayback?{time:reduced?simulation.duration:0,rate:previousPlayback.state.rate,playing:!reduced}:null;
+        developmentPlayer?.dispose();developmentPlayer=mountDevelopmentPlayer(water,simulation,{state,visible:false,reduced});developmentPlayer.svg=water;developmentPlayer.key=key;
+      }
+      developmentPlayer.queueSimulation(simulation);
+      developmentPlayer.setVisible(entryTab==='development'&&racePanel==='details'&&view==='live');
     }
-    const updatePause=()=>{const button=$('development-pause');if(button && $('development-water')===water)button.textContent=water.animationsPaused()||water.getCurrentTime()>=6?'再生する':'一時停止';};updatePause();
-    const motion=water.querySelector('animateMotion');if(motion){if(motion._pauseListener)motion.removeEventListener('endEvent',motion._pauseListener);motion._pauseListener=updatePause;motion.addEventListener('endEvent',updatePause);}
-    $('development-replay').onclick=(()=>{water.setCurrentTime(0);water.unpauseAnimations();updatePause();});
-    $('development-pause').onclick=(()=>{if(water.getCurrentTime()>=6){water.setCurrentTime(0);water.unpauseAnimations();}else if(water.animationsPaused())water.unpauseAnimations();else water.pauseAnimations();updatePause();});
-  }
+  }else{developmentPlayer?.dispose();developmentPlayer=null;}
   for(const button of document.querySelectorAll('button[data-development-lane]'))button.onclick=(()=>{developmentLane=Number(button.dataset.developmentLane);renderCurrent();document.querySelector(`[data-development-lane="${developmentLane}"]`)?.focus({preventScroll:true});});
   for(const button of document.querySelectorAll('[data-development-combo]'))button.onclick=(()=>{
     const combo=button.dataset.developmentCombo;

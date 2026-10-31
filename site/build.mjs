@@ -12,7 +12,7 @@ import {writeSeoPages} from './seo.mjs';
 import {renderReleases} from './releases.mjs';
 import {opportunityList,featuredRaceList} from './opportunities.mjs';
 import {validateAnnualModel} from './public/annual-model.mjs';
-import {upcomingRaceList} from './public/view.mjs';
+import {upcomingRaceList,raceOutlookSummary} from './public/view.mjs';
 import {predictionKey} from './public/odds-live.mjs';
 
 export function build({cacheDirectory = path.join(root, 'site/cache'), outputDirectory = path.join(root, 'site/dist'),
@@ -40,7 +40,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   if (requireCurrent && !snapshots.some(fresh)) {
     throw Error('最新の公式取得が確認できないため、公開用ビルドを停止しました');
   }
-  const current = {...snapshots[0], upcoming_races:upcomingRaceList(snapshots.flatMap(s=>[...(s.upcoming_races||[]),...s.races]),now,288),opportunities:opportunityList(snapshots,now),featured_races:featuredRaceList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
+  const current = {...snapshots[0], race_outlooks:snapshots.filter(fresh).flatMap(s=>s.races.map(r=>raceOutlookSummary(r,s.update.last_success_at,now)).filter(Boolean)), upcoming_races:upcomingRaceList(snapshots.flatMap(s=>[...(s.upcoming_races||[]),...s.races]),now,288),opportunities:opportunityList(snapshots,now),featured_races:featuredRaceList(snapshots,now),venues:snapshots.map(s => ({code:s.venue_code,name:s.venue,
     meeting_status:s.meeting_status,meeting:s.meeting,update:s.update,race_count:s.races.length, data_url:`./data/venues/${s.venue_code}.json`}))};
   fs.mkdirSync(path.join(outputDirectory, 'data/venues'), {recursive: true});
   for (const file of ['index.html', 'style.css', 'app.mjs', 'view.mjs', 'odds-live.mjs', 'development.mjs','race-context.mjs','race-metrics.mjs','charts.mjs','verification-data.mjs','verification-page.mjs','strategy-page.mjs','validation-view.mjs','experiments-view.mjs','favicon.svg','favicon-32.png','apple-touch-icon.png','icon-192.png','icon-512.png','social-card.png']) {

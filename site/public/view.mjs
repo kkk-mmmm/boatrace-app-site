@@ -204,3 +204,22 @@ export function renderCourse2(race){
  const pct=v=>Number.isFinite(v)?(v*100).toFixed(1)+'%':'未集計',two=race.entries?.find(e=>e.racer_id===s.player_id);
  return `<section class="course2-escape"><h4>2コース選手の逃がし率</h4><p>${escape(two?.name||s.player_id||'選手未確認')}（${escape(s.basis)}） / ${s.samples||0}走</p><p>過去の割合 <strong>${pct(s.escape_rate)}</strong> / 少数例を補正した割合 <strong>${pct(s.smoothed_escape_rate)}</strong></p><p class="small-note">実進入2コースの選手ごとに、1号艇が実進入1コースから「逃げ」で勝った割合を集計します。正常6艇レースが対象です。アシストの因果関係や、差しに行った回数を示すものではありません。2コース選手自身の差し決着率（少数例補正後）：${pct(s.sashi_rate)}。${race.history.context_usage?.course2_escape?'このモデルの評価因子に使用。':'集計を表示。現行モデルの係数にはまだ追加していません。'}</p></section>`;
 }
+
+// Read-only summaries: use the complete distribution, never the top-ten ticket list.
+export function raceOutlookSummary(race,asOf,now=Date.now()){
+ const time=Date.parse(asOf),deadline=Date.parse(race?.deadline_at);
+ if(!race||race.date!==japanDate(now)||!Number.isFinite(time)||time>now+60000||now-time>600000||deadline<=now||!Number.isFinite(deadline)||race.entries?.length!==6||race.entries.some(e=>e.participation_status==='WITHDRAWN'))return null;
+ const first=firstPlaceProbabilities(predictionPool(race));
+ return first?{date:race.date,venue_code:race.venue_code,race_no:race.race_no,deadline_at:race.deadline_at,as_of:asOf,first_probabilities:first}:null;
+}
+export function raceOutlookLabel(summary,race,now=Date.now()){
+ const pending={kind:'pending',label:'判定待ち',detail:'予想データ未確認'};
+ if(!summary||summary.date!==japanDate(now)||summary.date!==race?.date||summary.venue_code!==race.venue_code||summary.race_no!==race.race_no||summary.deadline_at!==race.deadline_at||Date.parse(race.deadline_at)<=now)return pending;
+ const age=now-Date.parse(summary.as_of),p=summary.first_probabilities;
+ if(!Number.isFinite(age)||age< -60000||age>600000||!Array.isArray(p)||p.length!==6||p.some(v=>!Number.isFinite(v)||v<0||v>1)||Math.abs(p.reduce((a,b)=>a+b,0)-1)>1e-6)return pending;
+ const max=Math.max(...p),lane=p.indexOf(max)+1;
+ return p[0]>=.7?{kind:'in',label:'イン優勢',detail:`1号艇 ${(p[0]*100).toFixed(1)}%`}:max>=.45?{kind:'axis',label:`${lane}号艇に軸`,detail:`1着推定 ${(max*100).toFixed(1)}%`}:max<.35?{kind:'mixed',label:'混戦',detail:`最高でも ${(max*100).toFixed(1)}%`}:{kind:'even',label:'上位拮抗',detail:`最多 ${lane}号艇 ${(max*100).toFixed(1)}%`};
+}
+export function deadlineSoon(race,now=Date.now()){
+ const remaining=Date.parse(race?.deadline_at)-now;return race?.date===japanDate(now)&&remaining>0&&remaining<=600000;
+}

@@ -1,0 +1,29 @@
+{
+  "baseline": {
+    "name": "枠別1着率のみ",
+    "temperature": 1.5,
+    "heldout": {
+      "races": 4226,
+      "log_loss": 4.161086355501321,
+      "top10_hit_rate": 0.4212020823473734
+    }
+  },
+  "delta_log_loss": -0.23472684372709063,
+  "kind": "RETROSPECTIVE_TEMPORAL_HOLDOUT",
+  "training_races": 43258,
+  "tuning_from": "2026-09-02",
+  "test_from": "2026-10-02",
+  "lambda": 0.05,
+  "temperature": 1,
+  "tuning": {
+    "races": 4327,
+    "log_loss": 3.890601438738699,
+    "top10_hit_rate": 0.49133348740466837
+  },
+  "heldout": {
+    "races": 4226,
+    "log_loss": 3.9263595117742303,
+    "top10_hit_rate": 0.4720776147657359
+  },
+  "note": "結果アーカイブからの時系列検証。実運用の締切前保存を証明する成績ではありません。スタート順位は正常な6艇のSTを順位化し、同値は平均順位。"
+}

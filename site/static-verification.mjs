@@ -1,0 +1,7 @@
+import {verificationResponse} from './public/verification-data.mjs';
+import {escape as e} from './public/view.mjs';
+export function staticVerification(archive,now){
+ const records=archive?.records||[],groups=new Map();for(const r of records){const key=JSON.stringify([r.date,r.model_id||'未確認',r.cohort]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r);}
+ const rows=[...groups.values()].map(list=>{const r=list[0],s=verificationResponse(list,{date:r.date,now}).summary;return `<tr><td>${e(r.date)}</td><td>${e(r.model_id||'未確認')}</td><td>${e(r.cohort||'未確認')}</td><td>${s.recorded_races} / ${s.evaluated_races}</td>${['probability','value'].map(k=>`<td>${s[k].races?(s[k].hits/s[k].races*100).toFixed(1)+'%':'未集計'}</td><td>${s[k].recovery_percent===null?'未集計':s[k].recovery_percent.toFixed(1)+'%'}</td>`).join('')}</tr>`;}).join('');
+ return `<section class="static-verification"><h2>ページ生成時点の保存予想の検証</h2><p>対象期間：${e(archive?.from||'未確認')}〜${e(archive?.through||'未確認')}。確率上位10点／期待値上位最大10点を各100円で仮想購入。日付・モデル版・事前保存の証明区分を分け、動的表示と同じ集計関数で照合します。事後の動作検証は含めません。未保存・未照合・異常結果・払戻欠損を不的中に数えません。</p>${rows?`<div class="table-wrap"><table><thead><tr><th>日付</th><th>モデル版</th><th>保存区分</th><th>記録 / 照合件数</th><th>確率上位的中率</th><th>仮想回収率</th><th>期待値上位的中率</th><th>仮想回収率</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p>ビルド時に照合可能な保存記録がありません。実績値は未集計です。</p>'}<p>実購入の成績・将来の利益を示すものではありません。<a href="./verification/#verification-days">最新の日別保存予想・結果を確認する</a></p></section>`;
+}

@@ -2,8 +2,8 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import fs
 import {informationPages,informationTemplate,contact} from './info-pages.mjs';
 import {seoPage,writeSeoPages,branding} from './seo.mjs';import {venues} from '../tools/prerace/venues.mjs';
 const template=fs.readFileSync(new URL('./public/index.html',import.meta.url),'utf8'),now=Date.parse('2030-01-01T01:00:00Z');
-test('全32ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,32);assert.match(fs.readFileSync(path.join(dir,'robots.txt'),'utf8'),/Content-Signal: ai-train=no, search=yes, ai-input=no/);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
+test('全33ページに自己canonical・場名タイトル・OGP・CSPで許可した構造化データを出力する',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'funeyomi-seo-'));try{writeSeoPages(dir,template,[],now);const sitemap=fs.readFileSync(path.join(dir,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,33);assert.match(fs.readFileSync(path.join(dir,'robots.txt'),'utf8'),/Content-Signal: ai-train=no, search=yes, ai-input=no/);if(new URL(branding.base_url).pathname==='/'){assert.ok(fs.readFileSync(path.join(dir,'robots.txt'),'utf8').includes(new URL('sitemap.xml',branding.base_url).href));assert.equal(fs.readFileSync(path.join(dir,'CNAME'),'utf8').trim(),new URL(branding.base_url).hostname);}
  for(const venue of [null,...venues]){const html=fs.readFileSync(path.join(dir,venue?`venues/${venue.code}/index.html`:'index.html'),'utf8'),canonical=new URL(venue?`venues/${venue.code}/`:'',branding.base_url).href;
  assert.ok(html.includes(`<link rel="canonical" href="${canonical}">`));assert.ok(html.includes(`property="og:url" content="${canonical}"`));assert.ok(html.includes('AI予想'));assert.ok(html.includes('競艇'));assert.ok(html.includes('フネヨミ'));assert.equal((html.match(/<h1\b/g)||[]).length,1);
  assert.doesNotMatch(html,/日本時間/);
@@ -16,7 +16,7 @@ test('全32ページに自己canonical・場名タイトル・OGP・CSPで許可
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('静的な場ページの出走情報は鮮度を確認して表示し、欠損時刻を捏造しない',()=>{
- const snapshot={date:'2030-01-01',update:{status:'OK',last_success_at:new Date(now).toISOString()},meeting_status:'OPEN',meeting:{title:'テスト開催'},races:[{race_no:1,deadline_at:null,entries:[{lane:1,name:'<img src=x>'}]}]};
+ const snapshot={venue_code:'24',date:'2030-01-01',update:{status:'OK',last_success_at:new Date(now).toISOString()},meeting_status:'OPEN',meeting:{title:'テスト開催'},races:[{venue_code:'24',date:'2030-01-01',race_no:1,deadline_at:null,entries:[{lane:1,name:'<img src=x>'}]}]};
  const html=seoPage(template,{venue:venues[23],snapshot,now});assert.match(html,/テスト開催/);assert.match(html,/2030\/01\/01 10:00/);assert.doesNotMatch(html,/（UTC）/);assert.match(html,/未確認/);assert.match(html,/&lt;img src=x&gt;/);assert.doesNotMatch(html,/<img src=x>/);
  const old=seoPage(template,{venue:venues[23],snapshot:{...snapshot,date:'2029-12-31'},now});assert.doesNotMatch(old,/テスト開催|src=x/);
 });
@@ -85,7 +85,7 @@ test('初期HTMLの予想は公開時点の鮮度・締切を確認し、古い�
 test('初期HTMLだけで出走表と展示の欠損・進入変化を確認でき、リンクは場ページ内を指す',async()=>{
  const {staticPredictions,staticRaceDetails}=await import('./venue-seo.mjs');const entries=Array.from({length:6},(_,i)=>({lane:i+1,name:i===0?'<script>選手':'選手'+i,class:'A1',national_win_rate:6.5,motor_2rate:40,avg_st:.15,exhibition_time:i===0?null:6.8,exhibition_st:i===0?-.02:.12,exhibition_st_status:i===0?'F':'NORMAL',exhibition_course:i===0?2:i===1?1:i+1}));
  const r={date:'2030-01-01',venue_code:'01',race_no:1,deadline_at:new Date(now+1200000).toISOString(),entries,items:[]};const html=staticRaceDetails(r,now);for(const text of ['全国勝率','モーター2連率','6.50','6.80','F0.02','進入変化あり','未取得','&lt;script&gt;'])assert.ok(html.includes(text),text);assert.doesNotMatch(html,/<script>|\b\d{1,2}:\d{2}:\d{2}\b/);
- const snapshot={date:r.date,venue_code:'01',meeting_status:'OPEN',update:{status:'OK',last_success_at:new Date(now).toISOString()},races:[r]};const page=seoPage(template,{venue:venues[0],snapshot,now});assert.match(page,/id="venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/#venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/#venue-overview"/);assert.match(page,/出走表・展示情報を確認/);
+ const snapshot={date:r.date,venue_code:'01',meeting_status:'OPEN',update:{status:'OK',last_success_at:new Date(now).toISOString()},races:[r]};const page=seoPage(template,{venue:venues[0],snapshot,now});assert.match(page,/id="venue-race-1"/);assert.match(page,/href="\.\/venues\/01\/\?race=1#live-view"/);assert.match(page,/href="\.\/venues\/01\/#venue-overview"/);assert.match(page,/出走表・展示情報を確認/);
  const old=seoPage(template,{venue:venues[0],snapshot:{...snapshot,date:'2029-12-31'},now});assert.doesNotMatch(old,/id="venue-race-1"|F0.02/);
 });
 

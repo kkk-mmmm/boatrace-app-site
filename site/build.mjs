@@ -59,7 +59,8 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   if(fs.existsSync(annualFile)){const candidate=JSON.parse(fs.readFileSync(annualFile,'utf8')),age=Date.parse(japanDate(now))-Date.parse(candidate.trained_through);if(age>0&&age<=3*86400000){annual=validateAnnualModel(candidate,japanDate(now));const gapFile=path.join(root,'models/exhibition-st/current.json');if(fs.existsSync(gapFile))annual.exhibition_st_profiles=JSON.parse(fs.readFileSync(gapFile));fs.writeFileSync(path.join(outputDirectory,'data/player-model.json'),JSON.stringify(annual));}}
   const recordsDirectory=process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification');
   const strategyReport=strategyDashboard(recordsDirectory,JSON.parse(fs.readFileSync(path.join(root,'site/conditional-strategies.json'))),{now});
-  writeSeoPages(outputDirectory,fs.readFileSync(indexHtml,'utf8'),snapshots,now,annual,{strategyReport});
+  const verificationArchive=publicVerificationArchive(recordsDirectory,{now});
+  writeSeoPages(outputDirectory,fs.readFileSync(indexHtml,'utf8'),snapshots,now,annual,{strategyReport,verificationArchive});
   const targets=snapshots.filter(s=>s.meeting_status==='OPEN').flatMap(snapshot=>snapshot.races
     .filter(r=>Number.isFinite(Date.parse(r.deadline_at)) && Date.parse(r.deadline_at)>now)
     .map(r=>({date:r.date,venue_code:snapshot.venue_code,venue:snapshot.venue,race_no:r.race_no,deadline_at:r.deadline_at,
@@ -73,7 +74,7 @@ export function build({cacheDirectory = path.join(root, 'site/cache'), outputDir
   for (const snapshot of snapshots) {
     fs.writeFileSync(path.join(outputDirectory, `data/venues/${snapshot.venue_code}.json`), JSON.stringify(snapshot, null, 2) + '\n');
   }
-  fs.writeFileSync(path.join(outputDirectory,'data/verification.json'),JSON.stringify(publicVerificationArchive(process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification'),{now})));
+  fs.writeFileSync(path.join(outputDirectory,'data/verification.json'),JSON.stringify(verificationArchive));
   fs.writeFileSync(path.join(outputDirectory,'data/validation.json'),JSON.stringify(buildValidationReview(process.env.VERIFICATION_DIRECTORY||path.join(root,'site/cache/verification'),{now})));
   fs.writeFileSync(path.join(outputDirectory,'data/strategies.json'),JSON.stringify(strategyReport));
   fs.writeFileSync(path.join(outputDirectory,'data/calibration.json'),JSON.stringify(calibrationReview(recordsDirectory,{now})));

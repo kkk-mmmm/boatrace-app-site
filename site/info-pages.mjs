@@ -1,3 +1,4 @@
+import {staticVerification} from './static-verification.mjs';
 import {interimArticle} from './interim-article.mjs';
 import {articlePages} from './articles.mjs';
 import {venues} from '../tools/prerace/venues.mjs';
@@ -19,7 +20,7 @@ export function informationPages(settings=contact,context={}){
  <p class="page-lead">保存予想と公式結果を照合した、各点100円の仮想成績です。</p><details class="method-disclosure"><summary>集計の対象・条件を見る</summary> <p>保存した予想を各点100円で購入したと仮定した、直近7日のレース別実績と30完了日の確率・期待値の検証です。記録のあるレースだけを表示し、未保存・未照合を不的中に含めません。全レースや実際の購入履歴の成績ではありません。</p>
  <p class="small-note">条件を固定して期間を通して調べる企画と終了記事は、<a href="./#archive">検証企画・記事</a>から確認できます。</p>
  <p><a href="./strategies/">条件別検証の成績・データ充足率を見る</a></p></details>
- <h2>日別の実績<span class="heading-note">直近7日</span></h2>
+ ${staticVerification(context.verificationArchive,context.now)}<h2>日別の実績<span class="heading-note">直近7日</span></h2>
  <div class="verification-controls"><label>開催場 <select id="verification-venue" aria-label="検証する開催場"></select></label><button id="verification-refresh">表示を更新 ↻</button></div>
  <div id="verification-days" class="verification-days" role="group" aria-label="検証する日付"></div><p id="verification-status" class="small-note" role="status">記録を確認しています。</p><div id="verification-summary" aria-live="polite"></div><div id="verification-records"></div><button id="verification-more" hidden>追加で20レース見る</button><p id="verification-method" class="small-note"></p>
  <details class="validation-disclosure"><summary>30完了日の確率・期待値の検証を見る</summary><p id="validation-quality-status" class="small-note" role="status"></p>

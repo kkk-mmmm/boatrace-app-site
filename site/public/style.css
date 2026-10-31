@@ -579,3 +579,13 @@ footer .information-links a{font-size:12px;min-height:44px;align-content:center}
 @media(max-width:380px){.race-panel-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.prediction-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.venue-filter-row{display:block}.venue-filter-row>span{display:block;padding:0;margin-bottom:4px}}
 
 .race-card,.race-panel-tabs,[role="tabpanel"],#venue-change{scroll-margin-top:calc(var(--race-context-height,72px) + 16px);scroll-margin-bottom:80px}
+
+/* Venue search entry: shared information follows the venue's own race content. */
+.explainer-entry{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:12px 0;font-size:12px}.explainer-entry a,.venue-intent-links a{text-decoration:underline;text-underline-offset:3px;min-height:44px;display:inline-flex;align-items:center;color:var(--blue)}
+.venue-intent-links{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0}
+a.venue-result{text-decoration:none}a.venue-result:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+body[data-venue] .explainer-entry{display:none}body[data-venue] .venue-picker{margin:12px 0}body[data-venue] .venue-overview{margin-top:12px}
+
+a.venue-result[aria-current="page"]{background:var(--tint);border-color:var(--blue);box-shadow:inset 3px 0 var(--blue)}
+
+.venue-deadlines{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.venue-deadlines a{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:44px;padding:6px;border:1px solid var(--line);font-size:12px}.venue-deadlines time{white-space:nowrap}@media(max-width:650px){.venue-deadlines{grid-template-columns:repeat(3,minmax(0,1fr))}}

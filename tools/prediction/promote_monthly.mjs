@@ -15,7 +15,7 @@ export function promoteMonthly(directory,output,activeFile,releasesFile,now=Date
  if(comparison.accepted){
   const next={...active};const fields=['coefficients','means','scales','temperature','feature_names','engine_version'];
   fs.writeFileSync(path.join(folder,'previous-coefficients.json'),JSON.stringify(Object.fromEntries([...fields,'validation','coefficients_trained_through','coefficient_id'].map(k=>[k,active[k]])))+'\n',{flag:'wx'});
-  for(const key of fields)next[key]=candidate[key];next.validation={...candidate.validation,automatic_comparison:comparison};next.coefficient_id=coefficientId(next);next.coefficients_trained_through=candidate.coefficients_trained_through||candidate.trained_through;next.created_at=new Date(now).toISOString();
+  for(const key of fields)next[key]=candidate[key];next.name=candidate.name;next.validation={...candidate.validation,automatic_comparison:comparison};next.coefficient_id=coefficientId(next);next.coefficients_trained_through=candidate.coefficients_trained_through||candidate.trained_through;next.created_at=new Date(now).toISOString();
   delete next.id;next.id='annual-v3-'+crypto.createHash('sha256').update(JSON.stringify(next)).digest('hex');
   const releases=JSON.parse(fs.readFileSync(releasesFile));releases.releases.unshift(coefficientRelease(decision,releases.releases[0].version));validateReleases(releases);
   fs.writeFileSync(activeFile,JSON.stringify(next)+'\n');fs.writeFileSync(path.join(path.dirname(activeFile),'validation.json'),JSON.stringify(next.validation,null,2)+'\n');fs.writeFileSync(releasesFile,JSON.stringify(releases,null,2)+'\n');

@@ -6,6 +6,7 @@ from pathlib import Path
 
 def aggregate(races, through):
     end=date.fromisoformat(through);start=end-timedelta(days=364)
+    lane2={'n':0,'one_wins':0,'players':{}}
     players={};population={'n':0,'escape':0,'second_sashi':0};seen=set()
     for race in races:
         day=date.fromisoformat(race['date'])
@@ -13,6 +14,16 @@ def aggregate(races, through):
         key=(race['date'],race['venue_code'],race['race_no'])
         if key in seen:raise ValueError('Duplicate race')
         seen.add(key);entries=race.get('entries',[])
+        if (len(entries)==6 and {e.get('lane') for e in entries}==set(range(1,7))
+                and {e.get('finish') for e in entries}==set(range(1,7))
+                and all(type(e.get('lane')) is int and type(e.get('finish')) is int and e.get('finish_status')=='NORMAL' for e in entries)):
+            first=next(e for e in entries if e['lane']==1)
+            second=next(e for e in entries if e['lane']==2)
+            identity=str(second.get('racer_id',''))
+            if len(identity)==4 and identity.isascii() and identity.isdigit():
+                player=lane2['players'].setdefault(identity,{'n':0,'one_wins':0})
+                for stats in (lane2,player):
+                    stats['n']+=1;stats['one_wins']+=int(first['finish']==1)
         if len(entries)!=6 or {e.get('actual_course') for e in entries}!=set(range(1,7)):continue
         if {e.get('finish') for e in entries}!=set(range(1,7)) or any(e.get('finish_status')!='NORMAL' or e.get('actual_st_status')!='NORMAL' for e in entries):continue
         one=next(e for e in entries if e['actual_course']==1)
@@ -29,7 +40,7 @@ def aggregate(races, through):
     for stats in players.values():
         stats['escape_rate']=stats['escape']/stats['n']
         stats['smoothed_escape_rate']=(stats['escape']+20*prior)/(stats['n']+20)
-    return {'schema_version':1,'from':str(start),'through':str(end),'population':population,'players':players,
+    return {'schema_version':1,'lane2_support':lane2,'lane2_definition':'枠番2号艇の選手ごとに1号艇が1着となった割合。正常完走6艇レース。実進入や決まり手で絞らない。','from':str(start),'through':str(end),'population':population,'players':players,
         'definition':'実進入2コースの選手ごとに、1号艇が実進入1コースから逃げで勝った割合。正常6艇レースだけ。因果的なアシストや差しの試行率ではない。'}
 
 

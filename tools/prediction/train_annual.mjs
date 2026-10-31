@@ -1,6 +1,6 @@
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
-import {CONTEXT_ANNUAL_ENGINE,CONTEXT_ANNUAL_FEATURES,ANNUAL_ENGINE,ANNUAL_FEATURES,VENUE_ANNUAL_ENGINE,VENUE_ANNUAL_FEATURES,emptyAnnualProfiles,annualFeatures,observeAnnual,annualTriples} from '../../site/public/annual-model.mjs';
-const contextMode=process.argv.includes('--context'),venueMode=contextMode||process.argv.includes('--venue'),featureNames=contextMode?CONTEXT_ANNUAL_FEATURES:venueMode?VENUE_ANNUAL_FEATURES:ANNUAL_FEATURES;
+import {LANE2_ANNUAL_ENGINE,LANE2_ANNUAL_FEATURES,CONTEXT_ANNUAL_ENGINE,CONTEXT_ANNUAL_FEATURES,ANNUAL_ENGINE,ANNUAL_FEATURES,VENUE_ANNUAL_ENGINE,VENUE_ANNUAL_FEATURES,emptyAnnualProfiles,annualFeatures,observeAnnual,annualTriples} from '../../site/public/annual-model.mjs';
+const lane2Mode=process.argv.includes('--lane2'),contextMode=lane2Mode||process.argv.includes('--context'),venueMode=contextMode||process.argv.includes('--venue'),featureNames=lane2Mode?LANE2_ANNUAL_FEATURES:contextMode?CONTEXT_ANNUAL_FEATURES:venueMode?VENUE_ANNUAL_FEATURES:ANNUAL_FEATURES;
 const [directory,output]=process.argv.slice(2);if(!directory||!output)throw Error('履歴フォルダとモデル出力先が必要です');
 const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'))),races=JSON.parse(fs.readFileSync(path.join(directory,'races.json')));
 if(manifest.days!==365||manifest.failures.length||!races.length)throw Error('完全な1年履歴が必要です');
@@ -22,6 +22,7 @@ function fit(data,lambda){
    for(const selected of e.order.slice(0,3)){const max=Math.max(...left.map(i=>score[i])),weights=left.map(i=>Math.exp(score[i]-max)),sum=weights.reduce((a,b)=>a+b,0);
     for(let j=0;j<beta.length;j++)grad[j]+=left.reduce((s,i,k)=>s+weights[k]/sum*e.x[i][j],0)-e.x[selected][j];left.splice(left.indexOf(selected),1);}}
   for(let j=0;j<beta.length;j++){const g=grad[j]/sample.length+lambda*beta[j];m[j]=.9*m[j]+.1*g;v[j]=.999*v[j]+.001*g*g;beta[j]-=.025*(m[j]/(1-.9**step))/(Math.sqrt(v[j]/(1-.999**step))+1e-8);}
+ if(lane2Mode)beta[beta.length-1]=Math.max(0,beta.at(-1));
  }return beta;
 }
 function evaluate(data,beta,temp=1){let loss=0,hits=0;for(const e of data){const rows=annualTriples(e.x.map(row=>Math.max(-15,Math.min(15,row.reduce((s,x,j)=>s+x*beta[j],0)/temp))));loss-=Math.log(rows.find(r=>r.combo===e.combo).probability);if(rows.slice(0,10).some(r=>r.combo===e.combo))hits++;}return {races:data.length,log_loss:loss/data.length,top10_hit_rate:hits/data.length};}
@@ -31,7 +32,7 @@ const baselineBeta=featureNames.map((_,i)=>i===0?scales[0]:0),baselineTemps=[.8,
 const baseline=evaluate(test,baselineBeta,baselineTemps[0].temperature);
 const report={baseline:{name:'枠別1着率のみ',temperature:baselineTemps[0].temperature,heldout:baseline},delta_log_loss:heldout.log_loss-baseline.log_loss,kind:'RETROSPECTIVE_TEMPORAL_HOLDOUT',training_races:train.length,tuning_from:tuneStart,test_from:testStart,lambda:selected.lambda,temperature:selected.temperature,tuning:selected.tuning,heldout,
  note:'結果アーカイブからの時系列検証。実運用の締切前保存を証明する成績ではありません。スタート順位は正常な6艇のSTを順位化し、同値は平均順位。'};
-const model={schema_version:3,engine_version:contextMode?CONTEXT_ANNUAL_ENGINE:venueMode?VENUE_ANNUAL_ENGINE:ANNUAL_ENGINE,name:contextMode?'直近1年・選手履歴＋場別・直前条件モデル v3.2':venueMode?'直近1年・選手履歴＋場別傾向モデル v3.1':'直近1年・選手履歴モデル v3',status:'HISTORICAL_VALIDATED',trained_from:manifest.from,trained_through:manifest.through,
+const model={schema_version:3,engine_version:lane2Mode?LANE2_ANNUAL_ENGINE:contextMode?CONTEXT_ANNUAL_ENGINE:venueMode?VENUE_ANNUAL_ENGINE:ANNUAL_ENGINE,name:lane2Mode?'直近1年・選手履歴＋場別・直前条件＋2号艇逃がし率モデル v3.3':contextMode?'直近1年・選手履歴＋場別・直前条件モデル v3.2':venueMode?'直近1年・選手履歴＋場別傾向モデル v3.1':'直近1年・選手履歴モデル v3',status:'HISTORICAL_VALIDATED',trained_from:manifest.from,trained_through:manifest.through,
  coefficients_trained_through:manifest.through,created_at:new Date().toISOString(),feature_names:featureNames,coefficients:selected.beta,means,scales,temperature:selected.temperature,profiles,
  coverage:{from:manifest.from,through:manifest.through,days:365,races:races.length,players:Object.keys(profiles.players).length,failures:0,excluded_races:manifest.excluded_races?.length||0},validation:report};
 model.id='annual-v3-'+crypto.createHash('sha256').update(JSON.stringify(model)).digest('hex');fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(model)+'\n');

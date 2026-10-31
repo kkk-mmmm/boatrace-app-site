@@ -11,6 +11,8 @@ test('開催場の次レース・傾向ラベル・締切強調・枠内スク�
  assert.equal(await run("document.getElementById('upcoming-content').textContent.includes('あと10分以内')"),false);assert.equal(await run("document.getElementById('venue-results').textContent.includes('あと10分以内')"),false);
  assert.equal(await run("getComputedStyle(document.querySelector('.upcoming-race.is-deadline-soon time')).backgroundColor"),'rgb(255, 240, 191)');assert.equal(await run("getComputedStyle(document.querySelector('.venue-next-race.is-deadline-soon time')).backgroundColor"),'rgb(255, 240, 191)');
  assert.equal(await run("new Set([...document.querySelectorAll('.race-outlook')].map(x=>getComputedStyle(x).backgroundColor)).size"),5);
+ const deadlineColors=await run(`(()=>{const sample=document.createElement('div');sample.className='race-heading';sample.hidden=true;sample.innerHTML='<p class="race-deadline">締切</p>';document.body.append(sample);const colorOf=e=>{const s=getComputedStyle(e);return [s.color,s.backgroundColor]},reference=colorOf(sample.firstChild),upcoming=colorOf(document.querySelector('.upcoming-race.is-deadline-soon time')),venue=colorOf(document.querySelector('.venue-next-race.is-deadline-soon time'));sample.remove();return {reference,upcoming,venue};})()`);assert.deepEqual(deadlineColors.upcoming,deadlineColors.reference);assert.deepEqual(deadlineColors.venue,deadlineColors.reference);
+
  for(const width of [1440,1024,768,760,390,320]){
   await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<761});
   assert.ok(await run("parseFloat(getComputedStyle(document.getElementById('upcoming-content')).marginLeft)>0&&parseFloat(getComputedStyle(document.getElementById('upcoming-content')).marginRight)>0"));

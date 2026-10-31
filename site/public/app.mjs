@@ -139,7 +139,7 @@ function renderVenueFiltersContent() {
     const tags=venueTags(venue,catalog.date);
     const details=tags.held==='OPEN'?[tags.grade || 'グレード未確認',tags.final?'最終日':tags.day?`${tags.day}日目`:'日次未確認',tags.schedule || '時間帯未確認']:[tags.held==='NO_MEETING'?'非開催':'開催未確認'];
     const next=tags.held==='OPEN'?nextRaces.find(r=>r.venue_code===venue.code):null;
-    const nextText=next?`次 ${next.race_no}R · 締切 ${shortClock(next.deadline_at)}`:tags.held==='OPEN'?'締切前レースなし・時刻未取得':'';
+    const nextText=next?`${next.race_no}R · 締切 ${shortClock(next.deadline_at)}`:tags.held==='OPEN'?'締切前レースなし・時刻未取得':'';
     return `<button class="venue-result${next&&deadlineSoon(next)?' is-deadline-soon':''}" data-venue-result="${e(venue.code)}" aria-pressed="${selectedVenue===venue.code}"><strong>${e(venue.name)}</strong><span>${details.map(e).join(' / ')}</span>${nextText?`<span class="venue-next-race${next&&deadlineSoon(next)?' is-deadline-soon':''}">${e(nextText)}${next&&deadlineSoon(next)?' · あと10分以内':''}</span>`:''}</button>`;
   }).join(''):'<p class="venue-filter-empty">この条件に合う場はありません。条件を外すか「絞り込みをクリア」を選んでください。</p>');
   $('venue-results').scrollTop=scroll;

@@ -569,3 +569,10 @@ footer .information-links a{font-size:12px;min-height:44px;align-content:center}
 }
 
 .exhibition-table{min-width:0}.exhibition-table td:nth-child(2){letter-spacing:0;font-weight:650}.exhibition-table .lane{vertical-align:middle}.exhibition-course-unknown{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:4px}
+
+/* Release archive: readable cards and a persistent incremental reading flow. */
+.release-card{padding:24px 28px}
+.release-card::before{top:31px}
+.release-pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:20px 0 32px;font-size:12px;color:var(--muted)}
+#release-more{min-height:44px;border:1px solid #b9cbdc;border-radius:5px;background:#fff;color:var(--blue);font:inherit;font-weight:650;padding:10px 20px;cursor:pointer}
+@media(max-width:760px){.release-card{padding:18px 16px}.release-card::before{top:25px}.release-pagination{gap:12px}#release-more{width:100%}}
